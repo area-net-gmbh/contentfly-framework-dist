@@ -3,7 +3,6 @@ require_once __DIR__.'/bootstrap.php';
 
 use Areanet\PIM\Classes\Controller\Provider\Base\ApiControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\AuthControllerProvider;
-use Areanet\PIM\Classes\Controller\Provider\Base\ExportControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\FileControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\SystemControllerProvider;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
@@ -16,10 +15,6 @@ use Symfony\Component\Debug\ErrorHandler;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-
-$app['ui.controller'] = function() use ($app) {
-    return new Controller\UiController($app);
-};
 
 $app['install.controller'] = function() use ($app) {
     return new Controller\InstallController($app);
@@ -131,22 +126,10 @@ $app->options("{anything}", function () {
 })->assert("anything", ".*");
 
 
-$app->get(Config\Adapter::getConfig()->FRONTEND_URL, 'ui.controller:showAction');
-
-if(Config\Adapter::getConfig()->FRONTEND_URL){
-    if(str_ends_with(Config\Adapter::getConfig()->FRONTEND_URL, '/')){
-        $app->get(substr(Config\Adapter::getConfig()->FRONTEND_URL, 0, strlen(Config\Adapter::getConfig()->FRONTEND_URL) - 1), 'ui.controller:showAction');
-    }else{
-        $app->get(Config\Adapter::getConfig()->FRONTEND_URL.'/', 'ui.controller:showAction');
-    }
-}
-
-$app->get(Config\Adapter::getConfig()->FRONTEND_URL, 'ui.controller:showAction');
 $app->get(Config\Adapter::getConfig()->APP_INSTALLER_URL, 'install.controller:indexAction');
 $app->post(Config\Adapter::getConfig()->APP_INSTALLER_URL, 'install.controller:submitAction');
 
 $app->mount('/api', new ApiControllerProvider('/api'));
-$app->mount('/export', new ExportControllerProvider('/export'));
 $app->mount('/auth', new AuthControllerProvider('/auth'));
 $app->mount('/file', new FileControllerProvider('/file'));
 $app->mount('/system', new SystemControllerProvider('/system'));

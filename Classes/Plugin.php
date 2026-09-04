@@ -45,61 +45,6 @@ abstract class Plugin
     }
 
     /**
-     * @param string $name Name des UI-Blocks
-     * @param string $path Pfad zur HTML, relativ zum Frontend-Ordner des Plugins
-     */
-    final protected function addBlock($name, $path){
-        $this->app['uiManager']->addBlock($name, $this->getFrontendPath().$this->normalizePath($path));
-    }
-
-    /**
-     * @param string $name Name des Angular Modules
-     * @param string $path Pfad zur Javascript-Moduldatei, relativ zum Frontend-Ordner des Plugins
-     */
-    final protected function addAngularModule($name, $path){
-        $this->app['uiManager']->addAngularModule($name, $this->getFrontendPath().$this->normalizePath($path));
-    }
-
-    /**
-     * @param string $path Pfad zur Javascript-Datei, relativ zum Frontend-Ordner des Plugins
-     */
-    final protected function addJSFile($path){
-        $this->app['uiManager']->addJSFile($this->getFrontendPath().$this->normalizePath($path));
-    }
-
-    /**
-     * @param tring $path Pfad zur Stylesheet-Datei, relativ zum Frontend-Ordner des Plugins
-     */
-    final protected function addCSSFile($path){
-        $this->app['uiManager']->addCSSFile($this->getFrontendPath().$this->normalizePath($path));
-    }
-
-    /**
-     * @param string $route Name der Route, relativ zu 'Puginname/
-     * @param string $templateName Pfad zur HTML, relativ zum Frontend-Ordner des Plugins
-     * @param string $controllerName Name des Controllers (JS-Datei muss per  addJSFile eingebunden werden)
-     * @param boolean $secure nur durch authentifizierten Benutzer über APPCMS-TOKEN aufrufbar
-     */
-    final protected function addRoute($route, $templateName, $controllerName, $secure = true){
-        $this->app['uiManager']->addRoute($route, $this->getFrontendPath().$this->normalizePath($templateName), $controllerName, $secure);
-    }
-
-    /**
-     * @param $routeName Name der Route aus app.routes.js
-     * @param null $controller
-     * @param null $template
-     * @param array $stateParams
-     */
-    public function extendRoute($routeName, $controller = null, $template = null, $stateParams = array()): void{
-        if(empty($controller) && empty($template)) return;
-
-        $template = $template ? $this->getFrontendPath().$this->normalizePath($template) : null;
-
-        $this->app['uiManager']->extendRoute($routeName, $controller, $template, $stateParams);
-    }
-
-
-    /**
      * @return string[]
      */
     final public function getEntities(){

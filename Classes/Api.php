@@ -925,11 +925,8 @@ class Api
                 'enabled' => Adapter::getConfig()->FRONTEND_CUSTOM_NAVIGATION
             ),
             'login_redirect' => Adapter::getConfig()->FRONTEND_LOGIN_REDIRECT,
-            'exportMethods' => Adapter::getConfig()->APP_EXPORT_METHODS,
             'languages' => Adapter::getConfig()->APP_LANGUAGES
         );
-
-        $uiblocks = $this->app['uiManager']->getBlocks();
 
         $schema         = $this->app['schema'];
         $permissions    = $this->getPermissions();
@@ -991,7 +988,7 @@ class Api
             $i18nPermissions = $group->getLanguages();
         }
 
-        return array('frontend' => $frontend, 'uiblocks' => $uiblocks, 'devmode' => Adapter::getConfig()->APP_DEBUG, 'version' => APP_VERSION.'/'.CUSTOM_VERSION, 'data' => $schema, 'permissions' => $permissions, 'i18nPermissions' => $i18nPermissions);
+        return array('frontend' => $frontend, 'devmode' => Adapter::getConfig()->APP_DEBUG, 'version' => APP_VERSION.'/'.CUSTOM_VERSION, 'data' => $schema, 'permissions' => $permissions, 'i18nPermissions' => $i18nPermissions);
     }
 
 

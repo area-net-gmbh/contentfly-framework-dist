@@ -124,11 +124,6 @@ class Config{
     public $APP_DEBUG = false;
 
     /**
-     * @var string Default controller for PIM, overwrite
-     */
-    public $APP_DEFAULT_CONTROLLER = 'ui.controller:showAction';
-
-    /**
      * @var string Timezone for PIM
      */
     public $APP_TIMEZONE = 'Europe/Berlin';
@@ -254,16 +249,6 @@ class Config{
      * @var string HTTP Authentification Password
      */
     public $APP_HTTP_AUTH_PASS = null;
-
-    /**
-     * @var array Export-Methoden
-     */
-    public $APP_EXPORT_METHODS = array('csv' => 'CSV', 'excel' => 'EXCEL', 'json' => 'JSON', 'xml' => 'XML');
-
-    /**
-     * @var string Export-Controller
-     */
-    public $APP_EXPORT_CONTROLLER = 'Areanet\PIM\Controller\ExportController';
 
     /**
      * @var string Load Frontend UI in folder /ui/...

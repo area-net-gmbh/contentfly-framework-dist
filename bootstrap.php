@@ -25,7 +25,6 @@ use Areanet\PIM\Classes\Manager\ConsoleManager;
 use Areanet\PIM\Classes\Manager\PluginManager;
 use Areanet\PIM\Classes\Manager\RouteManager;
 use Areanet\PIM\Classes\Manager\TypeManager;
-use Areanet\PIM\Classes\Manager\UIManager;
 use Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy;
 use Areanet\PIM\Command\SetupCommand;
 use Dflydev\Provider\DoctrineOrm\DoctrineOrmServiceProvider;
@@ -235,10 +234,6 @@ $app['debug'] = Adapter::getConfig()->APP_DEBUG;
 
 $app['consoleManager'] = function ($app) {
     return new ConsoleManager($app);
-};
-
-$app['uiManager'] = function ($app) {
-    return new UIManager($app);
 };
 
 $app['routeManager'] = function ($app) {
