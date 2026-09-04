@@ -65,7 +65,7 @@ class InstallCommand extends Command
             'strategy' => strtolower((string) $this->value($input, 'db-strategy', 'APPCMS_DB_STRATEGY')),
         );
 
-        $errors = $this->check($db);
+        $errors = $this->check($db, !$input->getOption('dry-run'));
         if (count($errors)) {
             $output->writeln('<error>Die Installation kann nicht starten:</error>');
             foreach ($errors as $context => $message) {
@@ -128,8 +128,12 @@ class InstallCommand extends Command
      *
      * Sammelt **alle** Fehler statt beim ersten abzubrechen — wer eine Installation
      * skriptet, will nicht fünfmal hintereinander an einer neuen Kleinigkeit scheitern.
+     *
+     * @param bool $mayChmod Ob die Rechte gesetzt werden dürfen. Unter --dry-run nicht:
+     *                       ein Lauf, der „nichts geschrieben" meldet, darf auch keine
+     *                       Dateirechte verändern. Ohne chmod wird nur geprüft, was ist.
      */
-    private function check(array $db): array
+    private function check(array $db, bool $mayChmod = true): array
     {
         $errors = array();
 
@@ -147,12 +151,16 @@ class InstallCommand extends Command
             $errors['chmod'] = 'PHP-Funktion chmod() ist deaktiviert.';
         }
 
-        @chmod(ROOT_DIR.'/custom/config.php', 0775);
-        @chmod(ROOT_DIR.'/data/files', 0775);
-        @chmod(ROOT_DIR.'/data/cache', 0775);
+        if ($mayChmod) {
+            @chmod(ROOT_DIR.'/custom/config.php', 0775);
+            @chmod(ROOT_DIR.'/data/files', 0775);
+            @chmod(ROOT_DIR.'/data/cache', 0775);
+        }
 
         if (!is_writable(ROOT_DIR.'/custom/config.php')) {
-            $errors['custom/config.php'] = 'ist nicht schreibbar.';
+            $errors['custom/config.php'] = $mayChmod
+                ? 'ist nicht schreibbar.'
+                : 'ist nicht schreibbar (unter --dry-run werden die Rechte nicht gesetzt).';
         }
 
         if (!isset($errors['db-host']) && !isset($errors['db-name'])) {
