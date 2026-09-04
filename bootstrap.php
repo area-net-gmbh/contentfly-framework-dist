@@ -26,6 +26,7 @@ use Areanet\PIM\Classes\Manager\PluginManager;
 use Areanet\PIM\Classes\Manager\RouteManager;
 use Areanet\PIM\Classes\Manager\TypeManager;
 use Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy;
+use Areanet\PIM\Command\InstallCommand;
 use Areanet\PIM\Command\SetupCommand;
 use Dflydev\Provider\DoctrineOrm\DoctrineOrmServiceProvider;
 use Doctrine\Common\Annotations\AnnotationRegistry;
@@ -243,6 +244,7 @@ $app['routeManager'] = function ($app) {
 $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app) {
     $dispatcher->addListener(ConsoleEvents::INIT, function (ConsoleEvent $event) {
         $app = $event->getApplication();
+        $app->add(new InstallCommand());
         $app->add(new SetupCommand());
     });
     return $dispatcher;
