@@ -88,6 +88,9 @@ if($app['is_installed']) {
             'pim' => array(
                 'driver' => 'pdo_mysql',
                 'host' => Adapter::getConfig()->DB_HOST,
+                // Ohne den Port landet die Verbindung immer auf 3306 - und zwar still,
+                // also auf irgendeiner MySQL, die dort zufaellig lauscht (Task 000-000-0004).
+                'port' => Adapter::getConfig()->DB_PORT,
                 'dbname' => Adapter::getConfig()->DB_NAME,
                 'user' => Adapter::getConfig()->DB_USER,
                 'password' => Adapter::getConfig()->DB_PASS,
@@ -196,15 +199,6 @@ if($app['is_installed']) {
 }else{
     $app['orm.em'] = null;
 }
-
-if(!is_dir(ROOT_DIR.'/custom/Views/')){
-    mkdir(ROOT_DIR.'/custom/Views/');
-}
-
-$app->register(new Silex\Provider\TwigServiceProvider(), array(
-    'twig.path'     =>   array(ROOT_DIR.'/custom/Views/', ROOT_DIR.'/lib/contentfly-ui/'),
-    'twig.options'  => array('strict_variables' => false)
-));
 
 if($app['is_installed']) {
     $app['thumbnailSettings'] = function ($app) {

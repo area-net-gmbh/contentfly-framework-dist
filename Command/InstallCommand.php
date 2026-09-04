@@ -34,6 +34,7 @@ class InstallCommand extends Command
             ->setName('appcms:install')
             ->setDescription('Installiert Contentfly: schreibt die Konfiguration, legt das Schema an und erzeugt die Basisdaten')
             ->addOption('db-host', null, InputOption::VALUE_REQUIRED, 'Datenbank-Host (Env: APPCMS_DB_HOST)')
+            ->addOption('db-port', null, InputOption::VALUE_REQUIRED, 'Datenbank-Port (Env: APPCMS_DB_PORT)', '3306')
             ->addOption('db-name', null, InputOption::VALUE_REQUIRED, 'Datenbank-Name (Env: APPCMS_DB_NAME)')
             ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Datenbank-Benutzer (Env: APPCMS_DB_USER)')
             ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Datenbank-Passwort (Env: APPCMS_DB_PASS)')
@@ -59,6 +60,7 @@ class InstallCommand extends Command
 
         $db = array(
             'host'     => $this->value($input, 'db-host', 'APPCMS_DB_HOST'),
+            'port'     => (int) ($this->value($input, 'db-port', 'APPCMS_DB_PORT') ?: 3306),
             'name'     => $this->value($input, 'db-name', 'APPCMS_DB_NAME'),
             'user'     => $this->value($input, 'db-user', 'APPCMS_DB_USER'),
             'pass'     => $this->value($input, 'db-pass', 'APPCMS_DB_PASS'),
@@ -143,6 +145,10 @@ class InstallCommand extends Command
             }
         }
 
+        if ($db['port'] < 1 || $db['port'] > 65535) {
+            $errors['db-port'] = 'ist kein gültiger Port: '.$db['port'];
+        }
+
         if (!in_array($db['strategy'], array('guid', 'auto'), true)) {
             $errors['db-strategy'] = 'muss "guid" oder "auto" sein, war: "'.$db['strategy'].'"';
         }
@@ -165,7 +171,7 @@ class InstallCommand extends Command
 
         if (!isset($errors['db-host']) && !isset($errors['db-name'])) {
             try {
-                new \PDO('mysql:host='.$db['host'].';dbname='.$db['name'], $db['user'], $db['pass']);
+                new \PDO('mysql:host='.$db['host'].';port='.$db['port'].';dbname='.$db['name'], $db['user'], $db['pass']);
             } catch (\Exception $e) {
                 // Die Datenbank selbst wird nicht angelegt — sie muss existieren.
                 $errors['database'] = $e->getMessage();
@@ -182,6 +188,7 @@ class InstallCommand extends Command
         $data = file_get_contents($path);
 
         $data = str_replace(self::PLACEHOLDER_HOST, $db['host'], $data);
+        $data = str_replace("'\$SET_DB_PORT'", (string) $db['port'], $data);
         $data = str_replace('$SET_DB_NAME', $db['name'], $data);
         $data = str_replace('$SET_DB_USER', $db['user'], $data);
         $data = str_replace('$SET_DB_PASS', $db['pass'], $data);
@@ -214,6 +221,7 @@ class InstallCommand extends Command
                 'pim' => array(
                     'driver'   => 'pdo_mysql',
                     'host'     => $db['host'],
+                    'port'     => $db['port'],
                     'dbname'   => $db['name'],
                     'user'     => $db['user'],
                     'password' => $db['pass'],
@@ -254,6 +262,14 @@ class InstallCommand extends Command
         foreach (Adapter::getConfig()->APP_SYSTEM_TYPES as $systemType) {
             $app['typeManager']->registerType(new $systemType($app));
         }
+
+        // Dieselbe Quote-Strategie wie im regulären Bootstrap. Ohne sie bleiben
+        // Spaltennamen ungequotet — und `groups` in pim_user ist seit MySQL 8.0.2 ein
+        // reserviertes Wort, das INSERT scheitert an einem Syntaxfehler. Auf MySQL 5.7
+        // fiel das nie auf; der InstallController hatte dieselbe Lücke.
+        $app['orm.em']->getConfiguration()->setQuoteStrategy(
+            new \Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy()
+        );
 
         return $app['orm.em'];
     }

@@ -16,10 +16,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-$app['install.controller'] = function() use ($app) {
-    return new Controller\InstallController($app);
-};
-
 $app['request'] = function()use ($app){
     return $app['request_stack'] ? $app['request_stack']->getCurrentRequest() : null;
 };
@@ -125,9 +121,6 @@ $app->options("{anything}", function () {
     return new JsonResponse(null, 204);
 })->assert("anything", ".*");
 
-
-$app->get(Config\Adapter::getConfig()->APP_INSTALLER_URL, 'install.controller:indexAction');
-$app->post(Config\Adapter::getConfig()->APP_INSTALLER_URL, 'install.controller:submitAction');
 
 $app->mount('/api', new ApiControllerProvider('/api'));
 $app->mount('/auth', new AuthControllerProvider('/auth'));

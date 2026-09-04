@@ -3,7 +3,6 @@ namespace Areanet\PIM\Classes\Controller;
 
 use Doctrine\ORM\EntityManager;
 use Silex\Application;
-use Twig\Environment;
 
 abstract class BaseController
 {
@@ -13,23 +12,20 @@ abstract class BaseController
     /** @var EntityManager $em */
     protected $em;
 
-    /** @var \Twig_Environment $twig */
-    protected $twig;
-
     public function __construct($app)
     {
         $this->app = $app;
-        if($this->app['orm.em']) $this->setEM($this->app['orm.em']);
-        $this->setTwig($this->app['twig']);
-        
+        // Vor der Installation registriert bootstrap.php weder DBAL noch ORM
+        // (`if($app['is_installed'])`). Der Container wirft dann beim Zugriff, statt null
+        // zu liefern - deshalb erst fragen, dann holen.
+        if (isset($this->app['orm.em']) && $this->app['orm.em']) {
+            $this->setEM($this->app['orm.em']);
+        }
     }
 
     protected function setEM(EntityManager $em){
         $this->em = $em;
     }
 
-    protected function setTwig(Environment $twig){
-        $this->twig = $twig;
-    }
     
 }

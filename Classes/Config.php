@@ -229,11 +229,6 @@ class Config{
      */
     public $APP_MASTER_PASSWORD     = null;
 
-    /**
-     * @var string Load Installer
-     */
-    public $APP_INSTALLER_URL = 'install';
-
 
     /**
      * @var string Force SSL-Connection

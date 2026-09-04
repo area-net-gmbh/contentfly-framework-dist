@@ -26,9 +26,13 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
     {
         $app->before(function (Request $request)use ($app) {
 
-            $controller = $request->get('_controller');
-            if (is_string($controller) && substr($controller, 0, 7) != 'install' && Adapter::getConfig()->DB_HOST == '$SET_DB_HOST'){
-                return $app->redirect('install');
+            // Nicht installiert: Frueher fuehrte hier ein Redirect auf die Installer-Maske.
+            // Die gibt es nicht mehr - installiert wird auf der Kommandozeile. Statt eines
+            // Redirects ins Leere sagen wir, was zu tun ist.
+            if (Adapter::getConfig()->DB_HOST == '$SET_DB_HOST') {
+                return new \Symfony\Component\HttpFoundation\JsonResponse(array(
+                    'message' => 'Contentfly ist nicht installiert. Installation ausfuehren: php bin/console.php appcms:install'
+                ), 503);
             }
 
             if ($request->headers->get('Content-Type') && (0 === strpos($request->headers->get('Content-Type'), 'application/json'))) {
