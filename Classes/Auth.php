@@ -1,123 +1,45 @@
 <?php
 namespace Areanet\PIM\Classes;
-use Areanet\PIM\Classes\Manager\LoginManager;
+
 use Areanet\PIM\Entity\User;
 use Silex\Application;
 
-
 /**
- * Class Config
- * @package Areanet\PIM\Classes
+ * Zugriff auf den angemeldeten Benutzer.
+ *
+ * Bis 2026-09-04 hielt diese Klasse zusätzlich die sessionbasierte Anmeldung der
+ * PIM-Oberfläche: `init()` las bei **jedem** Request `auth.userid` aus der PHP-Session,
+ * `login()` und `logout()` schrieben sie. Mit der Oberfläche ist das entfallen (Story
+ * `012-004`) — und mit ihr die Session selbst, deren exklusiver Dateilock gleichzeitige
+ * API-Aufrufe desselben Nutzers serialisierte.
+ *
+ * `login()` und `logout()` hatten ohnehin keinen Aufrufer: Der `AuthController` bringt seine
+ * eigene Anmeldung mit und stellt Tokens aus. Wer den angemeldeten Benutzer setzt, ist
+ * seither `BaseControllerProvider::checkToken()`.
  */
-class Auth{
-
+class Auth
+{
     /** @var Application $app */
     protected $app;
 
-    protected $token;
-
-    /**
-     * Manager constructor.
-     *
-     * @param Application $app
-     */
     public function __construct(Application $app)
     {
         $this->app = $app;
-
-    }
-
-    public function init(): void{
-
-        if(($userId = $this->app['session']->get('auth.userid'))){
-            $user = $this->app['orm.em']->getRepository('Areanet\PIM\Entity\User')->find($userId);
-            if($user) $this->setUser($user);
-        }
-    }
-
-    protected function getLoginProvider($loginProviderClassName){
-        if(empty($loginProviderClassName)){
-            return null;
-        }
-
-        $loginProviderClass = "Custom\Classes\\$loginProviderClassName";
-
-        if(!class_exists($loginProviderClass)){
-            return null;
-        }
-
-        $loginProvider = new $loginProviderClass($this->app, null);
-        if(!($loginProvider instanceof LoginManager)){
-            return null;
-        }
-
-        return $loginProvider;
-    }
-
-    public function login($alias, $pass){
-
-
-        $user = $this->app['orm.em']->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => $alias));
-        if (!$user) {
-            throw new \Exception('Ungültiger Benutzername.', 401);
-        }
-
-        if(!$user->getIsActive()){
-            throw new \Exception(array('message' => 'Der Benutzer ist gesperrt.'), 401);
-        }
-
-        if($user->getLoginManager()){
-            throw new \Exception(array('message' => 'Der Benutzer ist nur über LoginManager authorisierbar.'), 401);
-        }
-
-        if (!$user->isPass($pass)) {
-            throw new \Exception('Benutzername und/oder Passwort fehlerhaft.', 401);
-        }
-
-        $this->app['session']->set('auth.userid', $user->getId());
-
-        $this->setUser($user);
-
-        return $user;
-    }
-
-    public function logout(): void{
-        $this->app['session']->remove('auth.userid');
-        $this->setUser(null);
     }
 
     /**
-     * @return User
+     * @return User|null
      */
     public function getUser()
     {
         return isset($this->app['auth.user']) ? $this->app['auth.user'] : null;
     }
 
-
     /**
-     * @param User $user
+     * @param User|null $user
      */
     public function setUser($user): void
     {
         $this->app['auth.user'] = $user;
     }
-
-    /**
-     * @return mixed
-     */
-    public function getToken()
-    {
-        return $this->token;
-    }
-
-    /**
-     * @param mixed $token
-     */
-    public function setToken($token): void
-    {
-        $this->token = $token;
-    }
-
-
 }

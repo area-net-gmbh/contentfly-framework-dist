@@ -1,9 +1,6 @@
 <?php
 const ROOT_DIR = __DIR__ . '/../..';
 
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-
 require_once ROOT_DIR.'/lib/contentfly/version.php';
 require_once ROOT_DIR.'/vendor/autoload.php';
 if(file_exists(ROOT_DIR.'/custom/vendor/autoload.php')){
@@ -55,7 +52,6 @@ if(Adapter::getConfig()->APP_DEBUG){
 }
 
 $app = new Application();
-$app->register(new Silex\Provider\SessionServiceProvider());
 
 $app['is_installed'] = (Adapter::getConfig()->DB_HOST != '$SET_DB_HOST');
 $app['auth.user'] = null;
@@ -284,7 +280,6 @@ if(Adapter::getConfig()->APP_FORCE_SSL && !defined('APPCMS_CONSOLE')){
         exit();
     }
 
-    ini_set('session.cookie_secure', 1);
     header("Strict-Transport-Security:max-age=63072000");
 }
 
@@ -343,8 +338,6 @@ if (Adapter::getConfig()->USE_SCSS_COMPILER) {
         }
     }
 }
-
-$app['auth']->init();
 
 require_once ROOT_DIR.'/custom/app.php';
 
