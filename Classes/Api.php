@@ -977,7 +977,7 @@ class Api
 
                 $frontend['customNavigation']['items'][$item->getNav()->getId()]['items'][] = array(
                     'entity' => $item->getEntity(),
-                    'title'  => $item->getTitle() ? $item->getTitle() : $schema[$item->getEntity()]['settings']['label'],
+                    'title'  => $item->getTitle() ?: $item->getEntity(),
                     'uri'    => $item->getUri() ? $item->getUri() : '#/list/'.$entityUriName,
                 );
             }
@@ -1434,22 +1434,14 @@ class Api
             }
 
             $settings = array(
-                'label' => $entity,
-                'readonly' => false,
-                'hide' => false,
                 'sortBy' => 'created',
                 'sortRestrictTo' => null,
                 'sortOrder' => 'DESC',
                 'isSortable' => false,
                 'labelProperty' => null,
                 'type' => 'default',
-                'tabs' => array(
-                    'default'   => array('title' => Adapter::getConfig()->FRONTEND_TAB_GENERAL_NAME, 'onejoin' => false)
-                ),
                 'dbname' => null,
-                'viewMode' => 0,
                 'i18n' => $i18n,
-                'sort' => 1000,
                 'excludeFromSync' => false
             );
 
@@ -1481,23 +1473,11 @@ class Api
                 }
 
                 if ($classAnnotation instanceof \Areanet\PIM\Classes\Annotations\Config) {
-                    $settings['label']          = $classAnnotation->label ?: $entity;
                     $settings['labelProperty']  = $classAnnotation->labelProperty ?: $settings['labelProperty'];
-                    $settings['readonly']       = $classAnnotation->readonly ?: false;
                     $settings['sortBy']         = $classAnnotation->sortBy ?: $settings['sortBy'];
                     $settings['sortOrder']      = $classAnnotation->sortOrder ?: $settings['sortOrder'];
-                    $settings['hide']           = $classAnnotation->hide ?: $settings['hide'];
                     $settings['sortRestrictTo'] = $classAnnotation->sortRestrictTo ?: $settings['sortRestrictTo'];
-                    $settings['viewMode']       = $classAnnotation->viewMode ? intval($classAnnotation->viewMode) : $settings['viewMode'];
-                    $settings['sort']           = $classAnnotation->sort ? intval($classAnnotation->sort) : $settings['sort'];
                     $settings['excludeFromSync']= $classAnnotation->excludeFromSync ?: false;
-
-                    if($classAnnotation->tabs){
-                        $tabs = json_decode(str_replace("'", '"', $classAnnotation->tabs));
-                        foreach($tabs as $key=>$value){
-                            $settings['tabs'][$key] = array('title' => $value, 'onejoin' => false);
-                        }
-                    }
                 }
 
                 $event = new Event();
@@ -1509,7 +1489,6 @@ class Api
 
             if($skipEntity) continue;
 
-            $list               = array();
             $properties         = array();
             $customProperties   = array();
 
@@ -1546,10 +1525,6 @@ class Api
                         $propertySchema                 = $type->processSchema($prop->getName(), $defaultValues[$prop->getName()], $allPropertyAnnotations, $entityName);
                         $properties[$prop->getName()]   = $propertySchema;
 
-                        if(($tab = $type->getTab())){
-                            $settings['tabs'][$tab->key] = $tab->config;
-                        }
-
                         if($prop->getName() == 'treeParent'){
                             $properties[$prop->getName()]['accept'] = $className;
                         }
@@ -1566,20 +1541,9 @@ class Api
                 }
 
 
-                if(isset($properties[$prop->getName()]['showInList']) && $properties[$prop->getName()]['showInList'] !== false){
-                    $list[$properties[$prop->getName()]['showInList']] = $prop->getName();
-                }
-
-
-
-
             }
 
-            if($entity != 'PIM\\Group') $settings['tabs']['settings']  = array('title' => 'Einstellungen', 'onejoin' => false);
-
-            ksort($list);
             $data[$entity] = array(
-                'list' => $list,
                 'settings' => $settings,
                 'properties' => $properties
             );
@@ -1936,8 +1900,12 @@ class Api
         $tblName    = $schema[$entityShortName]['settings']['dbname'];
         $dbFields   = array();
 
-        foreach($schema[$entityShortName]['list'] as $propName){
-            $propConfig = $schema[$entityShortName]['properties'][$propName];
+        /*
+         * Vorher kam die Spaltenauswahl aus `showInList` — der Listenposition der
+         * gelöschten Oberfläche. Sie ist mit den UI-Annotationen entfallen; die Route
+         * liefert jetzt alle skalaren Eigenschaften. Für Clients ist das additiv.
+         */
+        foreach($schema[$entityShortName]['properties'] as $propName => $propConfig){
 
             switch($propConfig['type']){
                 case 'multijoin':
@@ -1967,8 +1935,17 @@ class Api
             $joinI18NCond = "AND t.lang = e.lang AND t.lang = '$lang'";
         }
 
+        /*
+         * Spaltennamen quoten: Seit die Auswahl alle Eigenschaften umfasst, sind auch
+         * Felder wie `groups` dabei — in MySQL 8 ein reserviertes Wort.
+         */
+        $columns = implode(',', array_map(
+            function($field){ return '`'.$field.'`'; },
+            array_keys($dbFields)
+        ));
+
         $statement = "
-            SELECT t.id, ".implode(',', array_keys($dbFields)).", t.sorting, t.parent_id 
+            SELECT t.id, ".$columns.", t.sorting, t.parent_id 
             FROM $tblName e 
             INNER JOIN $tblTreeName t 
               on e.id = t.id $joinI18NCond

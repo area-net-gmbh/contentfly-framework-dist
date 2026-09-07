@@ -11,8 +11,6 @@ use Silex\Application;
 
 abstract class Type
 {
-    private   $tab = null;
-
     /** @var EntityManager $em */
     protected $em;
 
@@ -57,37 +55,14 @@ abstract class Type
 
     }
 
-    public function getTab()
-    {
-        return $this->tab;
-    }
-
-    protected function addTab($key, $config){
-        $this->tab = new \stdClass();
-        $this->tab->key = $key;
-        $this->tab->config = $config;
-    }
-
     public function processSchema($key, $defaultValue, $propertyAnnotations, $entityName)
     {
         $schema = array(
-            'label' => $key
-        );
-
-        $schema = array(
-            'showInList' => false,
-            'listShorten' => 0,
-            'readonly' => false,
-            'hide' => false,
             'type' => $this->getAlias(),
             'dbtype' => $this->getAlias(),
-            'label' => $key,
-            'filter' => '',
-            'tab' => 'default',
             'sortable' => false,
             'default' => $defaultValue,
             'isFilterable' => false,
-            'isSidebar' => false,
             'unique' => false,
             'encoded' => false
         );
@@ -106,44 +81,12 @@ abstract class Type
                 $schema['encoded'] = $annotations->encoded;
             }
 
-            if($annotations->label){
-                $schema['label'] = $annotations->label;
-            }
-
             if($annotations->unique){
                 $schema['unique'] = $annotations->unique;
             }
 
             if($annotations->isFilterable){
                 $schema['isFilterable'] = $annotations->isFilterable;
-            }
-
-            if($annotations->isDatalist){
-                $schema['isDatalist'] = $annotations->isDatalist;
-            }
-
-            if($annotations->isSidebar){
-                $schema['isSidebar'] = $annotations->isSidebar;
-            }
-
-            if($annotations->listShorten){
-                $schema['listShorten'] = $annotations->listShorten;
-            }
-
-            if($annotations->showInList){
-                $schema['showInList'] = $annotations->showInList;
-            }
-
-            if($annotations->hide){
-                $schema['hide'] = $annotations->hide;
-            }
-
-            if($annotations->tab){
-                $schema['tab'] = $annotations->tab;
-            }
-
-            if($annotations->readonly){
-                $schema['readonly'] = $annotations->readonly;
             }
 
         }
@@ -167,11 +110,6 @@ abstract class Type
             $schema['nullable'] = $annotations->nullable ? $annotations->nullable : false;
         }
 
-
-        //\Doctrine\ORM\Mapping\Id
-        if(isset($propertyAnnotations['Doctrine\\ORM\\Mapping\\Id'])){
-            $schema['readonly'] = true;
-        }
 
         return $schema;
     }

@@ -46,10 +46,6 @@ class OnejoinType extends Type
         $schema['dbtype']   = 'integer';
         $schema['accept']   = $one2Oneentity;
         $schema['multiple'] = false;
-        $schema['tab']      = $one2Oneentity;
-        
-
-        $this->addTab($one2Oneentity, array('title' => $schema['label'], 'onejoin' => true, 'onejoin_field' => $key));
 
         return $schema;
     }

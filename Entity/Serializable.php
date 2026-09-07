@@ -30,14 +30,13 @@ abstract class Serializable implements \JsonSerializable{
             $schema = $app['schema'];
         }
 
-        if($level > 0 && !$forceLoadAll){
-            $propertiesToLoad = $app['schema'][$entityName]['list'];
-
-            if(!array_search('id', $propertiesToLoad)){
-                $propertiesToLoad[0] = 'id';
-            }
-
-        }
+        /*
+         * Verschachtelte Objekte waren hier auf die Listenspalten der Oberfläche
+         * beschränkt (`schema[...]['list']`, gespeist aus `showInList`). Der Schlüssel ist
+         * mit den UI-Annotationen entfallen; sie liefern jetzt alle Eigenschaften. Für
+         * Clients ist das additiv, die Verschachtelungstiefe begrenzt weiterhin
+         * `DB_NESTED_LEVELS`.
+         */
 
         foreach ($this as $property => $value) {
 

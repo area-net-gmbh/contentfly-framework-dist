@@ -49,14 +49,6 @@ class MultifileType extends Type
         $schema['accept']   = '*';
         $schema['sortable'] = false;
 
-        if(isset($propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Config'])){
-            $annotations = $propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Config'];
-
-            if($annotations->accept){
-                $schema['accept'] = $annotations->accept;
-            }
-        }
-
         if(isset($propertyAnnotations['Doctrine\\ORM\\Mapping\\OneToMany'])) {
             $annotations = $propertyAnnotations['Doctrine\\ORM\\Mapping\\OneToMany'];
             $schema['acceptFrom'] = $annotations->targetEntity;
