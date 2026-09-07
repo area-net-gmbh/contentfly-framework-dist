@@ -50,11 +50,6 @@ abstract class Type
         $this->entitySettings = $entitySettings;
     }
 
-    public function renderJSON()
-    {
-
-    }
-
     public function processSchema($key, $defaultValue, $propertyAnnotations, $entityName)
     {
         $schema = array(
