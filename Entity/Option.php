@@ -7,21 +7,20 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_option")
- * @PIM\Config(label="Option", labelProperty="value", sortBy="sorting", sortOrder="ASC", sortRestrictTo="group")
+ * @PIM\Config(labelProperty="value", sortBy="sorting", sortOrder="ASC", sortRestrictTo="group")
  */
 class Option extends BaseSortable
 {
 
     /**
      * @ORM\Column(type="string", nullable=false)
-     * @PIM\Config(label="Wert", showInList=20)
      */
     protected $value;
 
     /**
      * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\OptionGroup")
      * @ORM\JoinColumn(onDelete="CASCADE", nullable=false)
-     * @PIM\Config(label="Optionen Gruppe", showInList=15, isFilterable=true, readonly=true)
+     * @PIM\Config(isFilterable=true)
      */
     protected $group;
 

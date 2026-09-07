@@ -9,7 +9,7 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_group")
- * @PIM\Config(label="Gruppe", labelProperty="name", tabs="{'permissions': 'Berechtigungen', 'i18n': 'Sprachen'}")
+ * @PIM\Config(labelProperty="name")
  */
 class Group extends Base
 {
@@ -17,19 +17,16 @@ class Group extends Base
 
     /**
      * @ORM\Column(type="string", length=100, unique=true)
-     * @PIM\Config(showInList=30, label="Name")
      */
     protected $name;
 
     /**
      * @ORM\Column(type="integer")
-     * @PIM\Config(showInList=40, label="Token-Timeout (in min)")
      */
     protected $tokenTimeout = 30;
 
     /**
      * @ORM\Column(type="string", options="{'default' : 'disabled'}")
-     * @PIM\Config(showInList=60, label="Zugriff auf api/query", tab="permissions")
      * @PIM\Select(options="disabled=nicht erlaubt, enabled=erlaubt")
      */
     protected $apiQueryEnabled = 'disabled';
@@ -37,14 +34,12 @@ class Group extends Base
 
     /**
      * @ORM\OneToMany(targetEntity="Areanet\PIM\Entity\Permission", mappedBy="group", cascade={"remove"})
-     * @PIM\Config(tab="permissions", label="Berechtigungen")
      * @PIM\Permissions()
      */
     protected $permissions;
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(label="Sprachen", tab="i18n")
      * @PIM\I18nPermissions()
      */
     protected $languages;

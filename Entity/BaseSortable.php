@@ -12,13 +12,11 @@ class BaseSortable extends Base
 {
     /**
      * @ORM\Column(type="integer", options={"default" = 0}, nullable=true)
-     * @PIM\Config(hide=true, showInList=2, label="Position")
      */
     protected $sorting = 0;
 
     /**
      * @ORM\Column(type="boolean", options={"default" = true}, nullable=true)
-     * @PIM\Config(label="Aktiv")
      */
     protected $isActive = 1;
 

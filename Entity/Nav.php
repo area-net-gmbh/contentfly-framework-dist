@@ -7,20 +7,18 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_nav")
- * @PIM\Config(label="Bereich", labelProperty="title")
+ * @PIM\Config(labelProperty="title")
  */
 class Nav extends BaseSortable
 {
 
     /**
      * @ORM\Column(type="string", nullable=false)
-     * @PIM\Config(label="Name", showInList=20)
      */
     protected $title;
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(label="Icon", showInList=30)
      */
     protected $icon;
 

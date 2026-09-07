@@ -12,13 +12,12 @@ class BaseI18nSortable extends BaseI18n
 {
     /**
      * @ORM\Column(type="integer", options={"default" = 0}, nullable=true)
-     * @PIM\Config(hide=true, showInList=2, label="Position", i18n_universal=true)
+     * @PIM\Config(i18n_universal=true)
      */
     protected $sorting = 0;
 
     /**
      * @ORM\Column(type="boolean", options={"default" = true}, nullable=true)
-     * @PIM\Config(label="Aktiv")
      */
     protected $isActive = 1;
 

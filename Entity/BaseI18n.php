@@ -14,7 +14,6 @@ class BaseI18n extends Base
      * @ORM\Column(type=APPCMS_ID_TYPE)
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="NONE")
-     * @PIM\Config(readonly=true, showInList=APP_CMS_SHOW_ID_IN_LIST, label="ID", tab="settings")
      */
     protected $id;
 
@@ -22,7 +21,6 @@ class BaseI18n extends Base
      * @ORM\Column(type="string", length=2, options={"default" = APP_CMS_MAIN_LANG})
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="NONE")
-     * @PIM\Config(label="Sprache", tab="settings", hide=true)
      */
     protected $lang = APP_CMS_MAIN_LANG;
 

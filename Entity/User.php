@@ -8,7 +8,7 @@ use Silex\Application;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_user")
- * @PIM\Config(label="Benutzer", labelProperty="alias")
+ * @PIM\Config(labelProperty="alias")
  */
 class User extends Base
 {
@@ -17,44 +17,38 @@ class User extends Base
 
     /**
      * @ORM\Column(type="boolean", nullable=true)
-     * @PIM\Config(showInList=20, label="Admin")
      */
     protected $isAdmin;
 
     /**
      * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\Group")
      * @ORM\JoinColumn(name="group_id", referencedColumnName="id", onDelete="SET NULL", nullable=true)
-     * @PIM\Config(showInList=80, label="Gruppe", isFilterable=true)
+     * @PIM\Config(isFilterable=true)
      */
     protected $group;
 
     /**
      * @ORM\Column(type="string", length=100, unique=true)
-     * @PIM\Config(showInList=30, label="Benutzer")
      */
     protected $alias;
 
     /**
      * @ORM\Column(type="string", length=100)
-     * @PIM\Config(label="Passwort")
      */
     protected $pass;
 
     /**
      * @ORM\Column(type="boolean", nullable=true)
-     * @PIM\Config(showInList=10, label="Aktiv")
      */
     protected $isActive = true;
 
     /**
      * @ORM\Column(type="string", length=100)
-     * @PIM\Config(hide=true)
      */
     protected $salt;
 
     /**
      * @ORM\Column(type="string", length=100, nullable=true)
-     * @PIM\Config(label="Login-Manager", tab="settings", readonly=true)
      */
     protected $loginManager;
 

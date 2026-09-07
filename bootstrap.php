@@ -60,8 +60,6 @@ date_default_timezone_set(Adapter::getConfig()->APP_TIMEZONE);
 
 $app->register(new Silex\Provider\ServiceControllerServiceProvider());
 
-define('APP_CMS_SHOW_ID_IN_LIST', Adapter::getConfig()->FRONTEND_SHOW_ID_IN_LIST);
-define('APP_CMS_SHOW_OWNER_IN_LIST', Adapter::getConfig()->FRONTEND_SHOW_OWNER_IN_LIST);
 
 if(Adapter::getConfig()->APP_LANGUAGES){
     define('APP_CMS_MAIN_LANG', Adapter::getConfig()->APP_LANGUAGES[0]);

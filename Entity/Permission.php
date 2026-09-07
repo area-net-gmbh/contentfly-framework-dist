@@ -7,7 +7,6 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_permission")
- * @PIM\Config(label="Berechtigungen", hide=true)
  */
 class Permission extends Base
 {
@@ -24,37 +23,31 @@ class Permission extends Base
 
     /**
      * @ORM\Column(type="string",)
-     * @PIM\Config(showInList=30, label="Entity")
      */
     protected $entityName;
 
     /**
      * @ORM\Column(type="integer")
-     * @PIM\Config(showInList=40, label="Lesen")
      */
     protected $readable;
 
     /**
      * @ORM\Column(type="integer")
-     * @PIM\Config(showInList=50, label="Bearbeiten")
      */
     protected $writable;
 
     /**
      * @ORM\Column(type="integer")
-     * @PIM\Config(showInList=60, label="Löschen")
      */
     protected $deletable;
 
     /**
      * @ORM\Column(type="integer")
-     * @PIM\Config(showInList=80,label="Export")
      */
     protected $export = 0;
 
     /**
      * @ORM\Column(type="text", nullable = true)
-     * @PIM\Config(label="Erweitert")
      */
     protected $extended;
 

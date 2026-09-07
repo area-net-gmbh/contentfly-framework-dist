@@ -7,7 +7,6 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_log")
- * @PIM\Config(readonly=true, label="Protokollierung")
  */
 class Log extends Base
 {
@@ -21,37 +20,33 @@ class Log extends Base
      * @ORM\Column(type=APPCMS_ID_TYPE)
      * @ORM\Id
      * @ORM\GeneratedValue(strategy=APPCMS_ID_STRATEGY)
-     * @PIM\Config(readonly=true, showInList=0, label="ID", tab="settings")
      */
     protected $id;
 
     /**
      * @ORM\Column(type="boolean", nullable=true)
-     * @PIM\Config(showInList=0, label="Versteckt")
      */
     protected $isHidden;
 
     /**
      * @ORM\Column(name="model_name", type="string")
-     * @PIM\Config(showInList=30,label="Objekt", isFilterable=true)
+     * @PIM\Config(isFilterable=true)
      */
     protected $modelName;
 
     /**
      * @ORM\Column(name="model_id", type=APPCMS_ID_TYPE, nullable=false)
-     * @PIM\Config(showInList=20, label="Objekt-ID")
      */
     protected $modelId;
 
     /**
      * @ORM\Column(name="model_label", type="string", nullable=true)
-     * @PIM\Config(showInList=40, label="Objekt-Titel")
      */
     protected $modelLabel;
 
     /**
      * @ORM\Column(type="string", length=100, nullable=false)
-     * @PIM\Config(showInList=50, label="Aktion", isFilterable=true)
+     * @PIM\Config(isFilterable=true)
      * @PIM\Select(options="UPT=Geändert, DEL=Gelöscht, INS=Erstellt, USERDEL=Gelöscht für")
      */
     protected $mode;
@@ -59,27 +54,23 @@ class Log extends Base
     /**
      * @ORM\Column(type="text", nullable=true)
      * @PIM\Virtualjoin(targetEntity="Areanet\PIM\Entity\User")
-     * @PIM\Config(label="Benutzer", showInList = 55, tab="settings")
      */
     protected $users;
 
     /**
      * @var \DateTime
      * @ORM\Column(type="datetime", nullable=true)
-     * @PIM\Config(hide=true, showInList=60, label="Datum")
      */
     protected $created;
 
     /**
      * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\User")
      * @ORM\JoinColumn(name="usercreated_id", referencedColumnName="id", onDelete="SET NULL")
-     * @PIM\Config(showInList = 70, label="Benutzer", tab="settings")
      */
     protected $userCreated;
 
     /**
      * @ORM\Column(type="text", nullable=true)
-     * @PIM\Config(label="Data")
      */
     protected $data;
 

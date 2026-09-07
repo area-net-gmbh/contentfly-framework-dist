@@ -7,7 +7,7 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_navItem")
- * @PIM\Config(label="Eintrag", sortRestrictTo="nav")
+ * @PIM\Config(sortRestrictTo="nav")
  */
 class NavItem extends BaseSortable
 {
@@ -15,25 +15,22 @@ class NavItem extends BaseSortable
     /**
      * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\Nav")
      * @ORM\JoinColumn(onDelete="SET NULL")
-     * @PIM\Config(label="Bereich", showInList=15, isFilterable=true)
+     * @PIM\Config(isFilterable=true)
      */
     protected $nav;
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(label="Entity", showInList=20)
      */
     protected $entity;
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(label="Titel", showInList=30)
      */
     protected $title;
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(label="URL", showInList=40)
      */
     protected $uri;
 

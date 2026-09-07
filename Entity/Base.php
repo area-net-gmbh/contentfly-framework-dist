@@ -19,28 +19,24 @@ class Base extends Serializable
      * @ORM\Column(type=APPCMS_ID_TYPE)
      * @ORM\Id
      * @ORM\GeneratedValue(strategy=APPCMS_ID_STRATEGY)
-     * @PIM\Config(readonly=true, showInList=APP_CMS_SHOW_ID_IN_LIST, label="ID", tab="settings")
      */
     protected $id;
 
     /**
      * @var \DateTime
      * @ORM\Column(type="datetime", nullable=true, options={"default": "CURRENT_TIMESTAMP"})
-     * @PIM\Config(hide=true, label="erstellt am")
      */
     protected $created;
 
     /**
      * @var \DateTime
      * @ORM\Column(type="datetime", nullable=true, options={"default": "CURRENT_TIMESTAMP"})
-     * @PIM\Config(hide=true, label="geändert am")
      */
     protected $modified;
 
 
     /**
      * @ORM\Column(type="integer", options={"default" = 0}, nullable=true)
-     * @PIM\Config(hide=true, label="Gelesen")
      *
      */
     protected $views;
@@ -48,41 +44,35 @@ class Base extends Serializable
     /**
      * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\User")
      * @ORM\JoinColumn(name="user_id", referencedColumnName="id", onDelete="SET NULL")
-     * @PIM\Config(label="geändert von", hide=true)
      */
     protected $user;
 
     /**
      * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\User")
      * @ORM\JoinColumn(name="usercreated_id", referencedColumnName="id", onDelete="SET NULL")
-     * @PIM\Config(showInList = APP_CMS_SHOW_OWNER_IN_LIST, label="Besitzer", tab="settings")
      */
     protected $userCreated;
 
     /**
      * @ORM\Column(type="boolean", options={"default" : 0})
-     * @PIM\Config(hide=true)
      */
     protected $isIntern = 0;
 
     /**
      * @ORM\Column(type="text", nullable=true)
      * @PIM\Virtualjoin(targetEntity="Areanet\PIM\Entity\User")
-     * @PIM\Config(label="Benutzer", tab="settings")
      */
     protected $users;
 
     /**
      * @ORM\Column(type="text", nullable=true)
      * @PIM\Virtualjoin(targetEntity="Areanet\PIM\Entity\Group")
-     * @PIM\Config(label="Gruppen", tab="settings")
      */
     protected $groups;
 
 
 
     /**
-     * @PIM\Config(hide=true)
      */
     protected $disableModifiedTime = false;
 

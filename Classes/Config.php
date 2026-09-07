@@ -248,11 +248,6 @@ class Config{
     public $FRONTEND_UI = 'default';
 
     /**
-     * @var string Name of the General-Tab
-     */
-    public $FRONTEND_TAB_GENERAL_NAME = 'Allgemein';
-
-    /**
      * @var string Load Frontend UI in folder /ui/...
      */
     public $FRONTEND_TITLE = 'Contentfly CMS - Let your content fly!';
@@ -296,17 +291,6 @@ class Config{
      * @var integer URL/Path for login in the backend
      */
     public $FRONTEND_ITEMS_PER_PAGE = 40;
-
-
-    /**
-     * @var integer Show ID at position x in list (0 for hide id)
-     */
-    public $FRONTEND_SHOW_ID_IN_LIST = 1;
-
-    /**
-     * @var integer Show Owner at position x in list (0 for hide Owner)
-     */
-    public $FRONTEND_SHOW_OWNER_IN_LIST = 1000;
 
 
     /**

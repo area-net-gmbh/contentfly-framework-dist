@@ -7,7 +7,7 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_file", uniqueConstraints={@ORM\UniqueConstraint(name="file_unique", columns={"name", "folder_id"})})
- * @PIM\Config(label="Dateien", labelProperty="name", sortBy="name", sortOrder="ASC", tabs="{'tags': 'Tags'}")
+ * @PIM\Config(labelProperty="name", sortBy="name", sortOrder="ASC")
  */
 
 class File extends Base
@@ -16,82 +16,71 @@ class File extends Base
 
     /**
      * @ORM\Column(type="string")
-     * @PIM\Config(label="Name", readonly=true, showInList=30)
      */
     protected $name;
 
     /**
      * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\Folder")
      * @ORM\JoinColumn(name="folder_id", referencedColumnName="id", onDelete="SET NULL", nullable=true)
-     * @PIM\Config(showInList=80, label="Ordner", isFilterable=true, isSidebar=true)
+     * @PIM\Config(isFilterable=true)
      */
     protected $folder;
 
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(label="Alias-Name", showInList=40)
      */
     protected $alias;
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(label="Titel", showInList=50)
      */
     protected $title;
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(label="Alt-Text", showInList=60)
      */
     protected $altText;
 
     /**
      * @ORM\Column(type="text", nullable=true)
-     * @PIM\Config(label="Beschreibung")
      */
     protected $description;
 
     /**
      * @ORM\Column(type="string")
-     * @PIM\Config(label="Dateityp", readonly=true, showInList=60)
      */
     protected $type;
 
     /**
      * @ORM\Column(type="string")
-     * @PIM\Config(hide=true)
      */
     protected $hash;
 
     /**
      * @ORM\Column(type="integer")
-     * @PIM\Config(label="Dateigröße", readonly=true, showInList=70)
      */
     protected $size;
 
     /**
      * @ORM\Column(type="integer", nullable=true)
-     * @PIM\Config(label="Breite", readonly=true, showInList=80)
      */
     protected $width;
 
     /**
      * @ORM\Column(type="integer", nullable=true)
-     * @PIM\Config(label="Höhe", readonly=true, showInList=90)
      */
     protected $height;
 
     /**
      * @ORM\Column(type="boolean", nullable=true)
-     * @PIM\Config(hide=true, label="Versteckt")
      */
     protected $isHidden;
 
     /**
      * @ORM\ManyToMany(targetEntity="Areanet\PIM\Entity\Tag")
      * @ORM\JoinTable(name="pim_file_tags", joinColumns={@ORM\JoinColumn(onDelete="CASCADE")})
-     * @PIM\Config(label="Tags", tab="tags", isFilterable=true)
+     * @PIM\Config(isFilterable=true)
      */
     protected $tags;
 

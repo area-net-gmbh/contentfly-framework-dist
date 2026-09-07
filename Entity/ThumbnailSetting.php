@@ -8,56 +8,47 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_thumbnail_setting")
- * @PIM\Config(label="Bildgrößen")
  */
 class ThumbnailSetting extends Base
 {
 
     /**
      * @ORM\Column(type="string", length=20, unique=true)
-     * @PIM\Config(showInList=20, label="Alias")
      */
     protected $alias;
 
     /**
      * @ORM\Column(type="boolean", nullable=true)
-     * @PIM\Config(showInList=25, label="Zuschneiden")
      */
     protected $doCut=0;
 
     /**
      * @ORM\Column(type="integer", nullable=true)
-     * @PIM\Config(showInList=30, label="Breite")
      */
     protected $width;
 
     /**
      * @ORM\Column(type="integer", nullable=true)
-     * @PIM\Config(showInList=40, label="Höhe")
      */
     protected $height;
 
     /**
      * @ORM\Column(type="integer", nullable=true)
-     * @PIM\Config(showInList=50, label="Prozentual")
      */
     protected $percent;
 
     /**
      * @ORM\Column(type="string", nullable=true)
-     * @PIM\Config(showInList=60, label="HG-Farbe")
      */
     protected $backgroundColor;
 
     /**
     * @ORM\Column(type="boolean", nullable=true)
-    * @PIM\Config(showInList=70, label="JPEG-Ausgabe erzwingen")
     */
     protected $forceJpeg=0;
 
     /**
      * @ORM\Column(type="boolean", nullable=true)
-     * @PIM\Config(showInList=80, label="Responsive-Varianten")
      */
     protected $isResponsive=0;
 
