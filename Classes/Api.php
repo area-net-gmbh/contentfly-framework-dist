@@ -606,13 +606,38 @@ class Api
 
     public function getAll($lastModified = null, $flatten = false, $filedata = null): array
     {
-        $entities   = array('Areanet\PIM\Entity\File', 'Areanet\PIM\Entity\User', 'Areanet\PIM\Entity\Group');
+        /*
+         * Bis 000-000-0007 sammelte diese Methode ihre Entities auf einem dritten, eigenen
+         * Weg: eine fest verdrahtete Einschlussliste aus File, User und Group, dazu ein Lauf
+         * ueber custom/Entity/ mit einem Pfad, der aus dem Repo herauszeigte — weshalb
+         * /api/all bedingungslos mit HTTP 500 antwortete.
+         *
+         * Jetzt derselbe Weg wie in getDeleted(), der anderen Haelfte des Sync-Vertrags: das
+         * Schema minus derselben Ausschlussliste. Vorher meldete getDeleted() Loeschungen fuer
+         * Entities, die getAll() nie ausgeliefert hat — ein Client erfuhr vom Verschwinden von
+         * Objekten, die er nie bekommen hatte. Fuer Clients ist die Aenderung additiv: Tag,
+         * Option, OptionGroup und die Custom-Entities kommen hinzu, es faellt nichts weg.
+         *
+         * Dabei ist aufgefallen, dass excludeFromSync bis dahin ausschliesslich in
+         * getCount() geprueft wurde — das Feld wirkte also auf die Bestandsstatistik, nie
+         * auf den Endpunkt, nach dem es benannt ist. Die Pruefung steht jetzt auch hier.
+         */
+        $schema = $this->getSchema();
 
-        $entityFolder = __DIR__.'/../../../../custom/Entity/';
-        foreach (new DirectoryIterator($entityFolder) as $fileInfo) {
-            if($fileInfo->isDot()) continue;
-            if(str_starts_with($fileInfo->getBasename('.php'), '.')) continue;
-            $entities[] = 'Custom\Entity\\'.ucfirst($fileInfo->getBasename('.php'));
+        $entitiesToExclude = array(
+            'PIM\\Folder', 'PIM\\Token', 'PIM\\Group', 'PIM\\ThumbnailSetting',
+            'PIM\\Permission', 'PIM\\Nav', 'PIM\\NavItem', 'PIM\\Log', '_hash'
+        );
+
+        $helper   = new Helper();
+        $entities = array();
+
+        foreach(array_keys($schema) as $entityShortName){
+            if(in_array($entityShortName, $entitiesToExclude)){
+                continue;
+            }
+
+            $entities[] = $helper->getFullEntityName($entityShortName);
         }
 
         $all = array();
@@ -624,6 +649,10 @@ class Api
             }
 
             $entityNameAlias = 'a'.md5($entityShortcut);
+
+            if(!empty($schema[$entityShortcut]['settings']['excludeFromSync'])){
+                continue;
+            }
 
             if(!($permission = Permission::isReadable($this->app['auth.user'], $entityShortcut))){
                 continue;
