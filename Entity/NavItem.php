@@ -22,7 +22,6 @@ class NavItem extends BaseSortable
     /**
      * @ORM\Column(type="string", nullable=true)
      * @PIM\Config(label="Entity", showInList=20)
-     * @PIM\EntitySelector()
      */
     protected $entity;
 

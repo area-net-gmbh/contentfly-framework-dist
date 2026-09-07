@@ -21,14 +21,10 @@ class TextareaType extends Type
 
     public function getAnnotationFile()
     {
-        return 'Textarea';
+        return null;
     }
 
     public function doMatch($propertyAnnotations){
-        if(isset($propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Textarea'])) {
-            return true;
-        }
-
         if(!isset($propertyAnnotations['Doctrine\\ORM\\Mapping\\Column'])) {
             return false;
         }
@@ -36,20 +32,6 @@ class TextareaType extends Type
         $annotation = $propertyAnnotations['Doctrine\\ORM\\Mapping\\Column'];
 
         return ($annotation->type == 'text');
-    }
-
-    public function processSchema($key, $defaultValue, $propertyAnnotations, $entityName)
-    {
-        $schema = parent::processSchema($key, $defaultValue, $propertyAnnotations, $entityName);
-
-        if(isset($propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Textarea'])){
-
-            $annotations = $propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Textarea'];
-
-            $schema['lines'] = $annotations->lines;
-        }
-
-        return $schema;
     }
 
     public function fromDatabase(Base $object, $entityName, $property, $flatten = false, $level = 0, $propertiesToLoad = array())

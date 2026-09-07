@@ -1,6 +1,5 @@
 <?php
 namespace Areanet\PIM\Classes\Types;
-use Areanet\PIM\Classes\Annotations\Time;
 use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Type;
 use Areanet\PIM\Controller\ApiController;
@@ -9,6 +8,12 @@ use Areanet\PIM\Entity\Base;
 
 class TimeType extends Type
 {
+    /**
+     * Ausgabeformat der Zeitwerte. Lag vorher in der UI-Annotation `@PIM\Time`; die ist
+     * entfallen, das Format bleibt — `fromDatabase()` liefert die API-Antwort damit aus.
+     */
+    const DEFAULT_FORMAT = 'H:i';
+
     public function getAlias()
     {
         return 'time';
@@ -16,15 +21,13 @@ class TimeType extends Type
 
     public function getAnnotationFile()
     {
-        return 'Time';
+        return null;
     }
 
     public function processSchema($key, $defaultValue, $propertyAnnotations, $entityName){
-        $schema                 = parent::processSchema($key, $defaultValue, $propertyAnnotations, $entityName);
-        $propertyAnnotations    = isset($propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Time']) ? $propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Time'] : null;
-
-        $schema['format'] = $propertyAnnotations && $propertyAnnotations->format ? $propertyAnnotations->format : Time::DEFAULT_FORMAT;
-        $schema['dbType'] = "time";
+        $schema             = parent::processSchema($key, $defaultValue, $propertyAnnotations, $entityName);
+        $schema['format']   = self::DEFAULT_FORMAT;
+        $schema['dbType']   = "time";
 
         return $schema;
     }

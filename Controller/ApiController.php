@@ -2,7 +2,6 @@
 namespace Areanet\PIM\Controller;
 
 use Areanet\PIM\Classes\Annotations\ManyToMany;
-use Areanet\PIM\Classes\Annotations\MatrixChooser;
 use Areanet\PIM\Classes\Api;
 use \Areanet\PIM\Classes\Config;
 use Areanet\PIM\Classes\Controller\BaseController;

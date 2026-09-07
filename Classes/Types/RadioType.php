@@ -63,9 +63,6 @@ class RadioType extends Type
         }
 
         $schema['group']                = $optionsGroupObject->getId();
-        $schema['horizontalAlignment']  = $propertyAnnotations->horizontalAlignment;
-        $schema['select']               = $propertyAnnotations->select;
-        $schema['columns']              = $propertyAnnotations->columns;
 
         return $schema;
     }

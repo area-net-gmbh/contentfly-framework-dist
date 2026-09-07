@@ -37,7 +37,6 @@ class User extends Base
     /**
      * @ORM\Column(type="string", length=100)
      * @PIM\Config(label="Passwort")
-     * @PIM\Password()
      */
     protected $pass;
 

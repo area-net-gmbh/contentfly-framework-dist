@@ -1,6 +1,5 @@
 <?php
 namespace Areanet\PIM\Classes\Types;
-use Areanet\PIM\Classes\Annotations\Datetime;
 use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Type;
 use Areanet\PIM\Entity\Base;
@@ -15,15 +14,12 @@ class DatetimeType extends Type
 
     public function getAnnotationFile()
     {
-        return 'Datetime';
+        return null;
     }
 
     public function processSchema($key, $defaultValue, $propertyAnnotations, $entityName){
-        $schema                 = parent::processSchema($key, $defaultValue, $propertyAnnotations, $entityName);
-        $propertyAnnotations    = isset($propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Datetime']) ? $propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Datetime'] : null;
-
-        $schema['format'] = $propertyAnnotations && $propertyAnnotations->format ? $propertyAnnotations->format : Datetime::DEFAULT_FORMAT;
-        $schema['dbType'] = "datetime";
+        $schema             = parent::processSchema($key, $defaultValue, $propertyAnnotations, $entityName);
+        $schema['dbType']   = "datetime";
 
         return $schema;
     }
@@ -66,7 +62,7 @@ class DatetimeType extends Type
 
     public function toDatabase(Api $api, Base $object, $property, $value, $entityName, $schema, $user, $data = null, $lang = null): void
     {
-       
+
         $setter = 'set'.ucfirst($property);
 
         if($value){

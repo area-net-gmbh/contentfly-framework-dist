@@ -43,7 +43,6 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 AnnotationRegistry::registerFile(ROOT_DIR.'/lib/contentfly/Classes/Annotations/Config.php');
 AnnotationRegistry::registerFile(ROOT_DIR.'/lib/contentfly/Classes/Annotations/ManyToMany.php');
-AnnotationRegistry::registerFile(ROOT_DIR.'/lib/contentfly/Classes/Annotations/MatrixChooser.php');
 
 if(Adapter::getConfig()->APP_DEBUG){
     ini_set('display_errors', 1);
