@@ -67,13 +67,6 @@ abstract class Plugin
     }
 
     /**
-     * @return string Über Symlink freigegebener Pfad zum Frontend-Ordner im Plugin
-     */
-    final public function getFrontendPath(){
-        return '/plugins/'.$this->getKey().'/Frontend';
-    }
-
-    /**
      * @return string
      */
     final public function getNamespace(){
@@ -85,14 +78,6 @@ abstract class Plugin
      */
     final public function getKey(){
         return $this->key;
-    }
-
-    /**
-     * @param $path
-     * @return string
-     */
-    private function normalizePath($path){
-        return substr($path, 1, 0) == '/' ? $path : "/$path";
     }
 
     /**
@@ -128,13 +113,6 @@ abstract class Plugin
      */
     final protected function registerPluginType(PluginType $plugin){
         $this->app['typeManager']->registerPluginType($plugin, $this);
-    }
-
-    /**
-     * Erstellt einen Symlink im Webroot 'appcms/public/plugins/KEY' => 'plugins/KEY/Frontend'
-     */
-    final protected function useFrontend(){
-        //Deprecated
     }
 
     /**
