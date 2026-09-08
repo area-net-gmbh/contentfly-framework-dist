@@ -39,8 +39,32 @@ use Silex\Application;
 use Knp\Provider\ConsoleServiceProvider;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
-AnnotationRegistry::registerFile(ROOT_DIR.'/lib/contentfly/Classes/Annotations/Config.php');
-AnnotationRegistry::registerFile(ROOT_DIR.'/lib/contentfly/Classes/Annotations/ManyToMany.php');
+// Die Annotationen des Frameworks sind ueber PSR-4 autoladbar; ein registerFile() dafuer
+// waere ueberfluessig — und schaedlich, siehe unten.
+//
+// Der registerLoader() ist dagegen noetig, und zwar wegen einer Falle in
+// AnnotationRegistry::loadAnnotationClass():
+//
+//     if (self::$loaders === [] && self::$autoloadNamespaces === []
+//         && self::$registerFileUsed === false && class_exists($class)) {
+//         return true;
+//     }
+//
+// Der moderne Fallback — "nimm einfach den Composer-Autoloader" — greift NUR, solange
+// registerFile() nie benutzt wurde. TypeManager tut das aber fuer Plugin-Annotationen
+// (plugins/ liegt ausserhalb des Autoloaders und hat keine andere Moeglichkeit). Sobald ein
+// Plugin einen eigenen Typ mitbringt, faellt der Fallback weg — und Doctrine findet seine
+// EIGENEN Annotationen nicht mehr:
+//
+//     [Semantical Error] The annotation "@Doctrine\ORM\Mapping\MappedSuperclass" in class
+//     Areanet\PIM\Entity\Base was never imported.
+//
+// Ein ausdruecklicher Loader stellt denselben Effekt her, unabhaengig davon, was spaeter
+// noch registriert wird. Gefunden mit 006-002-0003 beim Doctrine-Wechsel; die Falle steckt
+// aber in beiden Doctrine-Staenden gleichermassen.
+if (method_exists(AnnotationRegistry::class, 'registerLoader')) {
+    @AnnotationRegistry::registerLoader('class_exists');
+}
 
 if(Adapter::getConfig()->APP_DEBUG){
     ini_set('display_errors', 1);

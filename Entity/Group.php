@@ -26,7 +26,18 @@ class Group extends Base
     protected $tokenTimeout = 30;
 
     /**
-     * @ORM\Column(type="string", options="{'default' : 'disabled'}")
+     * Der frueher hier stehende `options="{'default' : 'disabled'}"` ist entfallen: Der Wert
+     * war eine **Zeichenkette**, wo Doctrine ein Array erwartet. Bis Doctrine 2.6 wurde das
+     * stillschweigend angenommen und ignoriert — der Default hat also nie gewirkt, und die
+     * Spalte in `pim_group` traegt keinen. Ab Doctrine 2.20 ist der Konstruktor typisiert und
+     * wirft einen TypeError; gefunden mit `006-002-0003`.
+     *
+     * Entfernt statt korrigiert, weil das verhaltensneutral ist: Ein `options={"default":
+     * "disabled"}` wuerde erstmals einen DEFAULT ins Schema schreiben und damit eine
+     * Datenbankaenderung ausloesen, die niemand angefordert hat. Der Vorgabewert steht
+     * ohnehin im Property.
+     *
+     * @ORM\Column(type="string")
      * @PIM\Select(options="disabled=nicht erlaubt, enabled=erlaubt")
      */
     protected $apiQueryEnabled = 'disabled';
