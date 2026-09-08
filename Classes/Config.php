@@ -10,16 +10,6 @@ use PHPMailer\PHPMailer\PHPMailer;
  */
 class Config{
     /**
-     * @var true
-     */
-    public $USE_SCSS_COMPILER = false;
-
-    /**
-     * @var string
-     */
-    public $BASE_SCSS_FILE = 'main.scss';
-
-    /**
      * Hostname for config settings
      *
      * @var string

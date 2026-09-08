@@ -35,8 +35,6 @@ use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Events;
 use Knp\Console\ConsoleEvent;
 use Knp\Console\ConsoleEvents;
-use ScssPhp\ScssPhp\Compiler;
-use ScssPhp\ScssPhp\OutputStyle;
 use Silex\Application;
 use Knp\Provider\ConsoleServiceProvider;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -278,62 +276,6 @@ if(Adapter::getConfig()->APP_FORCE_SSL && !defined('APPCMS_CONSOLE')){
     }
 
     header("Strict-Transport-Security:max-age=63072000");
-}
-
-if (Adapter::getConfig()->USE_SCSS_COMPILER) {
-    $scssFile = ROOT_DIR . '/custom/Frontend/scss/'.Adapter::getConfig()->BASE_SCSS_FILE;
-
-    if (file_exists($scssFile)) {
-        $cssPath = ROOT_DIR . '/custom/Frontend/css/';
-        $cssFile = $cssPath . basename($scssFile, '.scss') . '.css';
-        $mapFile = $cssFile . '.map';
-        $hashFile = $cssPath . 'css_cache_hash.txt';
-
-        $hash = md5_file($scssFile);
-        $scssContent = file_get_contents($scssFile);
-
-        preg_match_all('/@import\s*[\'"](.+?)[\'"]\s*;/', $scssContent, $matches);
-
-        foreach ($matches[1] as $import) {
-            $importPath = ROOT_DIR . '/custom/Frontend/scss/' . trim($import, '\'"');
-
-            $importFile = $importPath . '.scss';
-            $partialFile = dirname($importFile) . '/_' . basename($importFile);
-
-            if (file_exists($partialFile)) {
-                $hash .= md5_file($partialFile);
-            } elseif (file_exists($importFile)) {
-                $hash .= md5_file($importFile);
-            }
-        }
-
-        $currentHash = md5($hash);
-        $storedHash = file_exists($hashFile) ? file_get_contents($hashFile) : '';
-
-        if (!file_exists($cssFile) || $currentHash !== $storedHash) {
-            if (!is_dir($cssPath)) {
-                mkdir($cssPath, 0777, true);
-            }
-
-            $scss = new Compiler();
-            $scss->setImportPaths(ROOT_DIR . '/custom/Frontend/scss/');
-
-            $scss->setSourceMap(Compiler::SOURCE_MAP_FILE);
-            $scss->setSourceMapOptions([
-                'sourceMapURL'      => basename($mapFile),
-                'sourceMapFilename' => basename($cssFile),
-                'sourceMapBasepath' => realpath(ROOT_DIR),
-                'sourceRoot'        => '/'
-            ]);
-
-            $scss->setOutputStyle(OutputStyle::COMPRESSED);
-            $scssResult = $scss->compileString($scssContent, $scssFile);
-
-            file_put_contents($mapFile, $scssResult->getSourceMap());
-            file_put_contents($cssFile, $scssResult->getCss());
-            file_put_contents($hashFile, $currentHash);
-        }
-    }
 }
 
 require_once ROOT_DIR.'/custom/app.php';
