@@ -25,7 +25,7 @@ use Areanet\PIM\Classes\Manager\TypeManager;
 use Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy;
 use Areanet\PIM\Command\InstallCommand;
 use Areanet\PIM\Command\SetupCommand;
-use Dflydev\Provider\DoctrineOrm\DoctrineOrmServiceProvider;
+use Areanet\PIM\Classes\ORM\EntityManagerFactory;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Cache\ApcCache;
 use Doctrine\Common\Cache\ApcuCache;
@@ -117,30 +117,21 @@ $app['mailer'] = function ($app) {
 };
 
 if($app['is_installed']) {
-    $app->register(new DoctrineOrmServiceProvider(), array(
-        'orm.proxies_dir' => ROOT_DIR . '/data/cache/doctrine',
-        'orm.em.options' => array(
-            'connection' => 'pim',
-            'mappings' => array(
-                array(
-                    'type' => 'annotation',
-                    'namespace' => 'Areanet\PIM\Entity',
-                    'path' => ROOT_DIR . '/lib/contentfly/Entity',
-                    'use_simple_annotation_reader' => false
-                ),
-                array(
-                    'type' => 'annotation',
-                    'namespace' => 'Custom\Entity',
-                    'path' => ROOT_DIR . '/custom/Entity',
-                    'use_simple_annotation_reader' => false
-                )
-            )
-        ),
-        'orm.auto_generate_proxies' => Adapter::getConfig()->APP_AUTOGENERATE_PROXIES,
-        'orm.custom.functions.numeric' => array(
-            'Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet'
-        )
-    ));
+    // Ersetzt dflydev/doctrine-orm-service-provider (006-002-0005). Der Provider ist seit
+    // 2018 unverändert und benutzt einen Namensraum, den doctrine/persistence 2.0 verschoben
+    // hat — er blockierte damit jedes PHP-8-taugliche ORM. Uebergangsloesung bis Epic 009.
+    $app['orm.em'] = function ($app) {
+        return EntityManagerFactory::erzeugen(
+            $app['dbs']['pim'],
+            array(
+                array('namespace' => 'Areanet\PIM\Entity', 'path' => ROOT_DIR . '/lib/contentfly/Entity'),
+                array('namespace' => 'Custom\Entity',       'path' => ROOT_DIR . '/custom/Entity'),
+            ),
+            ROOT_DIR . '/data/cache/doctrine',
+            (bool) Adapter::getConfig()->APP_AUTOGENERATE_PROXIES,
+            array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet')
+        );
+    };
 
     $config = $app['orm.em']->getConfiguration();
     $config->setQuoteStrategy(new ContentflyQuoteStrategy());

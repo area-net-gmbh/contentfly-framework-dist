@@ -231,29 +231,21 @@ class InstallCommand extends Command
             ),
         ));
 
-        $app->register(new \Dflydev\Provider\DoctrineOrm\DoctrineOrmServiceProvider(), array(
-            'orm.proxies_dir' => ROOT_DIR.'/data/cache/doctrine',
-            'orm.em.options'  => array(
-                'connection' => 'pim',
-                'mappings'   => array(
-                    array(
-                        'type'                         => 'annotation',
-                        'namespace'                    => 'Areanet\PIM\Entity',
-                        'path'                         => ROOT_DIR.'/lib/contentfly/Entity',
-                        'use_simple_annotation_reader' => false,
-                    ),
-                    array(
-                        'type'                         => 'annotation',
-                        'namespace'                    => 'Custom\Entity',
-                        'path'                         => ROOT_DIR.'/custom/Entity',
-                        'use_simple_annotation_reader' => false,
-                    ),
+        // Dieselbe Konstruktion wie im regulaeren Bootstrap — siehe 006-002-0005.
+        // Weicht sie ab, installiert der Installer gegen ein anderes Schema, als die
+        // Anwendung spaeter benutzt.
+        $app['orm.em'] = function ($app) {
+            return \Areanet\PIM\Classes\ORM\EntityManagerFactory::erzeugen(
+                $app['dbs']['pim'],
+                array(
+                    array('namespace' => 'Areanet\PIM\Entity', 'path' => ROOT_DIR.'/lib/contentfly/Entity'),
+                    array('namespace' => 'Custom\Entity',       'path' => ROOT_DIR.'/custom/Entity'),
                 ),
-            ),
-            'orm.custom.functions.numeric' => array(
-                'Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet',
-            ),
-        ));
+                ROOT_DIR.'/data/cache/doctrine',
+                true,
+                array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet')
+            );
+        };
 
         $app['typeManager'] = function ($app) {
             return new \Areanet\PIM\Classes\Manager\TypeManager($app);
