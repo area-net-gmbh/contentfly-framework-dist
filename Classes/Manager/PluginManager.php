@@ -58,7 +58,7 @@ class PluginManager extends Manager
      */
     public function getPlugin($pluginName){
         if(!isset($this->plugins[$pluginName])){
-            throw new ContentflyException(Messages::contentfly_general_unknown_plugin, $key);
+            throw new ContentflyException(Messages::contentfly_general_unknown_plugin, $pluginName);
         }
 
         return $this->plugins[$pluginName];
