@@ -11,15 +11,22 @@ use Areanet\PIM\Classes\Exceptions\FileNotFoundException;
 use Areanet\PIM\Controller;
 use Areanet\PIM\Classes\Config;
 use Symfony\Component\HttpFoundation\AcceptHeader;
-use Symfony\Component\Debug\ErrorHandler;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
-$app['request'] = function()use ($app){
-    return $app['request_stack'] ? $app['request_stack']->getCurrentRequest() : null;
-};
+/*
+ * `$app['request']` ist entfallen (009-002-0004).
+ *
+ * Der Schluessel lieferte den aktuellen Request aus dem Stack — und war genau deshalb eine
+ * Falle: Der Container merkt sich das Ergebnis einer Factory, also haette er ab dem ersten
+ * Zugriff **denselben** Request geliefert, auch nachdem der Kernel ihn abgeraeumt hat. Unter
+ * Pimple war es dasselbe, und es hat den Fehlerhandler aus 000-000-0006 sterben lassen.
+ *
+ * Gelesen hat ihn zuletzt niemand mehr: Der Fehlerhandler holt sich den Request seit
+ * 000-000-0006 direkt aus `$app['request_stack']`, und das ist auch der Weg fuer jeden anderen.
+ */
 
 header("Content-Security-Policy: ".Config\Adapter::getConfig()->APP_CS_POLICY);
 header("X-Content-Type-Options: nosniff");
@@ -59,54 +66,34 @@ if(Config\Adapter::getConfig()->APP_HTTP_AUTH_USER) {
  * Betreiber kennt und der Server nur raten kann.
  */
 
-ErrorHandler::register();
-
-$handler = Symfony\Component\Debug\ExceptionHandler::register($app['debug']);
-/**
- * Die letzte Instanz — und sie darf nicht selbst sterben (000-000-0006).
+/*
+ * DER NOTHELFER IST WEG, UND ZWAR GEMESSEN (009-002-0004).
  *
- * Diese Closure laeuft nur fuer das, was die Anwendung gar nicht mehr erreicht. Vorher baute sie
- * das Ereignis mit `$app['request']`, und wenn der Kernel den Request schon abgeraeumt hat, ist
- * das null. Dann stirbt der Nothelfer an einem TypeError, Symfony faengt DEN und zeigt seine
- * "Whoops"-Seite. Der urspruengliche Fehler ist damit verloren — genau in dem Moment, in dem man
- * ihn braeuchte. Im Serverlog stand nur noch die Beschwerde ueber das null-Argument.
+ * Hier standen `Symfony\Component\Debug\ErrorHandler::register()` und eine Closure an
+ * `ExceptionHandler::setHandler()`, die einsprang, wenn ein Fehler die Anwendung gar nicht mehr
+ * erreichte. Sie war noetig, weil Silex' ExceptionListenerWrapper `\Exception` typisiert
+ * entgegennahm: Ein TypeError fiel durch die ganze Kette hindurch bis zum globalen Handler
+ * (000-000-0006). Und weil sie ihr Ereignis mit `$app['request']` baute, starb sie dort selbst,
+ * wenn der Kernel den Request schon abgeraeumt hatte.
  *
- * Jetzt: Request aus dem Stack, notfalls aus den Globals; und wenn niemand eine Antwort setzt,
- * eine eigene, statt `null->sendHeaders()`.
+ * Symfonys HttpKernel faengt `\Throwable` und schickt jeden davon durch `kernel.exception`.
+ * Damit hat die Closure keinen Fall mehr, in dem sie einspringen koennte. Das Paket
+ * symfony/debug, aus dem beide Klassen stammen, ist mit 009-002-0001 ohnehin aus dem Baum —
+ * ein Nachbau mit symfony/error-handler waere eine Mechanik ohne Anlass.
+ *
+ * Nachgewiesen wird das von FehlerantwortApiTest: Ein absichtlich ausgeloester TypeError muss
+ * als JSON dieser Anwendung ankommen, nicht als HTML-Seite.
  */
-$handler->setHandler(function ($exception) use ($app) {
 
-    $request = null;
-    if (isset($app['request_stack']) && $app['request_stack']) {
-        $request = $app['request_stack']->getCurrentRequest();
-    }
-    if (!$request) {
-        $request = Request::createFromGlobals();
-    }
-
-    $event = new Symfony\Component\HttpKernel\Event\GetResponseForExceptionEvent(
-        $app,
-        $request,
-        Symfony\Component\HttpKernel\HttpKernelInterface::MASTER_REQUEST,
-        $exception
-    );
-
-    $app['dispatcher']->dispatch(Symfony\Component\HttpKernel\KernelEvents::EXCEPTION, $event);
-
-    $response = $event->getResponse();
-    if (!$response) {
-        $response = new JsonResponse(array(
-            'message' => $exception->getMessage(),
-            'type'    => get_class($exception),
-            'status'  => 500
-        ), 500);
-    }
-
-    $response->sendHeaders();
-    $response->sendContent();
-});
-
-$app->error(function (Exception $e) use($app) {
+/*
+ * \Throwable, nicht \Exception (009-002-0004).
+ *
+ * Silex reichte dem Handler eine `\Exception` — es hatte einen Nicht-Exception vorher selbst
+ * verpackt. Symfonys ExceptionEvent liefert den Throwable, wie er geworfen wurde. Bliebe die
+ * Angabe auf `Exception`, wuerde ein TypeError den Handler mit einem TypeError erschlagen —
+ * genau der Ausfall, den 000-000-0006 behoben hat, nur an anderer Stelle.
+ */
+$app->error(function (\Throwable $e) use($app) {
 
     if($e instanceof FileNotFoundException){
         return new Response($e->getMessage(), 404, array('X-Status-Code' => 404));
@@ -200,11 +187,23 @@ $app->after(function (Request $request, Response $response) {
 
 });
 
-$app->options("{anything}", function () {
-    return new JsonResponse(null, 204);
-})->assert("anything", ".*");
-
-
+/*
+ * Der CORS-Preflight — und der Grund, warum `GET /` mit 405 antwortet.
+ *
+ * Ein Browser schickt vor einem Cross-Origin-Request ein OPTIONS und erwartet die
+ * Access-Control-Header, die der after-Hook oben setzt. Dieser Catch-All beantwortet jedes
+ * OPTIONS mit 204.
+ *
+ * Er faengt **jeden Pfad**, aber nur die Methode OPTIONS. Ein `GET /` trifft ihn damit im Pfad
+ * und nicht in der Methode — der Router meldet MethodNotAllowed, die Anwendung antwortet mit
+ * 405. Das ist im Runbook als erwartetes Verhalten beschrieben und wird von
+ * SystemControllerApiTest geprueft.
+ *
+ * BIS 009-002-0004 STAND ER HIER ZWEIMAL, wortgleich. Unter Silex war die zweite Registrierung
+ * folgenlos — sie ueberschrieb die erste. Beim Umstellen fiel sie auf; eine Route doppelt
+ * anzulegen ergibt jetzt zwei Eintraege in der RouteCollection, von denen der zweite nie
+ * erreicht wird.
+ */
 $app->options("{anything}", function () {
     return new JsonResponse(null, 204);
 })->assert("anything", ".*");

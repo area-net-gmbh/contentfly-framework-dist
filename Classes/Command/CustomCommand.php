@@ -15,13 +15,14 @@ class CustomCommand extends Command
 {
 
     /**
-     * @param string $name
+     * Setzt den Namen und stellt `custom:` davor.
+     *
+     * Signatur seit 009-002-0005 `(string $name): static`. Symfony Console 7 deklariert sie
+     * so, und eine Implementierung darf sie nicht aufweichen — unter Console 4 war beides
+     * untypisiert.
      */
-    public function setName($name)
+    public function setName(string $name): static
     {
-        $name = 'custom:'.$name;
-        parent::setName($name);
-
-        return $this;
+        return parent::setName('custom:'.$name);
     }
 }

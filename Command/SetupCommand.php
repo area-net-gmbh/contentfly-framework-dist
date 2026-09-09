@@ -9,7 +9,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class SetupCommand extends Command
 {
-    protected function configure()
+    protected function configure(): void
     {
         parent::configure();
 
@@ -19,7 +19,7 @@ class SetupCommand extends Command
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $app   = $this->anwendung();
         $em    = $app['orm.em'];
@@ -28,5 +28,9 @@ class SetupCommand extends Command
 
         $output->writeln("<info>APP-CMS Setup wurde erfolgreich durchgeführt. Login in das Backend mit Benutzer=admin und Passwort=admin!</info>");
 
+        // Der einzige Command ohne Rueckgabe — unter Console 4 war execute() untypisiert und
+        // ein fehlendes return ergab still null, was Symfony als 0 las. Console 7 verlangt den
+        // int (009-002-0005).
+        return 0;
     }
 }

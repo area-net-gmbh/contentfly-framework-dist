@@ -1,25 +1,23 @@
 <?php
 namespace Areanet\PIM\Classes\Kernel;
 
-use Knp\Command\Command as KnpCommand;
+use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 /**
- * Die Basisklasse der Console-Commands — heute mit knplabs darunter (009-001-0006).
+ * Die Basisklasse der Console-Commands (009-002-0005).
  *
- * Dieselbe Fuge wie `Kernel\Application` bei Silex, aus demselben Grund:
- * `knplabs/console-service-provider` deckelt `symfony/console` auf `^4` und ist unter
- * Symfony 7.4 nicht mitzunehmen. Statt fünf Dateien, die das Paket nennen, nennt es eine.
+ * Erbt seit dem Kernel-Schnitt direkt von Symfonys `Command`. Bis dahin war sie die Fuge zu
+ * `Knp\Command\Command` — dieselbe Konstruktion, die `Kernel\Application` gegenüber Silex
+ * hatte, und aus demselben Grund: `knplabs/console-service-provider` deckelte
+ * `symfony/console` auf `^4`. Das Paket ist mit `009-002-0001` aus dem Baum, und mit ihm die
+ * Vererbung.
  *
- * WAS `009-002` DAMIT TUT: Die Vererbung wechselt auf
- * `Symfony\Component\Console\Command\Command`, und `anwendung()` holt sich die Anwendung aus dem
- * neuen Kernel statt aus `Knp\Console\Application`. Die Commands selbst bleiben unberührt.
- *
- * WARUM `anwendung()` UND NICHT `getSilexApplication()`: Der alte Name beschreibt beim neuen
- * Kernel das Falsche, und ein Name, der lügt, ist schlechter als einer, den man einmal ändern
- * muss. Die alte Methode bleibt geerbt und funktionsfähig — ein Projekt, das sie ruft, bricht
- * nicht —, aber der eigene Code benutzt sie nicht mehr.
+ * **`getSilexApplication()` gibt es nicht mehr.** Sie war geerbt und ist mit dem Paket
+ * gefallen; ein Bestandsprojekt, das sie ruft, bekommt einen Fehler. Das steht als Bruchstelle
+ * im Migrationsleitfaden — laut ist besser als still. Der Ersatz heisst `anwendung()` und
+ * beschreibt, was er liefert.
  */
-abstract class Command extends KnpCommand
+abstract class Command extends SymfonyCommand
 {
     /**
      * Die Anwendung, in der dieser Command läuft.
@@ -29,6 +27,17 @@ abstract class Command extends KnpCommand
      */
     protected function anwendung(): ApplicationInterface
     {
-        return $this->getSilexApplication();
+        $console = $this->getApplication();
+
+        if (!$console instanceof Console) {
+            throw new \LogicException(sprintf(
+                'Dieser Command laeuft in "%s" statt in Areanet\PIM\Classes\Kernel\Console '
+                .'und kommt deshalb nicht an die Anwendung. Registriert wird ueber den '
+                .'ConsoleManager oder ueber bin/console.php.',
+                $console === null ? 'keiner Console' : get_class($console)
+            ));
+        }
+
+        return $console->anwendung();
     }
 }

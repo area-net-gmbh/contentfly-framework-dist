@@ -1292,7 +1292,7 @@ class Api
         $event->setParam('app',            $this->app);
         $event->setParam('user',           $this->app['auth.user']);
 
-        $this->app['dispatcher']->dispatch('pim.entity.before.list', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.before.list');
 
         $query          = $queryBuilder->getQuery();
         $totalObjects   = $query->getSingleScalarResult();
@@ -1574,7 +1574,7 @@ class Api
                 $event = new Event();
                 $event->setParam('classAnnotation', $classAnnotation);
                 $event->setParam('settings',        $settings);
-                $this->app['dispatcher']->dispatch('pim.schema.after.classAnnotation', $event);
+                $this->app['dispatcher']->dispatch($event, 'pim.schema.after.classAnnotation');
                 $settings = $event->getParam('settings');
             }
 
@@ -1598,7 +1598,7 @@ class Api
                     $event = new Event();
                     $event->setParam('propertyAnnotation', $propertyAnnotation);
                     $event->setParam('properties', $customProperties[$prop->getName()] ?? array());
-                    $this->app['dispatcher']->dispatch('pim.schema.after.propertyAnnotation', $event);
+                    $this->app['dispatcher']->dispatch($event, 'pim.schema.after.propertyAnnotation');
 
                     if(($customProperties = $event->getParam('properties'))){
                         $customProperties[$prop->getName()] =  $customProperties;

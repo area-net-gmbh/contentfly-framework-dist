@@ -53,7 +53,8 @@ use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Events;
 use Areanet\PIM\Classes\Kernel\ConsoleEvents;
 use Areanet\PIM\Classes\Kernel\Application;
-use Knp\Provider\ConsoleServiceProvider;
+use Areanet\PIM\Classes\Kernel\Console;
+use Areanet\PIM\Classes\Kernel\ConsoleInitEvent;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 // Die Annotationen des Frameworks sind ueber PSR-4 autoladbar; ein registerFile() dafuer
@@ -230,11 +231,19 @@ if($app['is_installed']) {
     };
 }
 
-$app->register(new ConsoleServiceProvider(), array(
-    'console.name'              => 'PIM',
-    'console.version'           => APP_VERSION,
-    'console.project_directory' => ROOT_DIR
-));
+/*
+ * Die Console, selbst gebaut (009-002-0005).
+ *
+ * Hier stand `$app->register(new ConsoleServiceProvider(), …)`. Das Paket deckelte
+ * symfony/console auf ^4 und ist mit 009-002-0001 weg; was es lieferte, waren drei Dinge — eine
+ * Console mit Namen und Version, ein Zugriff auf die Anwendung und das Ereignis console.init.
+ * Alle drei stehen jetzt in Areanet\PIM\Classes\Kernel\Console.
+ *
+ * Als faule Factory, wie vorher: bin/console.php holt sie ab, der Web-Einstieg nie.
+ */
+$app['console'] = function ($app) {
+    return new Console($app, 'PIM', APP_VERSION, ROOT_DIR);
+};
 
 $app['helper'] = function () {
     return new Helper();
@@ -352,9 +361,10 @@ $app['routeManager'] = function ($app) {
 };
 
 $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app) {
-    // Ohne Typangabe am Ereignis, siehe ConsoleManager (009-001-0003).
-    $dispatcher->addListener(ConsoleEvents::INIT, function ($event) {
-        $console = $event->getApplication();
+    // console() statt getApplication() seit 009-002-0005: Das Ereignis liefert die Console,
+    // und "Application" waere in diesem Baum doppeldeutig — es gibt auch die Anwendung.
+    $dispatcher->addListener(ConsoleEvents::INIT, function (ConsoleInitEvent $event) {
+        $console = $event->console();
         $console->add(new InstallCommand());
         $console->add(new SetupCommand());
         $console->add(new TokenCleanupCommand());

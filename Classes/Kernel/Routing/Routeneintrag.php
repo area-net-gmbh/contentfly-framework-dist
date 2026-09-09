@@ -43,6 +43,20 @@ class Routeneintrag
         return $this;
     }
 
+    /**
+     * Eine Bedingung an einen Pfadplatzhalter.
+     *
+     * Silex' Name fuer Symfonys `requirements`. `bootstrap-web.php` benutzt es fuer den
+     * OPTIONS-Catch-All: `->assert('anything', '.*')` laesst den Platzhalter auch
+     * Schraegstriche schlucken, sonst passt er nur auf ein einzelnes Pfadsegment.
+     */
+    public function assert(string $platzhalter, string $muster): self
+    {
+        $this->route->setRequirement($platzhalter, $muster);
+
+        return $this;
+    }
+
     public function route(): Route
     {
         return $this->route;

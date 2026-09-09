@@ -48,7 +48,7 @@ class FileController extends BaseController
         $event->setParam('request', $request);
         $event->setParam('user',    $this->app['auth.user']);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.file.before.upload', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.file.before.upload');
 
         $file   = $request->files->get('file');
 
@@ -248,7 +248,7 @@ class FileController extends BaseController
         $event->setParam('fileObject', $fileObject);
         $event->setParam('user',    $this->app['auth.user']);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.file.after.upload', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.file.after.upload');
 
 
         return new JsonResponse(array('message' => 'File uploaded', 'data' => $fileObject->toValueObject($this->app, 'PIM\\File')));
@@ -312,7 +312,7 @@ class FileController extends BaseController
         $event->setParam('fileObject', $fileObject);
         $event->setParam('sizeObject', $sizeObject);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.file.before.get', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.file.before.get');
 
         $mimeType   = $fileObject->getType();
         $backend    = Backend::getInstance();
@@ -388,7 +388,7 @@ class FileController extends BaseController
         $event->setParam('sizeObject', $sizeObject);
         $event->setParam('fileName',   $fileName);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.file.before.send', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.file.before.send');
 
         if(Config\Adapter::getConfig()->APP_FILE_MODE == 'xsendfile') {
             $headers = array(

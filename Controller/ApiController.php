@@ -239,7 +239,7 @@ class ApiController extends BaseController
         $event->setParam('user',    $this->app['auth.user']);
         $event->setParam('app',     $this->app);
 
-        $this->app['dispatcher']->dispatch('pim.entity.before.delete', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.before.delete');
 
         $api = new Api($this->app, $request);
         $api->doDelete($entityShortName, $id, $lang);
@@ -251,7 +251,7 @@ class ApiController extends BaseController
         $event->setParam('lang',    $lang);
         $event->setParam('user',    $this->app['auth.user']);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.entity.after.delete', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.after.delete');
 
         $currentDate = new \Datetime();
 
@@ -348,7 +348,7 @@ class ApiController extends BaseController
         $event->setParam('data',    $data);
         $event->setParam('lang',    $lang);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.entity.before.insert', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.before.insert');
 
         $data = $event->getParam('data');
 
@@ -363,7 +363,7 @@ class ApiController extends BaseController
         $event->setParam('object',  $object);
         $event->setParam('lang',    $lang);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.entity.after.insert', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.after.insert');
 
         $currentDate    = new \Datetime();
 
@@ -702,8 +702,8 @@ class ApiController extends BaseController
         $event->setParam('user',    $this->app['auth.user']);
         $event->setParam('data',    $data);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.entity.before.udpdate', $event);
-        $this->app['dispatcher']->dispatch('pim.entity.before.update', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.before.udpdate');
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.before.update');
 
         $data = $event->getParam('data');
 
@@ -724,8 +724,8 @@ class ApiController extends BaseController
         $event->setParam('user',    $this->app['auth.user']);
         $event->setParam('data',    $data);
         $event->setParam('app',     $this->app);
-        $this->app['dispatcher']->dispatch('pim.entity.after.udpdate', $event);
-        $this->app['dispatcher']->dispatch('pim.entity.after.update', $event);
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.after.udpdate');
+        $this->app['dispatcher']->dispatch($event, 'pim.entity.after.update');
 
         $currentDate = new \Datetime();
 

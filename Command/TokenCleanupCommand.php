@@ -45,7 +45,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class TokenCleanupCommand extends Command
 {
-    protected function configure()
+    protected function configure(): void
     {
         parent::configure();
 
@@ -56,7 +56,7 @@ class TokenCleanupCommand extends Command
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $app = $this->anwendung();
         $em  = $app['orm.em'];

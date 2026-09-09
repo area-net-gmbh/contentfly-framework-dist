@@ -13,11 +13,13 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Areanet\PIM\Classes\Kernel\Routing\AbsicherungListener;
 use Areanet\PIM\Classes\Kernel\Routing\ControllerResolver;
+use Areanet\PIM\Classes\Kernel\Routing\Routeneintrag;
 use Symfony\Component\HttpKernel\EventListener\RouterListener;
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
 /**
@@ -82,7 +84,20 @@ class Application extends Container implements ApplicationInterface
                 $app['dispatcher'],
                 $app['resolver'],
                 $app['request_stack'],
-                $app['argument_resolver']
+                $app['argument_resolver'],
+                /*
+                 * handleAllThrowables: true — und das ist kein Detail (009-002-0004).
+                 *
+                 * Symfonys HttpKernel faengt in der Vorgabe nur `\Exception`. Ein TypeError
+                 * faellt damit durch den ganzen Kernel hindurch, und der Aufrufer bekommt eine
+                 * leere 500 — **exakt der Befund aus 000-000-0006**, nur mit Symfonys Kernel
+                 * statt mit Silex' ExceptionListenerWrapper.
+                 *
+                 * Gemessen: Mit der Vorgabe liefert `POST /api/update` mit `data` als
+                 * Zeichenkette einen Rumpf von 0 Byte; mit `true` die JSON-Antwort der
+                 * Anwendung. FehlerantwortApiTest prueft beide Haelften.
+                 */
+                true
             );
         };
     }
@@ -121,6 +136,23 @@ class Application extends Container implements ApplicationInterface
     public function routen(): RouteCollection
     {
         return $this->routen;
+    }
+
+    /**
+     * Eine Route direkt an der Anwendung, ohne Provider — nur für OPTIONS.
+     *
+     * `bootstrap-web.php` legt damit den CORS-Preflight-Catch-All an. Das ist die einzige
+     * Route im Baum, die kein Controller-Provider baut, und sie bleibt deshalb die einzige
+     * Methode dieser Art: Wer eine gewöhnliche Route will, nimmt den `RouteManager`.
+     */
+    public function options(string $pfad, callable $callback): Routeneintrag
+    {
+        $route = new Route('/'.ltrim($pfad, '/'), array('_controller' => $callback));
+        $route->setMethods(array('OPTIONS'));
+
+        $this->routen->add('options_'.count($this->routen), $route);
+
+        return new Routeneintrag($route);
     }
 
     // ── Hooks ──────────────────────────────────────────────────────────────────────────

@@ -26,7 +26,7 @@ class InstallCommand extends Command
     /** Platzhalter in custom/config.php, die die Installation ersetzt. */
     private const PLACEHOLDER_HOST = '$SET_DB_HOST';
 
-    protected function configure()
+    protected function configure(): void
     {
         parent::configure();
 
@@ -44,7 +44,7 @@ class InstallCommand extends Command
         ;
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $app = $this->anwendung();
 

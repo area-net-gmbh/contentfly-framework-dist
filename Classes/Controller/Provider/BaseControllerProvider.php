@@ -70,11 +70,11 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                 }
 
                 $controllerParts = explode('.', $controllerAction);
-                $app['dispatcher']->dispatch('pim.controller.before.' . $controllerParts[0] . '.' . $controllerParts[2], $event);
+                $app['dispatcher']->dispatch($event, 'pim.controller.before.' . $controllerParts[0] . '.' . $controllerParts[2]);
 
                 $controllerParts = explode('.', $controllerAction);
-                $app['dispatcher']->dispatch('pim.controller.before.' . $controllerParts[0], $event);
-                $app['dispatcher']->dispatch('pim.controller.before', $event);
+                $app['dispatcher']->dispatch($event, 'pim.controller.before.' . $controllerParts[0]);
+                $app['dispatcher']->dispatch($event, 'pim.controller.before');
             }
         });
 
@@ -103,11 +103,11 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                     return;
                 }
                 $controllerParts = explode('.', $controllerAction);
-                $app['dispatcher']->dispatch('pim.controller.after.' . $controllerParts[0] . '.' . $controllerParts[2], $event);
+                $app['dispatcher']->dispatch($event, 'pim.controller.after.' . $controllerParts[0] . '.' . $controllerParts[2]);
 
                 $controllerParts = explode('.', $controllerAction);
-                $app['dispatcher']->dispatch('pim.controller.after.' . $controllerParts[0], $event);
-                $app['dispatcher']->dispatch('pim.controller.after', $event);
+                $app['dispatcher']->dispatch($event, 'pim.controller.after.' . $controllerParts[0]);
+                $app['dispatcher']->dispatch($event, 'pim.controller.after');
             }
         });
     }
