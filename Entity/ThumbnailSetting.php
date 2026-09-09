@@ -6,55 +6,39 @@ use Areanet\PIM\Classes\Annotations as PIM;
 
 
 /**
- * @ORM\Entity
- * @PIM\Config(excludeFromSync=true)
  *
  * excludeFromSync: Konfiguration der Bildgroessen, gehoert zur Installation und nicht zum Datenbestand.
  * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
  * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
- * @ORM\Table(name="pim_thumbnail_setting")
  */
+#[ORM\Entity]
+#[PIM\Config(excludeFromSync: true)]
+#[ORM\Table(name: 'pim_thumbnail_setting')]
 class ThumbnailSetting extends Base
 {
 
-    /**
-     * @ORM\Column(type="string", length=20, unique=true)
-     */
+    #[ORM\Column(type: 'string', length: 20, unique: true)]
     protected $alias;
 
-    /**
-     * @ORM\Column(type="boolean", nullable=true)
-     */
+    #[ORM\Column(type: 'boolean', nullable: true)]
     protected $doCut=0;
 
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
+    #[ORM\Column(type: 'integer', nullable: true)]
     protected $width;
 
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
+    #[ORM\Column(type: 'integer', nullable: true)]
     protected $height;
 
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
+    #[ORM\Column(type: 'integer', nullable: true)]
     protected $percent;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[ORM\Column(type: 'string', nullable: true)]
     protected $backgroundColor;
 
-    /**
-    * @ORM\Column(type="boolean", nullable=true)
-    */
+    #[ORM\Column(type: 'boolean', nullable: true)]
     protected $forceJpeg=0;
 
-    /**
-     * @ORM\Column(type="boolean", nullable=true)
-     */
+    #[ORM\Column(type: 'boolean', nullable: true)]
     protected $isResponsive=0;
 
 

@@ -4,21 +4,15 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
-/**
- * @ORM\MappedSuperclass
- */
+#[ORM\MappedSuperclass]
 
 class BaseI18nSortable extends BaseI18n
 {
-    /**
-     * @ORM\Column(type="integer", options={"default" = 0}, nullable=true)
-     * @PIM\Config(i18n_universal=true)
-     */
+    #[ORM\Column(type: 'integer', options: ['default' => 0], nullable: true)]
+    #[PIM\Config(i18n_universal: true)]
     protected $sorting = 0;
 
-    /**
-     * @ORM\Column(type="boolean", options={"default" = true}, nullable=true)
-     */
+    #[ORM\Column(type: 'boolean', options: ['default' => true], nullable: true)]
     protected $isActive = 1;
 
     /**

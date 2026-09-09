@@ -4,24 +4,18 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
-/**
- * @ORM\MappedSuperclass
- */
+#[ORM\MappedSuperclass]
 class BaseI18n extends Base
 {
 
-    /**
-     * @ORM\Column(type=APPCMS_ID_TYPE)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+    #[ORM\Column(type: APPCMS_ID_TYPE)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     protected $id;
 
-    /**
-     * @ORM\Column(type="string", length=2, options={"default" = APP_CMS_MAIN_LANG})
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="NONE")
-     */
+    #[ORM\Column(type: 'string', length: 2, options: ['default' => APP_CMS_MAIN_LANG])]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'NONE')]
     protected $lang = APP_CMS_MAIN_LANG;
 
 

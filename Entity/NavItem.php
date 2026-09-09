@@ -5,37 +5,29 @@ use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
 /**
- * @ORM\Entity
- * @ORM\Table(name="pim_navItem")
- * @PIM\Config(sortRestrictTo="nav", excludeFromSync=true)
  *
  * excludeFromSync: Navigationsstruktur der geloeschten Oberflaeche.
  * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
  * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'pim_navItem')]
+#[PIM\Config(sortRestrictTo: 'nav', excludeFromSync: true)]
 class NavItem extends BaseSortable
 {
 
-    /**
-     * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\Nav")
-     * @ORM\JoinColumn(onDelete="SET NULL")
-     * @PIM\Config(isFilterable=true)
-     */
+    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\Nav')]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    #[PIM\Config(isFilterable: true)]
     protected $nav;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[ORM\Column(type: 'string', nullable: true)]
     protected $entity;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[ORM\Column(type: 'string', nullable: true)]
     protected $title;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[ORM\Column(type: 'string', nullable: true)]
     protected $uri;
 
     /**

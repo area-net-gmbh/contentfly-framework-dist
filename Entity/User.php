@@ -5,51 +5,35 @@ use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="pim_user")
- * @PIM\Config(labelProperty="alias")
- */
+#[ORM\Entity]
+#[ORM\Table(name: 'pim_user')]
+#[PIM\Config(labelProperty: 'alias')]
 class User extends Base
 {
 
     use \Custom\Traits\User;
 
-    /**
-     * @ORM\Column(type="boolean", nullable=true)
-     */
+    #[ORM\Column(type: 'boolean', nullable: true)]
     protected $isAdmin;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\Group")
-     * @ORM\JoinColumn(name="group_id", referencedColumnName="id", onDelete="SET NULL", nullable=true)
-     * @PIM\Config(isFilterable=true)
-     */
+    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\Group')]
+    #[ORM\JoinColumn(name: 'group_id', referencedColumnName: 'id', onDelete: 'SET NULL', nullable: true)]
+    #[PIM\Config(isFilterable: true)]
     protected $group;
 
-    /**
-     * @ORM\Column(type="string", length=100, unique=true)
-     */
+    #[ORM\Column(type: 'string', length: 100, unique: true)]
     protected $alias;
 
-    /**
-     * @ORM\Column(type="string", length=100)
-     */
+    #[ORM\Column(type: 'string', length: 100)]
     protected $pass;
 
-    /**
-     * @ORM\Column(type="boolean", nullable=true)
-     */
+    #[ORM\Column(type: 'boolean', nullable: true)]
     protected $isActive = true;
 
-    /**
-     * @ORM\Column(type="string", length=100)
-     */
+    #[ORM\Column(type: 'string', length: 100)]
     protected $salt;
 
-    /**
-     * @ORM\Column(type="string", length=100, nullable=true)
-     */
+    #[ORM\Column(type: 'string', length: 100, nullable: true)]
     protected $loginManager;
 
     protected $tempData;

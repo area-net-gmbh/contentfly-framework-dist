@@ -4,45 +4,37 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Entity\User;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="pim_token")
- */
+#[ORM\Entity]
+#[ORM\Table(name: 'pim_token')]
 class Token
 {
-    /**
-     * @ORM\Column(type="integer")
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="AUTO")
-     */
+    #[ORM\Column(type: 'integer')]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'AUTO')]
     protected $id;
 
     /**
-     * @ORM\ManyToOne(targetEntity="User")
-     * @ORM\JoinColumn(name="user_id", referencedColumnName="id", onDelete="CASCADE")
      **/
+    #[ORM\ManyToOne(targetEntity: 'User')]
+    #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     protected $user;
 
-    /**
-     * @ORM\Column(type="string", length=128, unique=true)
-     */
+    #[ORM\Column(type: 'string', length: 128, unique: true)]
     protected $token;
 
-    /**
-     * @ORM\Column(type="string", length=128, nullable=true)
-     */
+    #[ORM\Column(type: 'string', length: 128, nullable: true)]
     protected $referrer;
 
     /**
      * @var \DateTime
-     * @ORM\Column(type="datetime")
      */
+    #[ORM\Column(type: 'datetime')]
     protected $created;
 
     /**
      * @var \DateTime
-     * @ORM\Column(type="datetime")
      */
+    #[ORM\Column(type: 'datetime')]
     protected $modified;
 
     public function __construct()

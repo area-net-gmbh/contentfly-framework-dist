@@ -3,6 +3,7 @@ namespace Areanet\PIM\Classes\ORM;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\Configuration;
+use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 use Doctrine\ORM\EntityManager;
 use Doctrine\Persistence\Mapping\Driver\MappingDriverChain;
 
@@ -70,25 +71,25 @@ final class EntityManagerFactory
         $chain = new MappingDriverChain();
 
         foreach ($mappings as $mapping) {
-            // `newDefaultAnnotationDriver()` statt eines selbst gebauten `AnnotationDriver`:
-            // Die Methode registriert nebenbei den Loader der `AnnotationRegistry`, ohne den
-            // der Reader die Doctrine-eigenen Annotationen nicht auflöst. Ein Treiber mit
-            // frischem `AnnotationReader` scheitert am alten Baum mit
+            // ATTRIBUTE STATT ANNOTATIONEN, FUER ALLE NAMENSRAEUME (010-001-0003).
             //
-            //     [Semantical Error] The annotation "@Doctrine\ORM\Mapping\Entity" … was
-            //     never imported.
+            // Hier stand `$config->newDefaultAnnotationDriver($pfad, false)`.
             //
-            // — und zwar erst beim ersten Metadaten-Zugriff, nicht beim Bau. dflydev benutzte
-            // dieselbe Methode; das ist kein Zufall, sondern der einzige Weg, der gegen beide
-            // Doctrine-Stände funktioniert.
+            // ES GEHT NUR GEMEINSAM, und das ist gemessen: Doctrine liest einen Namensraum mit
+            // genau EINEM Treiber, also schien ein Schnitt je Namensraum moeglich —
+            // `Areanet\PIM\Entity` zuerst, `Custom\Entity` danach. Er traegt nicht.
+            // `Custom\Entity\Core\Example` erbt von `Areanet\PIM\Entity\Base`, und bei einer
+            // MappedSuperclass setzt Doctrine an den geerbten Feldern KEIN `inherited`
+            // (`ClassMetadataFactory::addMappingInheritanceInformation()`). Der Treiber der
+            // Unterklasse liest sie deshalb NEU — ein Annotation-Treiber findet an einer
+            // umgestellten Oberklasse nichts mehr und meldet
             //
-            // Das zweite Argument ist `use_simple_annotation_reader`, im Framework überall
-            // `false`. Ein dritter Parameter kam in Doctrine 2.20 dazu und bleibt auf seinem
-            // Standardwert — deshalb wird er hier nicht übergeben.
-            $chain->addDriver(
-                $config->newDefaultAnnotationDriver(array($mapping['path']), false),
-                $mapping['namespace']
-            );
+            //     No identifier/primary key specified for Entity "Custom\Entity\Core\Example"
+            //     sub class of "Areanet\PIM\Entity\Base".
+            //
+            // Ein Wahlschalter je Mapping stand hier deshalb kurz und ist wieder entfallen: Er
+            // haette eine Freiheit angeboten, die es nicht gibt.
+            $chain->addDriver(new AttributeDriver(array($mapping['path'])), $mapping['namespace']);
         }
 
         $config->setMetadataDriverImpl($chain);

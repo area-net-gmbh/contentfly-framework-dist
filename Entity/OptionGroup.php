@@ -4,17 +4,13 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="pim_optiongroup")
- * @PIM\Config(labelProperty="name")
- */
+#[ORM\Entity]
+#[ORM\Table(name: 'pim_optiongroup')]
+#[PIM\Config(labelProperty: 'name')]
 class OptionGroup extends Base
 {
 
-    /**
-     * @ORM\Column(type="string", nullable=false, unique=true)
-     */
+    #[ORM\Column(type: 'string', nullable: false, unique: true)]
     protected $name;
 
     /**

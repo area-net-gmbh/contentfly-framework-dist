@@ -5,14 +5,14 @@ use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
 /**
- * @ORM\Entity
- * @PIM\Config(excludeFromSync=true)
  *
  * excludeFromSync: Rechteverwaltung, wie PIM\Group.
  * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
  * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
- * @ORM\Table(name="pim_permission")
  */
+#[ORM\Entity]
+#[PIM\Config(excludeFromSync: true)]
+#[ORM\Table(name: 'pim_permission')]
 class Permission extends Base
 {
     const NONE    = 0;
@@ -20,40 +20,26 @@ class Permission extends Base
     const GROUP   = 3;
     const ALL     = 2;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\Group", inversedBy="permissions")
-     * @ORM\JoinColumn(name="group_id", referencedColumnName="id")
-     */
+    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\Group', inversedBy: 'permissions')]
+    #[ORM\JoinColumn(name: 'group_id', referencedColumnName: 'id')]
     protected $group;
 
-    /**
-     * @ORM\Column(type="string",)
-     */
+    #[ORM\Column(type: 'string')]
     protected $entityName;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
+    #[ORM\Column(type: 'integer')]
     protected $readable;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
+    #[ORM\Column(type: 'integer')]
     protected $writable;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
+    #[ORM\Column(type: 'integer')]
     protected $deletable;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
+    #[ORM\Column(type: 'integer')]
     protected $export = 0;
 
-    /**
-     * @ORM\Column(type="text", nullable = true)
-     */
+    #[ORM\Column(type: 'text', nullable: true)]
     protected $extended;
 
     /**

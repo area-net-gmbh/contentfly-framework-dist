@@ -4,84 +4,58 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="pim_file", uniqueConstraints={@ORM\UniqueConstraint(name="file_unique", columns={"name", "folder_id"})})
- * @PIM\Config(labelProperty="name", sortBy="name", sortOrder="ASC")
- */
+#[ORM\Entity]
+#[ORM\Table(name: 'pim_file')]
+#[ORM\UniqueConstraint(name: 'file_unique', columns: ['name', 'folder_id'])]
+#[PIM\Config(labelProperty: 'name', sortBy: 'name', sortOrder: 'ASC')]
 
 class File extends Base
 {
     use \Custom\Traits\File;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[ORM\Column(type: 'string')]
     protected $name;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\Folder")
-     * @ORM\JoinColumn(name="folder_id", referencedColumnName="id", onDelete="SET NULL", nullable=true)
-     * @PIM\Config(isFilterable=true)
-     */
+    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\Folder')]
+    #[ORM\JoinColumn(name: 'folder_id', referencedColumnName: 'id', onDelete: 'SET NULL', nullable: true)]
+    #[PIM\Config(isFilterable: true)]
     protected $folder;
 
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[ORM\Column(type: 'string', nullable: true)]
     protected $alias;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[ORM\Column(type: 'string', nullable: true)]
     protected $title;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     */
+    #[ORM\Column(type: 'string', nullable: true)]
     protected $altText;
 
-    /**
-     * @ORM\Column(type="text", nullable=true)
-     */
+    #[ORM\Column(type: 'text', nullable: true)]
     protected $description;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[ORM\Column(type: 'string')]
     protected $type;
 
-    /**
-     * @ORM\Column(type="string")
-     */
+    #[ORM\Column(type: 'string')]
     protected $hash;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
+    #[ORM\Column(type: 'integer')]
     protected $size;
 
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
+    #[ORM\Column(type: 'integer', nullable: true)]
     protected $width;
 
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
+    #[ORM\Column(type: 'integer', nullable: true)]
     protected $height;
 
-    /**
-     * @ORM\Column(type="boolean", nullable=true)
-     */
+    #[ORM\Column(type: 'boolean', nullable: true)]
     protected $isHidden;
 
-    /**
-     * @ORM\ManyToMany(targetEntity="Areanet\PIM\Entity\Tag")
-     * @ORM\JoinTable(name="pim_file_tags", joinColumns={@ORM\JoinColumn(onDelete="CASCADE")})
-     * @PIM\Config(isFilterable=true)
-     */
+    #[ORM\ManyToMany(targetEntity: 'Areanet\\PIM\\Entity\\Tag')]
+    #[ORM\JoinTable(name: 'pim_file_tags')]
+    #[ORM\JoinColumn(onDelete: 'CASCADE')]
+    #[PIM\Config(isFilterable: true)]
     protected $tags;
 
     /**

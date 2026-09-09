@@ -7,26 +7,22 @@ use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
 /**
- * @ORM\Entity
- * @ORM\Table(name="pim_group")
- * @PIM\Config(labelProperty="name", excludeFromSync=true)
  *
  * excludeFromSync: Rechteverwaltung — ein Sync-Client hat damit nichts zu tun und soll sie nicht spiegeln.
  * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
  * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
  */
+#[ORM\Entity]
+#[ORM\Table(name: 'pim_group')]
+#[PIM\Config(labelProperty: 'name', excludeFromSync: true)]
 class Group extends Base
 {
     use \Custom\Traits\Group;
 
-    /**
-     * @ORM\Column(type="string", length=100, unique=true)
-     */
+    #[ORM\Column(type: 'string', length: 100, unique: true)]
     protected $name;
 
-    /**
-     * @ORM\Column(type="integer")
-     */
+    #[ORM\Column(type: 'integer')]
     protected $tokenTimeout = 30;
 
     /**
@@ -40,23 +36,18 @@ class Group extends Base
      * "disabled"}` wuerde erstmals einen DEFAULT ins Schema schreiben und damit eine
      * Datenbankaenderung ausloesen, die niemand angefordert hat. Der Vorgabewert steht
      * ohnehin im Property.
-     *
-     * @ORM\Column(type="string")
-     * @PIM\Select(options="disabled=nicht erlaubt, enabled=erlaubt")
      */
+    #[ORM\Column(type: 'string')]
+    #[PIM\Select(options: 'disabled=nicht erlaubt, enabled=erlaubt')]
     protected $apiQueryEnabled = 'disabled';
 
 
-    /**
-     * @ORM\OneToMany(targetEntity="Areanet\PIM\Entity\Permission", mappedBy="group", cascade={"remove"})
-     * @PIM\Permissions()
-     */
+    #[ORM\OneToMany(targetEntity: 'Areanet\\PIM\\Entity\\Permission', mappedBy: 'group', cascade: ['remove'])]
+    #[PIM\Permissions]
     protected $permissions;
 
-    /**
-     * @ORM\Column(type="string", nullable=true)
-     * @PIM\I18nPermissions()
-     */
+    #[ORM\Column(type: 'string', nullable: true)]
+    #[PIM\I18nPermissions]
     protected $languages;
 
     /**

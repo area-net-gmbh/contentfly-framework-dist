@@ -4,24 +4,18 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
-/**
- * @ORM\Entity
- * @ORM\Table(name="pim_option")
- * @PIM\Config(labelProperty="value", sortBy="sorting", sortOrder="ASC", sortRestrictTo="group")
- */
+#[ORM\Entity]
+#[ORM\Table(name: 'pim_option')]
+#[PIM\Config(labelProperty: 'value', sortBy: 'sorting', sortOrder: 'ASC', sortRestrictTo: 'group')]
 class Option extends BaseSortable
 {
 
-    /**
-     * @ORM\Column(type="string", nullable=false)
-     */
+    #[ORM\Column(type: 'string', nullable: false)]
     protected $value;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\OptionGroup")
-     * @ORM\JoinColumn(onDelete="CASCADE", nullable=false)
-     * @PIM\Config(isFilterable=true)
-     */
+    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\OptionGroup')]
+    #[ORM\JoinColumn(onDelete: 'CASCADE', nullable: false)]
+    #[PIM\Config(isFilterable: true)]
     protected $group;
 
     /**

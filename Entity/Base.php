@@ -7,10 +7,8 @@ use Doctrine\ORM\Event\LoadClassMetadataEventArgs;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
-/**
- * @ORM\MappedSuperclass
- * @ORM\HasLifecycleCallbacks
- */
+#[ORM\MappedSuperclass]
+#[ORM\HasLifecycleCallbacks]
 
 class Base extends Serializable
 {
@@ -26,60 +24,46 @@ class Base extends Serializable
      * `@ORM\CustomIdGenerator` steht auch dann hier, wenn die Integer-Strategie laeuft
      * (APPCMS_ID_STRATEGY = 'AUTO'). Doctrine liest die Angabe nur bei `CUSTOM` aus; sie
      * bedingt zu setzen ginge in einer Annotation nicht, ohne die Konstante zu verdoppeln.
-     *
-     * @ORM\Column(type=APPCMS_ID_TYPE)
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy=APPCMS_ID_STRATEGY)
-     * @ORM\CustomIdGenerator(class="Areanet\PIM\Classes\ORM\Id\UuidGenerator")
      */
+    #[ORM\Column(type: APPCMS_ID_TYPE)]
+    #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: APPCMS_ID_STRATEGY)]
+    #[ORM\CustomIdGenerator(class: 'Areanet\\PIM\\Classes\\ORM\\Id\\UuidGenerator')]
     protected $id;
 
     /**
      * @var \DateTime
-     * @ORM\Column(type="datetime", nullable=true, options={"default": "CURRENT_TIMESTAMP"})
      */
+    #[ORM\Column(type: 'datetime', nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
     protected $created;
 
     /**
      * @var \DateTime
-     * @ORM\Column(type="datetime", nullable=true, options={"default": "CURRENT_TIMESTAMP"})
      */
+    #[ORM\Column(type: 'datetime', nullable: true, options: ['default' => 'CURRENT_TIMESTAMP'])]
     protected $modified;
 
 
-    /**
-     * @ORM\Column(type="integer", options={"default" = 0}, nullable=true)
-     *
-     */
+    #[ORM\Column(type: 'integer', options: ['default' => 0], nullable: true)]
     protected $views;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\User")
-     * @ORM\JoinColumn(name="user_id", referencedColumnName="id", onDelete="SET NULL")
-     */
+    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\User')]
+    #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', onDelete: 'SET NULL')]
     protected $user;
 
-    /**
-     * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\User")
-     * @ORM\JoinColumn(name="usercreated_id", referencedColumnName="id", onDelete="SET NULL")
-     */
+    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\User')]
+    #[ORM\JoinColumn(name: 'usercreated_id', referencedColumnName: 'id', onDelete: 'SET NULL')]
     protected $userCreated;
 
-    /**
-     * @ORM\Column(type="boolean", options={"default" : 0})
-     */
+    #[ORM\Column(type: 'boolean', options: ['default' => 0])]
     protected $isIntern = 0;
 
-    /**
-     * @ORM\Column(type="text", nullable=true)
-     * @PIM\Virtualjoin(targetEntity="Areanet\PIM\Entity\User")
-     */
+    #[ORM\Column(type: 'text', nullable: true)]
+    #[PIM\Virtualjoin(targetEntity: 'Areanet\\PIM\\Entity\\User')]
     protected $users;
 
-    /**
-     * @ORM\Column(type="text", nullable=true)
-     * @PIM\Virtualjoin(targetEntity="Areanet\PIM\Entity\Group")
-     */
+    #[ORM\Column(type: 'text', nullable: true)]
+    #[PIM\Virtualjoin(targetEntity: 'Areanet\\PIM\\Entity\\Group')]
     protected $groups;
 
 
@@ -358,10 +342,8 @@ class Base extends Serializable
 
 
 
-    /**
-     * @ORM\PrePersist()
-     * @ORM\PreUpdate()
-     */
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
     public function updateModifiedDatetime(): void {
         // update the modified time
 

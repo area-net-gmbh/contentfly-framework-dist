@@ -77,7 +77,7 @@ class MultijoinType extends Type
             if(isset($propertyAnnotations['Doctrine\\ORM\\Mapping\\JoinTable'])) {
                 $annotations                = $propertyAnnotations['Doctrine\\ORM\\Mapping\\JoinTable'];
                 $schema['foreign']          = $annotations->name;
-                $schema['dbfield']          = $annotations->joinColumns[0] && $annotations->joinColumns[0]->name ? $annotations->joinColumns[0]->name : strtolower($this->app['helper']->getEntityName($entityName)).'_id';
+                $schema['dbfield']          = isset($annotations->joinColumns[0]) && $annotations->joinColumns[0]->name ? $annotations->joinColumns[0]->name : strtolower($this->app['helper']->getEntityName($entityName)).'_id';
                 $schema['dbfield_foreign']  = isset($annotations->inverseJoinColumns[0]) && $annotations->inverseJoinColumns[0] && $annotations->inverseJoinColumns[0]->name ? $annotations->inverseJoinColumns[0]->name : strtolower($this->app['helper']->getEntityName($schema['accept'])).'_id';
             }
 

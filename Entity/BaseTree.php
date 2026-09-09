@@ -4,24 +4,18 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
-/**
- * @ORM\Entity
- * @ORM\InheritanceType("JOINED")
- * @ORM\Table(name="pim_tree")
-*/
+#[ORM\Entity]
+#[ORM\InheritanceType('JOINED')]
+#[ORM\Table(name: 'pim_tree')]
 
 class BaseTree extends BaseSortable
 {
-    /**
-     * @ORM\ManyToOne(targetEntity="Areanet\PIM\Entity\BaseTree", inversedBy="treeChilds")
-     * @ORM\JoinColumn(name="parent_id", referencedColumnName="id", onDelete="SET NULL")
-     * @PIM\Config(isFilterable=true)
-     */
+    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\BaseTree', inversedBy: 'treeChilds')]
+    #[ORM\JoinColumn(name: 'parent_id', referencedColumnName: 'id', onDelete: 'SET NULL')]
+    #[PIM\Config(isFilterable: true)]
     protected $treeParent;
 
-    /**
-     * @ORM\OneToMany(targetEntity="Areanet\PIM\Entity\BaseTree", mappedBy="treeParent")
-     */
+    #[ORM\OneToMany(targetEntity: 'Areanet\\PIM\\Entity\\BaseTree', mappedBy: 'treeParent')]
     protected $treeChilds;
 
     /**
