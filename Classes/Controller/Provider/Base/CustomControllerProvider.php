@@ -6,6 +6,8 @@ use Areanet\PIM\Classes\Controller\Provider\BaseControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Route;
 use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
+use Areanet\PIM\Classes\Kernel\Routing\Routensammlung;
+use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -21,7 +23,7 @@ class CustomControllerProvider extends BaseControllerProvider
         $this->controllerName = $controllerName;
     }
 
-    public function connect(Application $app)
+    public function connect(Application $app): RouteCollection
     {
         $app[$this->basePath.'.controller'] = function() use ($app) {
             $controllerName = $this->controllerName;
@@ -30,7 +32,7 @@ class CustomControllerProvider extends BaseControllerProvider
 
         $this->setUpMiddleware($app);
 
-        $controllers = $app['controllers_factory'];
+        $controllers = new Routensammlung();
         $checkAuth = function (Request $request, Application $app) {
             if (!$this->checkToken($request, $app) && !$app['auth.user']) {
                 throw new AccessDeniedHttpException('Zugriff verweigert', null, 401);
@@ -48,7 +50,7 @@ class CustomControllerProvider extends BaseControllerProvider
             }
         }
 
-        return $controllers;
+        return $controllers->sammlung();
     }
 
     public function post($routeName, $isSecure = false, $actionName = null){

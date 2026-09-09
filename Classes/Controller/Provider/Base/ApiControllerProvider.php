@@ -7,6 +7,8 @@ use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
+use Areanet\PIM\Classes\Kernel\Routing\Routensammlung;
+use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -14,7 +16,7 @@ class ApiControllerProvider extends BaseControllerProvider
 {
 
 
-    public function connect(Application $app)
+    public function connect(Application $app): RouteCollection
     {
         $app['api.controller'] = function($app) {
             return new ApiController($app);
@@ -22,7 +24,7 @@ class ApiControllerProvider extends BaseControllerProvider
 
         $this->setUpMiddleware($app);
 
-        $controllers = $app['controllers_factory'];
+        $controllers = new Routensammlung();
 
         $checkAuth = function (Request $request, Application $app) {
             if (!$this->checkToken($request, $app)) {
@@ -49,7 +51,7 @@ class ApiControllerProvider extends BaseControllerProvider
         $controllers->get('/schema', "api.controller:schemaAction")->before($checkAuth);
         $controllers->get('/config', "api.controller:configAction");
 
-        return $controllers;
+        return $controllers->sammlung();
     }
 
 

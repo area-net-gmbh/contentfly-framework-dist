@@ -7,6 +7,8 @@ use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Controller\SystemController;
 use Doctrine\DBAL\Exception\InvalidFieldNameException;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
+use Areanet\PIM\Classes\Kernel\Routing\Routensammlung;
+use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -14,7 +16,7 @@ class SystemControllerProvider extends BaseControllerProvider
 {
 
 
-    public function connect(Application $app)
+    public function connect(Application $app): RouteCollection
     {
         $app['system.controller'] = function($app) {
             return new SystemController($app);
@@ -23,7 +25,7 @@ class SystemControllerProvider extends BaseControllerProvider
         $this->setUpMiddleware($app);
 
 
-        $controllers = $app['controllers_factory'];
+        $controllers = new Routensammlung();
 
         $checkAuth = function (Request $request, Application $app) {
             try {
@@ -65,7 +67,7 @@ class SystemControllerProvider extends BaseControllerProvider
         $controllers->post('/do', "system.controller:doAction")->before($checkAuth);
 
 
-        return $controllers;
+        return $controllers->sammlung();
     }
 
 

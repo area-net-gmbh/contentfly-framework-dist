@@ -1,6 +1,8 @@
 <?php
 namespace Areanet\PIM\Classes\Kernel;
 
+use Symfony\Component\Routing\RouteCollection;
+
 /**
  * Ein Bündel Routen, das sich unter einen Pfad hängen lässt (009-001-0003).
  *
@@ -11,24 +13,22 @@ namespace Areanet\PIM\Classes\Kernel;
  * Provider Silex' Schnittstelle implementieren, müssen sie Silex im Kopf nennen. Also eine
  * eigene.
  *
- * DER RÜCKGABEWERT IST HEUTE NOCH EINE `Silex\ControllerCollection`, und deshalb steht hier
- * kein Rückgabetyp. Die Sammlung entsteht in den Implementierungen aus
- * `$app['controllers_factory']`; sie ist der eine Punkt, an dem die Provider den Kernel
- * wirklich brauchen, und `009-002` tauscht sie mit ihm. Einen Rückgabetyp jetzt zu setzen
- * hiesse, Silex an genau der Stelle festzuschreiben, an der er als Nächstes verschwindet.
+ * DER RÜCKGABETYP IST SEIT `009-002-0003` DA. `009-001-0003` hatte ihn bewusst offengelassen:
+ * Damals lieferte `connect()` eine `Silex\ControllerCollection`, und einen Typ zu setzen hätte
+ * Silex an genau der Stelle festgeschrieben, an der er als Nächstes verschwand. Jetzt ist es
+ * eine `RouteCollection` von Symfony — genau das, was `Application::mount()` entgegennimmt.
  *
- * FOLGE FÜR DAS MOUNTEN. `Silex\Application::mount()` nimmt eine `ControllerCollection`, eine
- * `ControllerProviderInterface` **von Silex** oder ein Callable. Da die Provider Silex'
- * Schnittstelle nicht mehr implementieren, ruft der `RouteManager` `connect()` selbst auf und
- * übergibt die fertige Sammlung. Das Ergebnis ist dasselbe; der Umweg über Silex' Erkennung
- * entfällt.
+ * In der Praxis geben die Provider eine `Routing\Routensammlung` zurück, die davon erbt und
+ * `get()`, `post()` und `match()` mitbringt. Der Typ hier bleibt die allgemeinere
+ * `RouteCollection`, damit ein Projekt seine Routen auch anders bauen kann.
+ *
+ * FOLGE FÜR DAS MOUNTEN. Der `RouteManager` ruft `connect()` selbst auf und übergibt die
+ * fertige Sammlung an `mount()` — seit `009-001-0003`, wo die Provider Silex' Schnittstelle
+ * verloren haben und dessen `mount()` sie deshalb nicht mehr als Provider erkannte. Am Ablauf
+ * ändert sich hier nichts.
  */
 interface ControllerProviderInterface
 {
-    /**
-     * Baut die Routen dieses Providers und gibt sie gebündelt zurück.
-     *
-     * @return mixed Heute eine `Silex\ControllerCollection` — siehe Klassenkommentar.
-     */
-    public function connect(ApplicationInterface $app);
+    /** Baut die Routen dieses Providers und gibt sie gebündelt zurück. */
+    public function connect(ApplicationInterface $app): RouteCollection;
 }

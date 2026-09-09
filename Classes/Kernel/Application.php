@@ -11,6 +11,8 @@ use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Areanet\PIM\Classes\Kernel\Routing\AbsicherungListener;
+use Areanet\PIM\Classes\Kernel\Routing\ControllerResolver;
 use Symfony\Component\HttpKernel\EventListener\RouterListener;
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -64,12 +66,11 @@ class Application extends Container implements ApplicationInterface
         };
 
         /*
-         * Der Resolver hängt hier als Dienst, damit 009-002-0003 ihn austauschen kann, ohne
-         * diese Klasse anzufassen: Dort kommt die Auflösung von "dienst:methode" dazu, die in
-         * Silex der ServiceControllerServiceProvider geliefert hat.
+         * Der Resolver kennt die Form `dienst:methode` — das, was der
+         * ServiceControllerServiceProvider von Silex geliefert hat (009-002-0003).
          */
-        $this['resolver'] = static function (): \Symfony\Component\HttpKernel\Controller\ControllerResolverInterface {
-            return new \Symfony\Component\HttpKernel\Controller\ControllerResolver();
+        $this['resolver'] = static function (Container $app): ControllerResolver {
+            return new ControllerResolver($app);
         };
 
         $this['argument_resolver'] = static function (): ArgumentResolver {
@@ -105,7 +106,12 @@ class Application extends Container implements ApplicationInterface
             ));
         }
 
-        $controllers->addPrefix(rtrim($prefix, '/'));
+        /*
+         * Der Praefix wird normalisiert, weil die Aufrufer ihn verschieden schreiben:
+         * bootstrap-web.php mountet '/api', custom/app.php 'api/v1/example/'. Silex hat beides
+         * angenommen.
+         */
+        $controllers->addPrefix('/'.trim($prefix, '/'));
         $this->routen->addCollection($controllers);
 
         return $this;
@@ -225,6 +231,15 @@ class Application extends Container implements ApplicationInterface
             new UrlMatcher($this->routen, new RequestContext()),
             $this['request_stack']
         ));
+
+        /*
+         * Die Absicherung pro Route. Prioritaet 0 auf kernel.controller: Der Router hat die
+         * Route schon zugeordnet, der Controller ist aufgeloest, aber noch nicht gelaufen.
+         */
+        $this['dispatcher']->addListener(
+            \Symfony\Component\HttpKernel\KernelEvents::CONTROLLER,
+            new AbsicherungListener($this)
+        );
     }
 
     public function handle(Request $request, int $type = HttpKernelInterface::MAIN_REQUEST, bool $catch = true): Response

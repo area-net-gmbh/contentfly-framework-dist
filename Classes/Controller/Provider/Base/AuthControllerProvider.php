@@ -5,6 +5,8 @@ use Areanet\PIM\Classes\Controller\Provider\BaseControllerProvider;
 use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Controller\AuthController;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
+use Areanet\PIM\Classes\Kernel\Routing\Routensammlung;
+use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -12,7 +14,7 @@ class AuthControllerProvider extends BaseControllerProvider
 {
 
 
-    public function connect(Application $app)
+    public function connect(Application $app): RouteCollection
     {
         $app['auth.controller'] = function($app) {
             return new AuthController($app);
@@ -21,7 +23,7 @@ class AuthControllerProvider extends BaseControllerProvider
         $this->setUpMiddleware($app);
 
 
-        $controllers = $app['controllers_factory'];
+        $controllers = new Routensammlung();
 
         $checkAuth = function (Request $request, Application $app) {
             if (!$this->checkToken($request, $app)) {
@@ -32,7 +34,7 @@ class AuthControllerProvider extends BaseControllerProvider
         $controllers->post('/login',  "auth.controller:loginAction");
         $controllers->get('/logout', "auth.controller:logoutAction")->before($checkAuth);
 
-        return $controllers;
+        return $controllers->sammlung();
     }
 
 
