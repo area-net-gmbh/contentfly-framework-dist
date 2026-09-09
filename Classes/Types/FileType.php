@@ -14,10 +14,6 @@ class FileType extends Type
         return 'file';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

@@ -17,10 +17,6 @@ class MultijoinType extends Type
         return 'multijoin';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

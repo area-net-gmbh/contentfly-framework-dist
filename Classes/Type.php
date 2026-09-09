@@ -109,6 +109,5 @@ abstract class Type
 
     abstract public function doMatch($propertyAnnotations);
     abstract public function getAlias();
-    abstract public function getAnnotationFile();
     
 }

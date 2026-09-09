@@ -44,7 +44,6 @@ use Areanet\PIM\Command\InstallCommand;
 use Areanet\PIM\Command\SetupCommand;
 use Areanet\PIM\Command\TokenCleanupCommand;
 use Areanet\PIM\Classes\ORM\EntityManagerFactory;
-use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Cache\ApcCache;
 use Doctrine\Common\Cache\ApcuCache;
 use Doctrine\Common\Cache\FilesystemCache;
@@ -57,32 +56,16 @@ use Areanet\PIM\Classes\Kernel\Console;
 use Areanet\PIM\Classes\Kernel\ConsoleInitEvent;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
-// Die Annotationen des Frameworks sind ueber PSR-4 autoladbar; ein registerFile() dafuer
-// waere ueberfluessig — und schaedlich, siehe unten.
+// DIE AnnotationRegistry IST WEG (010-001-0005).
 //
-// Der registerLoader() ist dagegen noetig, und zwar wegen einer Falle in
-// AnnotationRegistry::loadAnnotationClass():
+// Hier stand ein `AnnotationRegistry::registerLoader('class_exists')`. Er war noetig wegen
+// einer Falle in `loadAnnotationClass()`: Der moderne Fallback — "nimm einfach den
+// Composer-Autoloader" — griff nur, solange `registerFile()` nie benutzt wurde, und der
+// TypeManager tat genau das. Sobald ein Plugin einen eigenen Typ mitbrachte, fand Doctrine
+// seine eigenen Annotationen nicht mehr. Gefunden mit `006-002-0003`.
 //
-//     if (self::$loaders === [] && self::$autoloadNamespaces === []
-//         && self::$registerFileUsed === false && class_exists($class)) {
-//         return true;
-//     }
-//
-// Der moderne Fallback — "nimm einfach den Composer-Autoloader" — greift NUR, solange
-// registerFile() nie benutzt wurde. TypeManager tut das aber fuer Plugin-Annotationen
-// (plugins/ liegt ausserhalb des Autoloaders und hat keine andere Moeglichkeit). Sobald ein
-// Plugin einen eigenen Typ mitbringt, faellt der Fallback weg — und Doctrine findet seine
-// EIGENEN Annotationen nicht mehr:
-//
-//     [Semantical Error] The annotation "@Doctrine\ORM\Mapping\MappedSuperclass" in class
-//     Areanet\PIM\Entity\Base was never imported.
-//
-// Ein ausdruecklicher Loader stellt denselben Effekt her, unabhaengig davon, was spaeter
-// noch registriert wird. Gefunden mit 006-002-0003 beim Doctrine-Wechsel; die Falle steckt
-// aber in beiden Doctrine-Staenden gleichermassen.
-if (method_exists(AnnotationRegistry::class, 'registerLoader')) {
-    @AnnotationRegistry::registerLoader('class_exists');
-}
+// Mit den Attributen aus `010-001` ist die ganze Mechanik gegenstandslos: Ein Attribut nennt
+// eine echte Klasse, die der Autoloader laedt. `doctrine/annotations` ist aus dem Manifest.
 
 /*
  * FEHLERAUSGABE — BIS 000-000-0018 WAR SIE VERKEHRT HERUM VERDRAHTET.

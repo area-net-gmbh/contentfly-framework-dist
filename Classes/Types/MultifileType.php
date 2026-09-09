@@ -16,10 +16,6 @@ class MultifileType extends Type
         return 'multifile';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

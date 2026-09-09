@@ -10,10 +10,6 @@ class FloatType extends Type
         return 'float';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

@@ -22,10 +22,6 @@ class RadioType extends Type
         return 'radio';
     }
 
-    public function getAnnotationFile()
-    {
-        return 'Radio';
-    }
 
     public function doMatch($propertyAnnotations){
 

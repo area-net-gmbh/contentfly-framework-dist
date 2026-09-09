@@ -18,24 +18,21 @@ class TypeManager extends Manager
             throw new ContentflyException(Messages::contentfly_general_use_plugin_register_method, get_class($type));
         }
 
-        if($type->getAnnotationFile()){
-            if($type instanceof Type\CustomType){
-                \Doctrine\Common\Annotations\AnnotationRegistry::registerFile(ROOT_DIR.'/custom/Classes/Annotations/'.$type->getAnnotationFile().'.php');
-            }else{
-                \Doctrine\Common\Annotations\AnnotationRegistry::registerFile(ROOT_DIR.'/lib/contentfly/Classes/Annotations/'.$type->getAnnotationFile().'.php');
-            }
-        }
-
+        // HIER STANDEN DREI `AnnotationRegistry::registerFile()` (010-001-0005).
+        //
+        // Sie luden die Annotationsklasse eines Typs von Hand nach, weil Doctrines DocParser
+        // eine Annotation nur aufloest, wenn ihre Klasse bereits bekannt ist. Ein Attribut
+        // nennt eine echte Klasse; der Autoloader holt sie. Damit ist die Mechanik
+        // gegenstandslos, und mit ihr `Type::getAnnotationFile()`.
         $this->types[$type->getAlias()] = $type;
     }
 
     public function registerPluginType(Type\PluginType $type, Plugin $plugin){
 
         $type->setPluginKey($plugin->getKey());
-        if($type->getAnnotationFile()) {
-            \Doctrine\Common\Annotations\AnnotationRegistry::registerFile(ROOT_DIR . '/plugins/' . $plugin->getKey() . '/Annotations/' . $type->getAnnotationFile() . '.php');
-        }
 
+        // Auch hier stand ein `registerFile()`. Ein Plugin liegt unter dem PSR-4-Praefix
+        // `Plugins\`, seine Attributklassen sind also autoladbar.
         $this->types[$type->getAlias()] = $type;
     }
 

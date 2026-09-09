@@ -6,7 +6,6 @@ use Areanet\PIM\Classes\Type;
 use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Entity\Base;
 use Areanet\PIM\Entity\BaseSortable;
-use Doctrine\Common\Annotations\Annotation;
 use Areanet\PIM\Classes\Metadaten\Metadatenleser;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -19,10 +18,6 @@ class JoinBidirectionalType extends Type
         return 'joinbidirectional';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

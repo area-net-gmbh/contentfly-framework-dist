@@ -16,10 +16,6 @@ class OnejoinType extends Type
         return 'onejoin';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

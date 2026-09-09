@@ -10,10 +10,6 @@ class BooleanType extends Type
         return 'boolean';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

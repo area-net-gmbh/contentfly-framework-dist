@@ -19,10 +19,6 @@ class TextareaType extends Type
         return 'textarea';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
         if(!isset($propertyAnnotations['Doctrine\\ORM\\Mapping\\Column'])) {

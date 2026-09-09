@@ -20,10 +20,6 @@ class PermissionsType extends Type
         return 'permissions';
     }
 
-    public function getAnnotationFile()
-    {
-        return 'Permissions';
-    }
 
     public function doMatch($propertyAnnotations)
     {

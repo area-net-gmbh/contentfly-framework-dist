@@ -16,10 +16,6 @@ class JoinType extends Type
         return 'join';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

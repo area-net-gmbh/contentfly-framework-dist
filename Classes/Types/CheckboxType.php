@@ -22,10 +22,6 @@ class CheckboxType extends Type
         return 'checkbox';
     }
 
-    public function getAnnotationFile()
-    {
-        return 'Checkbox';
-    }
 
     public function doMatch($propertyAnnotations){
 

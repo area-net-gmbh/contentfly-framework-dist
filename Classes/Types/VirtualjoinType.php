@@ -22,10 +22,6 @@ class VirtualjoinType extends Type
         return 10;
     }
 
-    public function getAnnotationFile()
-    {
-        return 'Virtualjoin';
-    }
 
     public function doMatch($propertyAnnotations)
     {

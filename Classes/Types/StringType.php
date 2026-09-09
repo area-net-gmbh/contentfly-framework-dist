@@ -14,10 +14,6 @@ class StringType extends Type
         return 'string';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
     
     public function doMatch($propertyAnnotations){
 

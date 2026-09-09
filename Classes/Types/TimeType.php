@@ -19,10 +19,6 @@ class TimeType extends Type
         return 'time';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function processSchema($key, $defaultValue, $propertyAnnotations, $entityName){
         $schema             = parent::processSchema($key, $defaultValue, $propertyAnnotations, $entityName);

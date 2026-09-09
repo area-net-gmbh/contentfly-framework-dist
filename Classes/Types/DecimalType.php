@@ -10,10 +10,6 @@ class DecimalType extends Type
         return 'decimal';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

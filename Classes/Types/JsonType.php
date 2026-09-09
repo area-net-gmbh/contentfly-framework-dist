@@ -33,10 +33,6 @@ class JsonType extends Type
         return 'json';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations)
     {

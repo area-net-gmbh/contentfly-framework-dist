@@ -20,10 +20,6 @@ class I18nPermissionsType extends Type
         return 'i18npermissions';
     }
 
-    public function getAnnotationFile()
-    {
-        return 'I18nPermissions';
-    }
 
     public function doMatch($propertyAnnotations)
     {

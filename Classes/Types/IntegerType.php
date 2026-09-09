@@ -13,10 +13,6 @@ class IntegerType extends Type
         return 'integer';
     }
 
-    public function getAnnotationFile()
-    {
-        return null;
-    }
 
     public function doMatch($propertyAnnotations){
 

@@ -20,10 +20,6 @@ class SelectType extends Type
         return 'select';
     }
 
-    public function getAnnotationFile()
-    {
-        return 'Select';
-    }
 
     public function doMatch($propertyAnnotations){
         if(!isset($propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Select'])) {
