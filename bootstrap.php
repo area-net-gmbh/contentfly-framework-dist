@@ -83,10 +83,58 @@ if (method_exists(AnnotationRegistry::class, 'registerLoader')) {
     @AnnotationRegistry::registerLoader('class_exists');
 }
 
+/*
+ * FEHLERAUSGABE — BIS 000-000-0018 WAR SIE VERKEHRT HERUM VERDRAHTET.
+ *
+ * Der Block hatte keinen else-Zweig: Im Debug-Modus wurde display_errors eingeschaltet, im
+ * Produktionsbetrieb NICHTS gesetzt. Es galt, was die php.ini der Maschine sagte — und das
+ * offizielle php:*-Image laedt keine. Dort gilt dann der Compile-Default display_errors=On,
+ * und eine Produktionsinstanz liefert Deprecations, Warnings und Dateipfade an jeden
+ * Aufrufer aus.
+ *
+ * Die Einstellung wurde also dort gesetzt, wo sie unkritisch ist, und dort weggelassen, wo
+ * sie zaehlt.
+ *
+ * ── Warum das Framework es erzwingt und nicht dem Deployment ueberlaesst ───────────────
+ *
+ * Weil der Schaden eintritt, wenn NICHTS konfiguriert ist. Eine Anforderung an die
+ * Zielumgebung waere nur so gut wie die Umgebung, die sie liest; hier ist der unsichere
+ * Zustand der Standardzustand. Ein Framework, das Datenhaltung und API stellt, darf nicht
+ * davon abhaengen, dass jemand daran gedacht hat.
+ *
+ * log_errors bleibt an: Was nicht ausgeliefert wird, soll trotzdem auffindbar sein — und es
+ * ist die Quelle, aus der das "0 Deprecations"-Gate aus 006-005 liest.
+ *
+ * ── Warum im Debug-Modus jetzt E_ALL steht ────────────────────────────────────────────
+ *
+ * Vorher: E_ALL ^E_NOTICE ^E_DEPRECATED. Deprecations wurden ausgerechnet dort unterdrueckt,
+ * wo ein Entwickler sie sehen will. Das widerspricht der Vorgabe aus
+ * an_project/docs/tech-stack.md, deprecation-frei zu bauen: Wer sie sehen soll, sah sie
+ * nicht; wer sie nicht sehen soll, bekam sie.
+ *
+ * ── Was hiermit NICHT behoben ist ─────────────────────────────────────────────────────
+ *
+ * Die Kopplung selbst: PHP schreibt eine Deprecation direkt in den Antwortstrom, und wenn
+ * das geschieht, bevor Silex den Statuscode setzt, sind die Header schon unterwegs — die
+ * Antwort traegt dann 200, obwohl die Anwendung 405 oder 500 meint. Mit display_errors=Off
+ * kann das im Produktionsbetrieb nicht mehr eintreten, weil nichts mehr in den Strom
+ * geschrieben wird. Im Debug-Modus bleibt es moeglich.
+ *
+ * Ein ob_start() hier wuerde es auch dort loesen und ist bewusst NICHT gesetzt: Die
+ * Dateiauslieferung antwortet mit einer StreamedResponse (FileController::getAction()), und
+ * ein Ausgabepuffer zoege jede ausgelieferte Datei durch den Speicher. Die strukturelle
+ * Loesung kommt mit Epic 009 — Symfonys Fehlerbehandlung wandelt Fehler in Ausnahmen um,
+ * statt sie auszugeben.
+ */
 if(Adapter::getConfig()->APP_DEBUG){
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL ^E_NOTICE^E_DEPRECATED);
+    error_reporting(E_ALL);
+}else{
+    ini_set('display_errors', 0);
+    ini_set('display_startup_errors', 0);
+    ini_set('log_errors', 1);
+    error_reporting(E_ALL);
 }
 
 $app = new Application();
