@@ -116,7 +116,7 @@ if (method_exists(AnnotationRegistry::class, 'registerLoader')) {
  * ── Was hiermit NICHT behoben ist ─────────────────────────────────────────────────────
  *
  * Die Kopplung selbst: PHP schreibt eine Deprecation direkt in den Antwortstrom, und wenn
- * das geschieht, bevor Silex den Statuscode setzt, sind die Header schon unterwegs — die
+ * das geschieht, bevor der Kernel den Statuscode setzt, sind die Header schon unterwegs — die
  * Antwort traegt dann 200, obwohl die Anwendung 405 oder 500 meint. Mit display_errors=Off
  * kann das im Produktionsbetrieb nicht mehr eintreten, weil nichts mehr in den Strom
  * geschrieben wird. Im Debug-Modus bleibt es moeglich.
@@ -141,14 +141,14 @@ if(Adapter::getConfig()->APP_DEBUG){
 /*
  * Areanet\PIM\Classes\Kernel\Application statt Silex\Application (009-001-0001).
  *
- * Die Klasse erbt heute von Silex und sagt ueber ApplicationInterface zu, was das
- * Framework von ihr benutzt. Mit 009-002 faellt die Vererbung weg und ein
- * Symfony-7.4-Kernel tritt an ihre Stelle; die Schnittstelle bleibt dieselbe, und kein
- * Aufrufer merkt den Wechsel.
+ * DER WECHSEL IST VOLLZOGEN (009-002). Die Klasse erbte zunaechst noch von Silex und sagte
+ * ueber ApplicationInterface zu, was das Framework von ihr benutzt; genau diese Zusicherung
+ * hat den Tausch des Unterbaus getragen. Heute erbt sie von Kernel\Container und setzt einen
+ * Symfony-7.4-HttpKernel zusammen. Die Schnittstelle ist dieselbe geblieben, und kein
+ * Aufrufer hat den Wechsel gemerkt.
  *
- * Diese Datei ist bis dahin eine der wenigen Stellen, die Silex ueberhaupt noch nennen
- * duerfen — der Bootstrap ist die Stelle, die den Kernel kennen soll. Welche Stellen das
- * sind, haelt tests/Unit/Kernel/KeineSilexTypenTest.php fest (009-001-0005).
+ * Dass Silex, Pimple und knplabs nirgends mehr im Baum vorkommen, haelt
+ * tests/Unit/Kernel/KeineSilexTypenTest.php fest — mit leerer Ausnahmeliste, seit 009-002.
  */
 $app = new Application();
 
