@@ -1,9 +1,9 @@
 <?php
 namespace Areanet\PIM\Classes;
 
-
 use Areanet\PIM\Classes\Type\PluginType;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
+use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 
 abstract class Plugin
 {
@@ -97,14 +97,33 @@ abstract class Plugin
     }
 
     /**
-     * Initialisieren von eigenen Doctrine-Entitäten im Plugin
+     * Initialisieren von eigenen Doctrine-Entitäten im Plugin.
+     *
+     * ATTRIBUTE STATT ANNOTATIONEN (010-001-0004). Hier stand
+     * `$ormConfig->newDefaultAnnotationDriver(...)`.
+     *
+     * DIE UMSTELLUNG WAR NICHT WAHLFREI. Eine Plugin-Entity erbt von
+     * `Areanet\PIM\Entity\Base`, und bei einer MappedSuperclass setzt Doctrine an den
+     * geerbten Feldern kein `inherited` — der Treiber der Unterklasse liest sie neu. Ein
+     * Annotation-Treiber faende an der umgestellten `Base` nichts mehr und meldete
+     * „No identifier/primary key specified". Gemessen und begruendet in `010-001-0003`.
+     *
+     * WAS GEPRUEFT IST UND WAS NICHT. `tests/Unit/Manager/PluginManagerTest.php` deckt diese
+     * Methode ab — ein Spion auf der Doctrine-Konfiguration haelt fest, dass ein
+     * `AttributeDriver` fuer `plugins/<Key>/Entity` unter `Plugins\<Key>\Entity` eingehaengt
+     * wird. Der Test ist mit der Umstellung umgedreht worden und war vorher zu Recht rot.
+     *
+     * Was er NICHT zeigt: dass Doctrine aus einer echten Plugin-Entity danach auch Metadaten
+     * liest. `plugins/` ist leer, seit `006-003-0002` — dort liess sich schon
+     * `AnnotationRegistry::registerFile()` an nichts vorfuehren. Wer das erste Plugin baut,
+     * prueft das als Erstes.
      */
     private function initORM(): void{
         $ormConfig  = $this->app['orm.em']->getConfiguration();
         if(!is_dir(ROOT_DIR.'/plugins/'.$this->key.'/Entity')){
             mkdir(ROOT_DIR.'/plugins/'.$this->key.'/Entity');
         }
-        $driver     = $ormConfig->newDefaultAnnotationDriver(array(ROOT_DIR.'/plugins/'.$this->getKey().'/Entity'), false);
+        $driver     = new AttributeDriver(array(ROOT_DIR.'/plugins/'.$this->getKey().'/Entity'));
         $ormConfig->getMetadataDriverImpl()->addDriver($driver, $this->getNamespace().'\\Entity');
     }
 
