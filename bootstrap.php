@@ -42,6 +42,7 @@ use Areanet\PIM\Classes\Manager\TypeManager;
 use Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy;
 use Areanet\PIM\Command\InstallCommand;
 use Areanet\PIM\Command\SetupCommand;
+use Areanet\PIM\Command\TokenCleanupCommand;
 use Areanet\PIM\Classes\ORM\EntityManagerFactory;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Cache\ApcCache;
@@ -311,6 +312,7 @@ $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app)
         $app = $event->getApplication();
         $app->add(new InstallCommand());
         $app->add(new SetupCommand());
+        $app->add(new TokenCleanupCommand());
     });
     return $dispatcher;
 });

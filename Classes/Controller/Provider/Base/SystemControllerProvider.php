@@ -36,8 +36,27 @@ class SystemControllerProvider extends BaseControllerProvider
                 }
             }catch(InvalidFieldNameException $e){
 
-                if($request->get('method') == 'validateORM' || $request->get('method') == 'updateDatabase'){
-                    
+                /*
+                 * DAS NOTSCHLOSS — und warum nur noch updateDatabase darin steht
+                 * (000-000-0015).
+                 *
+                 * Ist das Schema kaputt, scheitert schon das Laden von Benutzer und Token mit
+                 * einer InvalidFieldNameException. Dann waere auch der Weg versperrt, der das
+                 * Schema wieder in Ordnung bringt. Diese Ausnahme laesst genau ihn durch.
+                 *
+                 * `validateORM` stand hier ebenfalls — die Methode gibt es im Controller
+                 * nicht. Die Bedingung oeffnete die Tuer fuer etwas, das dahinter ohnehin
+                 * abgewiesen wurde: eine Ausnahme ins Leere.
+                 *
+                 * GESTRICHEN STATT WIEDERHERGESTELLT. Doctrine braechte mit SchemaValidator
+                 * alles mit, und der Import steht noch oben in der Datei — aber eine
+                 * wiederhergestellte Methode waere ein zweiter Endpunkt, der OHNE Token und
+                 * OHNE Adminrecht erreichbar ist. Ein Notschloss soll so klein sein wie
+                 * moeglich; wer den Schemazustand pruefen will, kann das mit einem
+                 * Console-Command tun, der keine offene Tuer braucht.
+                 */
+                if($request->get('method') == 'updateDatabase'){
+
                 }else{
                     throw $e;
                 }

@@ -50,17 +50,47 @@ class SystemController extends BaseController
      *       "message:" "..."
      *   }
      */
+    /**
+     * Die ueber `POST /system/do` aufrufbaren Methoden (000-000-0015).
+     *
+     * Ausgeschrieben statt abgeleitet: Wer eine Methode hinzufuegt, entscheidet damit auch,
+     * ob sie ein Endpunkt sein soll.
+     */
+    private const ERLAUBTE_METHODEN = array(
+        'flushSchemaCache',
+        'updateDatabase',
+        'deleteToken',
+        'generateToken',
+        'listTokens',
+        'addToken',
+    );
+
     public function doAction(Request $request)
     {
         $method = $request->get('method');
 
         /*
+         * ERLAUBNISLISTE STATT method_exists (000-000-0015).
+         *
+         * Das Tor war `method_exists($this, $method)` — und damit erreichbar, was immer der
+         * Controller oder seine Basisklasse mitbringt:
+         *
+         *   doAction         ist public, besteht die Pruefung und ruft sich selbst auf. Die
+         *                    Rekursion endet erst am memory_limit — mit dem Standardwert nach
+         *                    etwa 0,2 s in einem Fatal Error, OHNE Limit gar nicht.
+         *   setEM,           kommen aus BaseController, werden aufgerufen und scheitern erst
+         *   __construct      an ihrer Typpruefung. Die Grenze zog die Signatur, nicht der
+         *                    Endpunkt.
+         *
+         * Die Liste nennt jetzt, was aufgerufen werden darf. Sie ist bewusst ausgeschrieben
+         * und nicht aus Reflection abgeleitet: Was hier steht, ist eine Entscheidung, keine
+         * Eigenschaft der Klasse — sonst waere jede neue Methode automatisch ein Endpunkt.
+         *
          * `method` fehlt, wenn der Aufrufer sie nicht mitschickt. Bis PHP 8.0 ergab
          * method_exists($this, null) still false, seit 8.1 ist es eine Deprecation
-         * (000-000-0023). Das Ergebnis bleibt dasselbe: derselbe Fehler wie bei einer
-         * unbekannten Methode — nur ohne Umweg ueber eine Meldung im Log.
+         * (000-000-0023).
          */
-        if (!is_string($method) || !method_exists($this, $method)) {
+        if (!is_string($method) || !in_array($method, self::ERLAUBTE_METHODEN, true)) {
             throw new \Exception('Methode '.(is_string($method) ? $method : '').' nicht verfügbar.');
         }
 
@@ -102,7 +132,7 @@ class SystemController extends BaseController
     {
         $id =  $request->get('id');
 
-        $token = $this->em->getRepository('Areanet\\Contently\\Entity\\Token')->find($id);
+        $token = $this->em->getRepository('Areanet\\PIM\\Entity\\Token')->find($id);
         if(!$token){
             throw new \Exception('Token ungültig');
         }
@@ -111,7 +141,7 @@ class SystemController extends BaseController
         $log->setModelId($id);
         $log->setModelName('PIM\\Token');
         $log->setUser($this->app['auth.user']);
-        $log->setMode('Gelöscht');
+        $log->setMode(Log::DELETED);
         $log->setModelLabel($token->getToken());
 
         $this->em->remove($token);
@@ -178,7 +208,7 @@ class SystemController extends BaseController
         $log->setModelId($token->getId());
         $log->setModelName('PIM\\Token');
         $log->setUser($this->app['auth.user']);
-        $log->setMode('Erstellt');
+        $log->setMode(Log::INSERTED);
         $log->setModelLabel($token->getToken());
         $this->em->persist($log);
         $this->em->flush();
