@@ -3,7 +3,7 @@ namespace Areanet\PIM\Classes;
 
 
 use Areanet\PIM\Classes\Type\PluginType;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 abstract class Plugin
 {

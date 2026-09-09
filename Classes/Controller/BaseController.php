@@ -2,7 +2,7 @@
 namespace Areanet\PIM\Classes\Controller;
 
 use Doctrine\ORM\EntityManager;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 abstract class BaseController
 {

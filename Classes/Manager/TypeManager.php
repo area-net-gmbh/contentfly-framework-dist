@@ -6,7 +6,7 @@ use Areanet\PIM\Classes\Manager;
 use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\Plugin;
 use Areanet\PIM\Classes\Type;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 class TypeManager extends Manager
 {

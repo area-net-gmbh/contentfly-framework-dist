@@ -3,7 +3,7 @@ namespace Areanet\PIM\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 /**
  * @ORM\Entity

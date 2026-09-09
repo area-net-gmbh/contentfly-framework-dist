@@ -7,7 +7,7 @@ use Areanet\PIM\Classes\LoginProvider;
 use Areanet\PIM\Classes\Manager\LoginManager;
 use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;

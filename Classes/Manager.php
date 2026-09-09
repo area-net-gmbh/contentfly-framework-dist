@@ -1,7 +1,7 @@
 <?php
 namespace Areanet\PIM\Classes;
 
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 class Manager
 {

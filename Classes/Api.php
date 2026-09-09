@@ -36,7 +36,7 @@ use Ramsey\Uuid\Uuid;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionProperty;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 use stdClass;
 use Symfony\Component\HttpFoundation\JsonResponse;
 

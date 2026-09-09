@@ -3,7 +3,7 @@ namespace Areanet\PIM\Entity;
 
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Permission;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 abstract class Serializable implements \JsonSerializable{
 

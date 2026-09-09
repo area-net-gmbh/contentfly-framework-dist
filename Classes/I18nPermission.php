@@ -3,7 +3,7 @@ namespace Areanet\PIM\Classes;
 
 use Areanet\PIM\Entity\Group;
 use Areanet\PIM\Entity\User;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 class I18nPermission
 {

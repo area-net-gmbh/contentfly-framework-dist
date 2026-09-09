@@ -7,7 +7,7 @@ use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Entity\Base;
 use Areanet\PIM\Entity\User;
 use Doctrine\ORM\EntityManager;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 abstract class Type
 {

@@ -4,7 +4,7 @@ use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Manager\LoginManager;
 use Areanet\PIM\Entity\User;
 use PHPMailer\PHPMailer\PHPMailer;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 /**
  * Class Mailer
