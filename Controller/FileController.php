@@ -52,6 +52,37 @@ class FileController extends BaseController
 
         $file   = $request->files->get('file');
 
+        /*
+         * Die vier Werte werden EINMAL hier gelesen, nicht 16-mal im Rumpf.
+         *
+         * Bis Symfony 3.4 kam aus files->get() das rohe $_FILES-Array, und der Rumpf griff
+         * mit $uploadName darauf zu. Das funktionierte zufaellig: PHP 8.1 ergaenzt $_FILES
+         * um den Schluessel `full_path`, die Erkennung in HttpFoundation 3.4
+         * (FileBag::$fileKeys) vergleicht die Schluessel exakt, scheitert daran und reichte
+         * das Array durch. Seit 006-002-0003 (Symfony 4.4) kommt ein UploadedFile, und der
+         * Array-Zugriff wurde zum Fatal Error — genau dort, wo 008-002 es vorhergesagt hatte.
+         *
+         * Die Zuordnung ist bewusst wortgetreu zum alten $_FILES-Eintrag, damit sich das
+         * Verhalten nicht nebenbei aendert:
+         *
+         *   getClientOriginalName()  <- $_FILES['name']      vom Client gemeldeter Name
+         *   getPathname()            <- $_FILES['tmp_name']  Pfad der Upload-Temporaerdatei
+         *   getClientMimeType()      <- $_FILES['type']      vom Client gemeldeter Typ
+         *   getSize()                <- $_FILES['size']      Groesse
+         *
+         * getClientMimeType() und NICHT getMimeType(): Letzteres raet den Typ aus dem Inhalt
+         * und lieferte damit etwas anderes als bisher. Was hier gebraucht wird, ist die
+         * Angabe des Clients — dieselbe wie vorher.
+         *
+         * Die Methoden gibt es in HttpFoundation 4.4 wie in 7.4. Der Rumpf sieht danach
+         * ueberhaupt kein Symfony mehr, ist also beim Kernel-Tausch (Epic 009) nicht wieder
+         * die Stelle, die bricht.
+         */
+        $uploadName    = $file->getClientOriginalName();
+        $uploadTmpPath = $file->getPathname();
+        $uploadType    = $file->getClientMimeType();
+        $uploadSize    = $file->getSize();
+
         if($request->get("id")){
 
             $fileObject = $this->em->getRepository('Areanet\PIM\Entity\File')->find($request->get("id"));
@@ -64,8 +95,8 @@ class FileController extends BaseController
                 if(Config\Adapter::getConfig()->DB_GUID_STRATEGY) $metadata->setIdGenerator(new AssignedGenerator());
                 $fileObject->setId($request->get("id"));
 
-                $extension      = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $baseFilename   = pathinfo($file['name'], PATHINFO_FILENAME);
+                $extension      = pathinfo($uploadName, PATHINFO_EXTENSION);
+                $baseFilename   = pathinfo($uploadName, PATHINFO_FILENAME);
                 $filename       = $this->sanitizeFileName($baseFilename) . "." . $extension;
                 $fileObject->setName($filename);
 
@@ -87,12 +118,12 @@ class FileController extends BaseController
                 $this->em->persist($log);
             }
 
-            $hash = md5_file($file['tmp_name']);
+            $hash = md5_file($uploadTmpPath);
 
             $width  = null;
             $height = null;
             try{
-                list($width, $height) = getimagesize($file['tmp_name']);
+                list($width, $height) = getimagesize($uploadTmpPath);
             }catch(Exception $e){
 
             }
@@ -104,8 +135,8 @@ class FileController extends BaseController
                 $fileObject->setHeight($height);
             }
 
-            $fileObject->setType($file['type']);
-            $fileObject->setSize($file['size']);
+            $fileObject->setType($uploadType);
+            $fileObject->setSize($uploadSize);
             $fileObject->setUserCreated($this->app['auth.user']);
             $fileObject->setUser($this->app['auth.user']);
             $fileObject->setHash($hash);
@@ -115,13 +146,13 @@ class FileController extends BaseController
 
             $backend = Backend::getInstance();
             $dir = $backend->getPath($fileObject);
-            move_uploaded_file($file['tmp_name'], $dir . '/' . $filename);
+            move_uploaded_file($uploadTmpPath, $dir . '/' . $filename);
 
-            $processor = Processing::getInstance($file['type']);
+            $processor = Processing::getInstance($uploadType);
             $processor->execute($backend, $fileObject);
 
         }else {
-            $hash = md5_file($file['tmp_name']);
+            $hash = md5_file($uploadTmpPath);
 
             $fileObject = null;
             if(Config\Adapter::getConfig()->FILE_HASH_MUST_UNIQUE){
@@ -129,14 +160,14 @@ class FileController extends BaseController
             }
 
             try{
-                list($width, $height) = getimagesize($file['tmp_name']);
+                list($width, $height) = getimagesize($uploadTmpPath);
             }catch(Exception $e){
                 $width  = null;
                 $height = null;
             }
 
-            $extension      = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $baseFilename   = pathinfo($file['name'], PATHINFO_FILENAME);
+            $extension      = pathinfo($uploadName, PATHINFO_EXTENSION);
+            $baseFilename   = pathinfo($uploadName, PATHINFO_FILENAME);
             $filename       = $this->sanitizeFileName($baseFilename) . "." . $extension;
 
             if (!$fileObject) {
@@ -160,8 +191,8 @@ class FileController extends BaseController
                 }
 
                 $fileObject->setName($filename);
-                $fileObject->setType($file['type']);
-                $fileObject->setSize($file['size']);
+                $fileObject->setType($uploadType);
+                $fileObject->setSize($uploadSize);
                 $fileObject->setHash($hash);
                 $fileObject->setUserCreated($this->app['auth.user']);
                 $fileObject->setUser($this->app['auth.user']);
@@ -172,7 +203,7 @@ class FileController extends BaseController
                 $backend = Backend::getInstance();
                 $dir = $backend->getPath($fileObject);
 
-                move_uploaded_file($file['tmp_name'], $dir . '/' . $filename);
+                move_uploaded_file($uploadTmpPath, $dir . '/' . $filename);
 
                 $log = new Log();
                 $log->setModelName('PIM\File');
@@ -185,7 +216,7 @@ class FileController extends BaseController
 
 
 
-                $processor = Processing::getInstance($file['type']);
+                $processor = Processing::getInstance($uploadType);
                 $processor->execute($backend, $fileObject);
 
 
