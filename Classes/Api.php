@@ -945,15 +945,27 @@ class Api
 
     public function getExtendedSchema(): array
     {
+        /*
+         * DER frontend-BLOCK IST VON SIEBEN AUF ZWEI SCHLUESSEL GESCHRUMPFT (000-000-0010).
+         *
+         * Entfallen sind customLogo, formImageSquarePreview, title, welcome und
+         * login_redirect. Alle fuenf beschrieben Eigenschaften der PIM-Oberflaeche, die Epic
+         * 012 entfernt hat — das Schema bewarb sie weiter.
+         *
+         * Die beiden verbliebenen sind keine Oberflaechen-Sache:
+         *
+         *   customNavigation  liest die Entities PIM\Nav und PIM\NavItem aus. Beide gibt es,
+         *                     sie gehoeren zum Datenmodell und die Suite beruehrt sie.
+         *   languages         kommt aus APP_LANGUAGES und bestimmt die Hauptsprache
+         *                     (bootstrap.php setzt daraus APP_CMS_MAIN_LANG).
+         *
+         * Der Schluesselname "frontend" bleibt trotzdem. Ihn umzubenennen waere ein zweiter
+         * Bruch fuer jeden Client, der ihn liest — und einer ohne Gegenwert.
+         */
         $frontend = array(
-            'customLogo' => Adapter::getConfig()->FRONTEND_CUSTOM_LOGO,
-            'formImageSquarePreview' => Adapter::getConfig()->FRONTEND_FORM_IMAGE_SQUARE_PREVIEW,
-            'title'  => Adapter::getConfig()->FRONTEND_TITLE,
-            'welcome'  => Adapter::getConfig()->FRONTEND_WELCOME,
             'customNavigation' => array(
                 'enabled' => Adapter::getConfig()->FRONTEND_CUSTOM_NAVIGATION
             ),
-            'login_redirect' => Adapter::getConfig()->FRONTEND_LOGIN_REDIRECT,
             'languages' => Adapter::getConfig()->APP_LANGUAGES
         );
 

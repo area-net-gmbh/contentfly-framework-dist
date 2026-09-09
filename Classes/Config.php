@@ -232,53 +232,40 @@ class Config{
      */
     public $APP_HTTP_AUTH_PASS = null;
 
-    /**
-     * @var string Load Frontend UI in folder /ui/...
+    /*
+     * VON ZEHN FRONTEND_*-FELDERN SIND ACHT ENTFALLEN (000-000-0010).
+     *
+     * Epic 012 hat die PIM-Oberflaeche entfernt; 012-005-0004 zog nur die drei Felder mit,
+     * die es selbst verwaist hatte, und vermerkte den Rest als eigenen Task. Entfallen sind:
+     *
+     *   FRONTEND_UI, FRONTEND_URL, FRONTEND_CUSTOM_LOGIN_BG   niemand las sie
+     *   FRONTEND_TITLE, FRONTEND_WELCOME, FRONTEND_LOGIN_REDIRECT,
+     *   FRONTEND_CUSTOM_LOGO, FRONTEND_FORM_IMAGE_SQUARE_PREVIEW
+     *                                                          nur der frontend-Block des
+     *                                                          Schemas las sie, und der
+     *                                                          bewarb damit Eigenschaften
+     *                                                          einer geloeschten Oberflaeche
+     *
+     * Die beiden folgenden bleiben. Sie tragen "FRONTEND_" im Namen, steuern aber Verhalten
+     * der API — die Benennung ist ein Erbe, kein Hinweis auf ihren Zweck. Umbenennen waere
+     * ein Bruch fuer jedes Bestandsprojekt und gehoert, wenn ueberhaupt, zu Epic 007.
      */
-    public $FRONTEND_UI = 'default';
 
     /**
-     * @var string Load Frontend UI in folder /ui/...
-     */
-    public $FRONTEND_TITLE = 'Contentfly CMS - Let your content fly!';
-
-    /**
-     * @var boolean Benutzerdefinierte Navigation anzeigen.
+     * @var boolean Schaltet die benutzerdefinierte Navigation im Schema frei.
+     *
+     * BLEIBT: Steuert einen datengetriebenen Zweig in Api::getExtendedSchema(), der die
+     * Entities PIM\Nav und PIM\NavItem ausliest. Beide existieren, sind Teil des
+     * Datenmodells und werden von der Suite beruehrt — das ist kein Rest der Oberflaeche.
      */
     public $FRONTEND_CUSTOM_NAVIGATION = false;
 
     /**
-     * @var string Load Frontend UI in folder /ui/...
-     */
-    public $FRONTEND_WELCOME = 'Contentfly CMS - Let your content fly!';
-
-    /**
-     * @var string URL/Path for login in the backend
-     */
-    public $FRONTEND_URL = '/';
-
-    /**
-     * @var string URL/Path for login in the backend
-     */
-    public $FRONTEND_LOGIN_REDIRECT = '/';
-
-    /**
-     * @var boolean Show custom logo custom/Frontend/ui/default/img/logo.png
-     */
-    public $FRONTEND_CUSTOM_LOGO = false;
-
-    /**
-     * @var boolean Show custom logo custom/Frontend/ui/default/img/bg_login.jpg
-     */
-    public $FRONTEND_CUSTOM_LOGIN_BG = false;
-
-    /**
-     * @var boolean Square previewed images in forms
-     */
-    public $FRONTEND_FORM_IMAGE_SQUARE_PREVIEW = true;
-
-    /**
-     * @var integer URL/Path for login in the backend
+     * @var integer Standard-Seitengroesse der Pagination von /api/list und /api/query
+     *
+     * BLEIBT: Wird in ApiController::listAction() als Vorgabe fuer itemsPerPage gelesen und
+     * bestimmt damit, wie viele Objekte ein Client ohne eigene Angabe bekommt. Reines
+     * API-Verhalten.
      */
     public $FRONTEND_ITEMS_PER_PAGE = 40;
 

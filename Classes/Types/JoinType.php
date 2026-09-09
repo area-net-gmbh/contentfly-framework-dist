@@ -37,7 +37,6 @@ class JoinType extends Type
         $annotations        = $propertyAnnotations['Doctrine\\ORM\\Mapping\\ManyToOne'];
 
         $schema['accept']   = $annotations->targetEntity;
-        $schema['multiple'] = false;
         $schema['dbfield']  = lcfirst($key).'_id';
 
         if(isset($propertyAnnotations['Doctrine\\ORM\\Mapping\\JoinColumn'])){

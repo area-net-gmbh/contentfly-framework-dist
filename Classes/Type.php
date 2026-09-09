@@ -19,8 +19,6 @@ abstract class Type
 
     protected $entitySettings = array();
 
-    public $insertCallback = null;
-    public $updateCallback = null;
 
     public function __construct(Application $app)
     {

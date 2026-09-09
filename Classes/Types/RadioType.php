@@ -38,7 +38,6 @@ class RadioType extends Type
 
     public function processSchema($key, $defaultValue, $propertyAnnotations, $entityName){
         $schema             = parent::processSchema($key, $defaultValue, $propertyAnnotations, $entityName);
-        $schema['multiple'] = false;
 
         if(isset($propertyAnnotations['Doctrine\\ORM\\Mapping\\ManyToOne'])) {
             $annotations = $propertyAnnotations['Doctrine\\ORM\\Mapping\\ManyToOne'];

@@ -45,7 +45,6 @@ class OnejoinType extends Type
 
         $schema['dbtype']   = 'integer';
         $schema['accept']   = $one2Oneentity;
-        $schema['multiple'] = false;
 
         return $schema;
     }

@@ -128,11 +128,19 @@ class ApiController extends BaseController
      */
     public function configAction()
     {
-        $frontend = array(
-            'customLogo' => Config\Adapter::getConfig()->FRONTEND_CUSTOM_LOGO
-        );
-
-        return $this->renderResponse(array('frontend' => $frontend, 'devmode' => Config\Adapter::getConfig()->APP_DEBUG, 'version' => APP_VERSION.'/'.CUSTOM_VERSION));
+        /*
+         * DER frontend-SCHLUESSEL IST ENTFALLEN (000-000-0010).
+         *
+         * Er enthielt genau einen Eintrag, customLogo — eine Eigenschaft der PIM-Oberflaeche,
+         * die Epic 012 entfernt hat. Das waere an jeder Stelle ein Rest; hier war es mehr:
+         * /api/config ist die EINZIGE Route des ApiControllerProvider ohne ->before(checkAuth)
+         * und damit der oeffentliche Teil der API. Was sie preisgibt, sieht jeder ohne Token.
+         *
+         * Leer stehen gelassen wurde er nicht: Ein Schluessel, der nichts mehr traegt, laedt
+         * dazu ein, wieder etwas hineinzulegen. Die Entfernung steht als Breaking Change in
+         * an_project/docs/breaking-changes.md.
+         */
+        return $this->renderResponse(array('devmode' => Config\Adapter::getConfig()->APP_DEBUG, 'version' => APP_VERSION.'/'.CUSTOM_VERSION));
     }
 
     /**

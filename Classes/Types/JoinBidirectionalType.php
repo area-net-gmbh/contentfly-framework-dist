@@ -40,7 +40,6 @@ class JoinBidirectionalType extends Type
 
     public function processSchema($key, $defaultValue, $propertyAnnotations, $entityName){
         $schema             = parent::processSchema($key, $defaultValue, $propertyAnnotations, $entityName);
-        $schema['multipe']  = true;
         $schema['dbtype']   = null;
         $schema['sortable'] = false;
 
