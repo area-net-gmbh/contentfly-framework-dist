@@ -510,8 +510,27 @@ class ApiController extends BaseController
 
         $api        = new Api($this->app, $request);
 
-        if(!($data = $api->getList($entityName, $where, $order, $groupBy, $properties, $lastModified, $flatten, $currentPage, $itemsPerPage, $lang, $untranslatedLang))){
-            return new JsonResponse(array('message' => "Not found"), 404);
+        $data = $api->getList($entityName, $where, $order, $groupBy, $properties, $lastModified, $flatten, $currentPage, $itemsPerPage, $lang, $untranslatedLang);
+
+        /**
+         * Eine leere Menge ist ein Ergebnis, kein Fehler (000-000-0014).
+         *
+         * HIER STAND `return new JsonResponse(array('message' => "Not found"), 404)` — eine
+         * achte Antwortform, die mit keiner der sieben anderen etwas zu tun hatte. Fuer einen
+         * Client waren damit **"keine Treffer" und "diese Route gibt es nicht" nicht
+         * unterscheidbar**: gleicher Statuscode, gleicher Rumpf.
+         *
+         * Eine unbekannte Entity wirft weiterhin und kommt als 404 mit
+         * `contentfly_general_unknown_entity` an — das ist der Fall, fuer den der Code
+         * gedacht war. Eine bekannte Entity ohne Treffer antwortet mit 200 und einer leeren
+         * Liste, so wie eine Abfrage mit einem Treffer mit 200 und einer Liste mit einem
+         * Eintrag antwortet.
+         *
+         * Das ist der einzige Teil der Envelope-Vereinheitlichung, der jetzt schon kommt.
+         * Warum der Rest wartet, steht in an_project/docs/api-envelope.md.
+         */
+        if($data === null){
+            $data = array('objects' => array(), 'totalObjects' => 0);
         }
 
         if($doCount){
