@@ -53,7 +53,7 @@ use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Events;
 use Knp\Console\ConsoleEvent;
 use Knp\Console\ConsoleEvents;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\Application;
 use Knp\Provider\ConsoleServiceProvider;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -138,6 +138,18 @@ if(Adapter::getConfig()->APP_DEBUG){
     error_reporting(E_ALL);
 }
 
+/*
+ * Areanet\PIM\Classes\Kernel\Application statt Silex\Application (009-001-0001).
+ *
+ * Die Klasse erbt heute von Silex und sagt ueber ApplicationInterface zu, was das
+ * Framework von ihr benutzt. Mit 009-002 faellt die Vererbung weg und ein
+ * Symfony-7.4-Kernel tritt an ihre Stelle; die Schnittstelle bleibt dieselbe, und kein
+ * Aufrufer merkt den Wechsel.
+ *
+ * Diese Datei ist bis dahin eine der wenigen Stellen, die Silex ueberhaupt noch nennen
+ * duerfen — der Bootstrap ist die Stelle, die den Kernel kennen soll. Welche Stellen das
+ * sind, haelt tests/Unit/Kernel/KeineSilexTypenTest.php fest (009-001-0005).
+ */
 $app = new Application();
 
 $app['is_installed'] = (Adapter::getConfig()->DB_HOST != '$SET_DB_HOST');
