@@ -1374,12 +1374,13 @@ class Api
         $permissions = array();
         foreach($schema as $entityName => $config){
 
+            // 'export' und 'extended' sind mit 000-000-0012 entfallen. Beide standen hier,
+            // ohne dass irgendein Endpunkt sie geprueft haette — siehe den Klassenkommentar
+            // von Areanet\PIM\Classes\Permission.
             $permissions[$entityName] = array(
                 'readable'  => Permission::isReadable($this->app['auth.user'], $entityName),
                 'writable'  => Permission::isWritable($this->app['auth.user'], $entityName),
-                'deletable' => Permission::isDeletable($this->app['auth.user'], $entityName),
-                'export'    => Permission::canExport($this->app['auth.user'], $entityName),
-                'extended'  => Permission::getExtended($this->app['auth.user'], $entityName)
+                'deletable' => Permission::isDeletable($this->app['auth.user'], $entityName)
             );
         }
 
@@ -1456,12 +1457,11 @@ class Api
 
             $annotationReader = new AnnotationReader();
 
+            // Siehe oben: 'export' und 'extended' entfallen mit 000-000-0012.
             $permissions[$entityName] = array(
                 'readable'  => $this->app['auth.user'] ? Permission::isReadable($this->app['auth.user'], $entityName) : 0,
                 'writable'  => $this->app['auth.user'] ? Permission::isWritable($this->app['auth.user'], $entityName) : 0,
-                'deletable' => $this->app['auth.user'] ? Permission::isDeletable($this->app['auth.user'], $entityName) : 0,
-                'export'    => $this->app['auth.user'] ? Permission::canExport($this->app['auth.user'], $entityName) : 0,
-                'extended'  => $this->app['auth.user'] ? Permission::getExtended($this->app['auth.user'], $entityName) : 0
+                'deletable' => $this->app['auth.user'] ? Permission::isDeletable($this->app['auth.user'], $entityName) : 0
             );
 
             $i18n = false;
