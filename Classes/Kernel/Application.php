@@ -166,7 +166,7 @@ class Application extends Container implements ApplicationInterface
      */
     public function before($callback, $priority = 0)
     {
-        $this['dispatcher']->addListener(
+        $this->on(
             \Symfony\Component\HttpKernel\KernelEvents::REQUEST,
             function (RequestEvent $event) use ($callback): void {
                 if (!$event->isMainRequest()) {
@@ -186,7 +186,7 @@ class Application extends Container implements ApplicationInterface
     /** Hook nach der Action. Der Rückruf bekommt `(Request, Response)` wie in Silex. */
     public function after($callback, $priority = 0)
     {
-        $this['dispatcher']->addListener(
+        $this->on(
             \Symfony\Component\HttpKernel\KernelEvents::RESPONSE,
             function (ResponseEvent $event) use ($callback): void {
                 $ergebnis = $callback($event->getRequest(), $event->getResponse(), $this);
@@ -207,7 +207,7 @@ class Application extends Container implements ApplicationInterface
      */
     public function error($callback, $priority = -8)
     {
-        $this['dispatcher']->addListener(
+        $this->on(
             \Symfony\Component\HttpKernel\KernelEvents::EXCEPTION,
             function (ExceptionEvent $event) use ($callback): void {
                 if ($event->hasResponse()) {
@@ -224,10 +224,40 @@ class Application extends Container implements ApplicationInterface
         );
     }
 
-    /** Ein Listener auf ein beliebiges Kernel-Ereignis. */
+    /**
+     * Ein Listener auf ein beliebiges Kernel-Ereignis.
+     *
+     * VOR DEM BOOT WIRD DIE REGISTRIERUNG VERSCHOBEN, NICHT AUSGEFÜHRT (009-004-0004).
+     *
+     * Der Grund ist das Einfrieren des Containers: Wer `$this['dispatcher']` ausliest, friert
+     * ihn ein, und jedes spätere `extend('dispatcher', …)` wirft. Der `ConsoleManager` braucht
+     * genau dieses `extend()`, um Projekt-Commands anzumelden. Ein `before()` in
+     * `custom/app.php` — die Datei, in der ein Projekt beides tut — hätte also jeden danach
+     * registrierten Command unmöglich gemacht:
+     *
+     *     RuntimeException: Der Dienst "dispatcher" ist bereits ausgelesen …
+     *
+     * Silex hat das genauso gelöst und `on()` vor dem Boot über `extend()` geführt. Beim
+     * Nachbau in `009-002-0002` ist es verlorengegangen — die Methode sah einfacher aus, und
+     * kein Test deckte die Abfolge „erst ein Hook, dann ein Command" ab. Aufgefallen ist es
+     * erst, als die Vorlage in `009-004-0001` ihren eigenen dokumentierten Weg ging.
+     *
+     * An der Ausführungsreihenfolge ändert das nichts: Die verschobenen Registrierungen laufen
+     * beim ersten `handle()` in derselben Reihenfolge und mit denselben Prioritäten.
+     */
     public function on($eventName, $callback, $priority = 0)
     {
-        $this['dispatcher']->addListener($eventName, $callback, $priority);
+        if ($this->gebootet) {
+            $this['dispatcher']->addListener($eventName, $callback, $priority);
+
+            return;
+        }
+
+        $this->extend('dispatcher', static function ($dispatcher) use ($eventName, $callback, $priority) {
+            $dispatcher->addListener($eventName, $callback, $priority);
+
+            return $dispatcher;
+        });
     }
 
     // ── Antwort-Fabriken ───────────────────────────────────────────────────────────────
@@ -257,6 +287,11 @@ class Application extends Container implements ApplicationInterface
             return;
         }
 
+        /*
+         * gebootet ZUERST: Ab hier laeuft on() direkt statt ueber extend(), und die Zeilen
+         * darunter lesen den Dispatcher aus — was die verschobenen Registrierungen aufloest.
+         * Andersherum riefe der erste Zugriff on() rekursiv.
+         */
         $this->gebootet = true;
 
         $this['dispatcher']->addSubscriber(new RouterListener(
