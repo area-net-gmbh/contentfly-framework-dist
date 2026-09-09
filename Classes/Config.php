@@ -150,6 +150,7 @@ class Config{
         '\\Areanet\\PIM\\Classes\\Types\\DecimalType',
         '\\Areanet\\PIM\\Classes\\Types\\FloatType',
         '\\Areanet\\PIM\\Classes\\Types\\TextareaType',
+        '\\Areanet\\PIM\\Classes\\Types\\JsonType',
         '\\Areanet\\PIM\\Classes\\Types\\StringType',
         '\\Areanet\\PIM\\Classes\\Types\\TimeType',
         '\\Areanet\\PIM\\Classes\\Types\\SelectType',

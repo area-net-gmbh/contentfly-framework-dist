@@ -1575,7 +1575,32 @@ class Api
                     }
                 }
 
-
+                /*
+                 * EIN FELD OHNE PASSENDEN TYP FAELLT NICHT MEHR STILL AUS DEM SCHEMA
+                 * (000-000-0017).
+                 *
+                 * Griff keiner der registrierten Typen, blieb $properties fuer diese
+                 * Eigenschaft schlicht ungesetzt: kein Eintrag, keine Warnung, kein Hinweis.
+                 * Lesen lieferte das Feld nicht, Schreiben scheiterte mit
+                 * contentfly_general_unknown_property — und niemand erfuhr, warum. Die
+                 * Vorlage custom/ fuehrte mit einem json-Feld genau diesen Fall vor.
+                 *
+                 * Geworfen wird NICHT: Ein Projekt mit einem exotischen Spaltentyp koennte
+                 * sonst nach einem Update sein Schema nicht mehr aufbauen. Eine Warnung
+                 * landet im Log, und die Suite setzt failOnWarning — dort faellt es sofort
+                 * auf, ohne im Betrieb etwas umzuwerfen.
+                 */
+                if (empty($properties[$prop->getName()]) && isset($allPropertyAnnotations['Doctrine\\ORM\\Mapping\\Column'])) {
+                    trigger_error(
+                        sprintf(
+                            'Kein Contentfly-Typ passt auf %s::%s (Spaltentyp "%s") — das Feld fehlt im API-Schema.',
+                            $entityName,
+                            $prop->getName(),
+                            $allPropertyAnnotations['Doctrine\\ORM\\Mapping\\Column']->type
+                        ),
+                        E_USER_WARNING
+                    );
+                }
 
                 if(!empty($properties[$prop->getName()]) && !empty($customProperties[$prop->getName()])){
                     $properties[$prop->getName()] = array_merge($properties[$prop->getName()], $customProperties[$prop->getName()]);

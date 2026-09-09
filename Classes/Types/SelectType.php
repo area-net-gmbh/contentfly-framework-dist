@@ -2,6 +2,8 @@
 namespace Areanet\PIM\Classes\Types;
 
 use Areanet\PIM\Classes\Api;
+use Areanet\PIM\Classes\Exceptions\ContentflyException;
+use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\Type;
 use Areanet\PIM\Entity\Base;
 
@@ -63,12 +65,59 @@ class SelectType extends Type
     public function toDatabase(Api $api, Base $object, $property, $value, $entityName, $schema, $user, $data = null, $lang = null): void
     {
         $setter = 'set'.ucfirst($property);
+        $config = $schema[ucfirst($entityName)]['properties'][$property];
 
-        if($schema[ucfirst($entityName)]['properties'][$property]['dbtype'] == 'integer'){
+        $this->wertPruefen($entityName, $property, $value, $config);
+
+        if($config['dbtype'] == 'integer'){
             $object->$setter(intval($value));
         }else{
             $object->$setter($value);
         }
 
+    }
+
+    /**
+     * Prueft den Schreibwert gegen die Optionen der Annotation (000-000-0017).
+     *
+     * BIS DAHIN VALIDIERTE @PIM\Select NICHTS. Die Optionen standen im Schema, aber niemand
+     * verglich einen Schreibwert damit: `state: "gibtsnicht"` wurde angenommen und landete
+     * unveraendert in der Spalte. Der einzige Konsument der Liste war die geloeschte
+     * Oberflaeche — was blieb, war eine Zusicherung im Schema, die nichts zusicherte.
+     *
+     * DAS IST EINE VERHALTENSAENDERUNG fuer Bestandsprojekte und als solche in
+     * an_project/docs/breaking-changes.md vermerkt: Ein Projekt, dessen Daten heute Werte
+     * ausserhalb der Liste enthalten, bekommt beim naechsten Schreiben einen Fehler.
+     *
+     * NULL UND LEER GEHEN DURCH. Ob ein Feld leer sein darf, entscheidet `nullable` am
+     * Spaltentyp, nicht die Optionsliste — sonst haette diese Pruefung nebenbei jedes
+     * Select-Feld zum Pflichtfeld gemacht.
+     */
+    private function wertPruefen($entityName, $property, $value, array $config): void
+    {
+        if ($value === null || $value === '') {
+            return;
+        }
+
+        if (empty($config['options']) || !is_array($config['options'])) {
+            return;
+        }
+
+        $erlaubt = array_column($config['options'], 'id');
+
+        if (in_array((string) $value, array_map('strval', $erlaubt), true)) {
+            return;
+        }
+
+        throw new ContentflyException(
+            Messages::contentfly_general_invalid_params,
+            sprintf(
+                '%s::%s — "%s" ist keine der erlaubten Optionen (%s)',
+                ucfirst($entityName),
+                $property,
+                is_scalar($value) ? (string) $value : gettype($value),
+                implode(', ', $erlaubt)
+            )
+        );
     }
 }
