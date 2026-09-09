@@ -3,7 +3,7 @@ namespace Areanet\PIM\Command;
 
 use Areanet\PIM\Entity\ThumbnailSetting;
 use Areanet\PIM\Entity\User;
-use Knp\Command\Command;
+use Areanet\PIM\Classes\Kernel\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -21,7 +21,7 @@ class SetupCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $app   = $this->getSilexApplication();
+        $app   = $this->anwendung();
         $em    = $app['orm.em'];
 
         $app['helper']->install($em);

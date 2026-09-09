@@ -3,7 +3,7 @@ namespace Areanet\PIM\Command;
 
 use Areanet\PIM\Classes\Config\Adapter;
 use Doctrine\ORM\Tools\SchemaTool;
-use Knp\Command\Command;
+use Areanet\PIM\Classes\Kernel\Command;
 use Silex\Provider\DoctrineServiceProvider;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -46,7 +46,7 @@ class InstallCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $app = $this->getSilexApplication();
+        $app = $this->anwendung();
 
         // Schritt 0 — Guard. Ein installiertes System wird nicht erneut installiert:
         // Schritt 5 würde die Zugangsdaten in config.php überschreiben und Schritt 10
