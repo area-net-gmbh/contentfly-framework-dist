@@ -281,13 +281,26 @@ if($app['is_installed']) {
 
     if (!Adapter::getConfig()->APP_DEBUG && !defined('APPCMS_CONSOLE')) {
         switch (Adapter::getConfig()->APP_CACHE_DRIVER) {
+            /*
+             * setNamespace() statt eines Konstruktor-Arguments (009-003-0002).
+             *
+             * Hier stand `new ApcCache('query')`. Die Klasse hat gar keinen Konstruktor — das
+             * Argument wurde stillschweigend verworfen, und beide Caches teilten sich
+             * denselben Namensraum. Gemeint war offensichtlich eine Trennung; PHPStan hat es
+             * gemeldet ("does not have a constructor and must be instantiated without any
+             * parameters"), und die Absicht laesst sich mit setNamespace() ausdruecken.
+             */
             case 'apc':
-                $config->setQueryCacheImpl(new ApcCache('query'));
-                $config->setMetadataCacheImpl(new ApcCache('metadata'));
+                $config->setQueryCacheImpl($cacheImpl = new ApcCache());
+                $cacheImpl->setNamespace('query');
+                $config->setMetadataCacheImpl($cacheImpl = new ApcCache());
+                $cacheImpl->setNamespace('metadata');
                 break;
             case 'apcu':
-                $config->setQueryCacheImpl(new ApcuCache('query'));
-                $config->setMetadataCacheImpl(new ApcuCache('metadata'));
+                $config->setQueryCacheImpl($cacheImpl = new ApcuCache());
+                $cacheImpl->setNamespace('query');
+                $config->setMetadataCacheImpl($cacheImpl = new ApcuCache());
+                $cacheImpl->setNamespace('metadata');
                 break;
             case 'memcached':
                 $cache = new MemcachedCache();
@@ -364,10 +377,11 @@ $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app)
     // console() statt getApplication() seit 009-002-0005: Das Ereignis liefert die Console,
     // und "Application" waere in diesem Baum doppeldeutig — es gibt auch die Anwendung.
     $dispatcher->addListener(ConsoleEvents::INIT, function (ConsoleInitEvent $event) {
+        // addCommand() statt add(): Letzteres ist seit Symfony 7.4 deprecated (009-003-0002).
         $console = $event->console();
-        $console->add(new InstallCommand());
-        $console->add(new SetupCommand());
-        $console->add(new TokenCleanupCommand());
+        $console->addCommand(new InstallCommand());
+        $console->addCommand(new SetupCommand());
+        $console->addCommand(new TokenCleanupCommand());
     });
     return $dispatcher;
 });

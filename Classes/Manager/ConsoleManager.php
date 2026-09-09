@@ -24,7 +24,7 @@ class ConsoleManager extends Manager
              * Attrappe getauscht zu werden, die dasselbe Ereignis nur anders benennt.
              */
             $dispatcher->addListener(ConsoleEvents::INIT, function ($event) use ($command) {
-                $event->console()->add($command);
+                $event->console()->addCommand($command);
             });
 
             return $dispatcher;

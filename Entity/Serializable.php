@@ -5,7 +5,20 @@ use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Permission;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
+/**
+ * Die Basis fuer alles, was die API als Objekt ausliefert.
+ *
+ * `getId()` ist hier nicht deklariert, wird aber benutzt — PHPStan meldet das zu Recht
+ * (009-003-0002). Die Methode kommt aus `Base`, `BaseI18n` und `Log`, also aus jeder Klasse,
+ * die tatsaechlich von hier erbt. Statt sie hier zu erfinden, ist sie als abstrakt
+ * deklariert: Damit steht die Bedingung im Code, unter der diese Klasse funktioniert, und
+ * eine Ableitung ohne Id faellt beim Laden auf statt bei der ersten Auslieferung.
+ */
 abstract class Serializable implements \JsonSerializable{
+
+    /** Die Id des Objekts. Jede erbende Entity bringt sie mit. */
+    abstract public function getId();
+
 
     #[\ReturnTypeWillChange]
     public function jsonSerialize()

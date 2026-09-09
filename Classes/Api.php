@@ -286,7 +286,23 @@ class Api
             if($schema[$entityShortName]['properties'][$property]['unique']){
                 $objectDuplicated = $this->em->getRepository($entityFullName)->findOneBy(array($property => $value));
                 if($objectDuplicated){
-                    throw new ContentflyException(Messages::contentfly_general_record_already_exists, "$property::$value");
+                    /*
+                     * EIN ECHTER FEHLER, VON PHPSTAN GEFUNDEN (009-003-0002).
+                     *
+                     * Hier stand `Messages::contentfly_general_record_already_exists`. Diese
+                     * Konstante gibt es nicht — sie heisst `…_ressource_already_exists`. Die
+                     * Zeile war damit kein Fehlerbericht, sondern ein Fatal:
+                     *
+                     *     Undefined constant …Messages::contentfly_general_record_already_exists
+                     *
+                     * Der Aufrufer bekam 500 statt 409. `ConstraintApiTest` hat das als
+                     * Ist-Zustand festgehalten und `000-000-0006` zugeschrieben — die
+                     * Zuschreibung war falsch, es lag nie an der Fehlerkette.
+                     *
+                     * Jetzt dieselbe Konstante und derselbe Statuscode wie in den drei
+                     * anderen Faellen weiter unten in doUpdate().
+                     */
+                    throw new ContentflyException(Messages::contentfly_general_ressource_already_exists, "$property::$value", Messages::contentfly_status_ressource_already_exists);
                 }
             }
 
