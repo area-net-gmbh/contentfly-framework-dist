@@ -66,7 +66,7 @@ class SystemController extends BaseController
 
     public function doAction(Request $request)
     {
-        $method = $request->get('method');
+        $method = ($request->request->all()['method'] ?? null);
 
         /*
          * ERLAUBNISLISTE STATT method_exists (000-000-0015).
@@ -129,7 +129,7 @@ class SystemController extends BaseController
 
     protected function deleteToken(Request $request)
     {
-        $id =  $request->get('id');
+        $id =  ($request->request->all()['id'] ?? null);
 
         $token = $this->em->getRepository('Areanet\\PIM\\Entity\\Token')->find($id);
         if(!$token){
@@ -176,9 +176,9 @@ class SystemController extends BaseController
 
     protected function addToken(Request $request)
     {
-        $referrer    =  $request->get('referrer');
-        $tokenString =  $request->get('token');
-        $userId      =  $request->get('user');
+        $referrer    =  ($request->request->all()['referrer'] ?? null);
+        $tokenString =  ($request->request->all()['token'] ?? null);
+        $userId      =  ($request->request->all()['user'] ?? null);
 
         if(!$referrer || !$tokenString || !$userId){
             throw new \Exception('Token und/oder Referrer ungültig');

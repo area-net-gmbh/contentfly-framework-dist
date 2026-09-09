@@ -56,7 +56,7 @@ class SystemControllerProvider extends BaseControllerProvider
                  * moeglich; wer den Schemazustand pruefen will, kann das mit einem
                  * Console-Command tun, der keine offene Tuer braucht.
                  */
-                if($request->get('method') == 'updateDatabase'){
+                if(($request->request->all()['method'] ?? null) == 'updateDatabase'){
 
                 }else{
                     throw $e;

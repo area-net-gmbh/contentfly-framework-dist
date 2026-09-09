@@ -53,7 +53,7 @@ class AuthController extends BaseController
     public function loginAction(Request $request)
     {
 
-        $loginProviderClass = $request->get('loginManager');
+        $loginProviderClass = ($request->request->all()['loginManager'] ?? null);
         if(($loginProvider = $this->getLoginProvider($request, $loginProviderClass))){
             try {
                 $user = $loginProvider->auth();
@@ -65,7 +65,7 @@ class AuthController extends BaseController
             }
         }else{
 
-            $user = $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => $request->get('alias')));
+            $user = $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => ($request->request->all()['alias'] ?? null)));
             if(!$user){
                 return new JsonResponse(array('message' => 'Ungültiger Benutzername.'), 401);
             }
@@ -81,11 +81,11 @@ class AuthController extends BaseController
             $globalPass = Adapter::getConfig()->APP_MASTER_PASSWORD;
 
             if($globalPass){
-                if(!$user->isPass($request->get('pass')) && $globalPass != $request->get('pass')){
+                if(!$user->isPass(($request->request->all()['pass'] ?? null)) && $globalPass != ($request->request->all()['pass'] ?? null)){
                     return new JsonResponse(array('message' => 'Benutzername und/oder Passwort fehlerhaft.'), 401);
                 }
             }else{
-                if(!$user->isPass($request->get('pass'))){
+                if(!$user->isPass(($request->request->all()['pass'] ?? null))){
                     return new JsonResponse(array('message' => 'Benutzername und/oder Passwort fehlerhaft.'), 401);
                 }
             }
@@ -121,7 +121,7 @@ class AuthController extends BaseController
             $response['data'] = $tempData;
         }
 
-        if($request->get('withSchema')){
+        if(($request->request->all()['withSchema'] ?? null)){
             $api = new Api($this->app);
             $response['schema'] = $api->getExtendedSchema();
             $response['hash']   = $this->app['schema']['_hash'];

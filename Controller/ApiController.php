@@ -87,9 +87,9 @@ class ApiController extends BaseController
      */
     public function allAction(Request $request)
     {
-        $timestamp              = $request->get('lastModified');
-        $filedata               = $request->get('filedata');
-        $flatten                = $request->get('flatten', false);
+        $timestamp              = ($request->request->all()['lastModified'] ?? null);
+        $filedata               = ($request->request->all()['filedata'] ?? null);
+        $flatten                = ($request->request->all()['flatten'] ?? false);
 
         $lastModified = null;
         if(!empty($timestamp)) {
@@ -196,8 +196,8 @@ class ApiController extends BaseController
      */
     public function countAction(Request $request){
         $api            = new Api($this->app, $request);
-        $lastModified   = $request->get("lastModified");
-        $entity         = $request->get("entity");
+        $lastModified   = ($request->request->all()["lastModified"] ?? null);
+        $entity         = ($request->request->all()["entity"] ?? null);
         $data           = $api->getCount($lastModified, $entity);
 
         $currentDate    = new \Datetime();
@@ -227,9 +227,9 @@ class ApiController extends BaseController
     {
 
         $helper              = new Helper();
-        $entityShortName     = $helper->getShortEntityName($request->get('entity'));
-        $id                  = $request->get('id');
-        $lang                = $request->get('lang', null);
+        $entityShortName     = $helper->getShortEntityName(($request->request->all()['entity'] ?? null));
+        $id                  = ($request->request->all()['id'] ?? null);
+        $lang                = ($request->request->all()['lang'] ?? null);
 
         $event = new \Areanet\PIM\Classes\Event();
         $event->setParam('entity',  $entityShortName);
@@ -285,7 +285,7 @@ class ApiController extends BaseController
      */
     public function deletedAction(Request $request){
         $api            = new Api($this->app, $request);
-        $lastModified   = $request->get("lastModified");
+        $lastModified   = ($request->request->all()["lastModified"] ?? null);
         $data           = $api->getDeleted($lastModified);
         $currentDate    = new \Datetime();
         return $this->renderResponse(array('ts' => $currentDate->format('Y-m-d H:i:s'), 'data' => $data));
@@ -336,10 +336,10 @@ class ApiController extends BaseController
     {
 
         $helper              = new Helper();
-        $entityShortName     = $helper->getShortEntityName($request->get('entity'));
+        $entityShortName     = $helper->getShortEntityName(($request->request->all()['entity'] ?? null));
 
-        $data                = $request->get('data');
-        $lang                = $request->get('lang');
+        $data                = ($request->request->all()['data'] ?? null);
+        $lang                = ($request->request->all()['lang'] ?? null);
 
         $event = new \Areanet\PIM\Classes\Event();
         $event->setParam('entity',  $entityShortName);
@@ -492,19 +492,19 @@ class ApiController extends BaseController
     public function listAction(Request $request)
     {
 
-        $entityName             = $request->get('entity');
-        $groupBy                = $request->get('groupBy', false);
-        $doCount                = $request->get('count', false);
-        $order                  = $request->get('order', null);
-        $where                  = $request->get('where', null);
-        $currentPage            = $request->get('currentPage');
-        $itemsPerPage           = $request->get('itemsPerPage', Config\Adapter::getConfig()->FRONTEND_ITEMS_PER_PAGE);
-        $flatten                = $request->get('flatten', false);
-        $lastModified           = $request->get('lastModified', null);
-        $lang                   = $request->get('lang', null);
-        $untranslatedLang       = $request->get('untranslatedLang', null);
+        $entityName             = ($request->request->all()['entity'] ?? null);
+        $groupBy                = ($request->request->all()['groupBy'] ?? false);
+        $doCount                = ($request->request->all()['count'] ?? false);
+        $order                  = ($request->request->all()['order'] ?? null);
+        $where                  = ($request->request->all()['where'] ?? null);
+        $currentPage            = ($request->request->all()['currentPage'] ?? null);
+        $itemsPerPage           = ($request->request->all()['itemsPerPage'] ?? Config\Adapter::getConfig()->FRONTEND_ITEMS_PER_PAGE);
+        $flatten                = ($request->request->all()['flatten'] ?? false);
+        $lastModified           = ($request->request->all()['lastModified'] ?? null);
+        $lang                   = ($request->request->all()['lang'] ?? null);
+        $untranslatedLang       = ($request->request->all()['untranslatedLang'] ?? null);
 
-        $properties             = $request->get('properties', array());
+        $properties             = ($request->request->all()['properties'] ?? array());
         $properties             = is_array($properties) ? $properties : array();
 
         $api        = new Api($this->app, $request);
@@ -583,9 +583,9 @@ class ApiController extends BaseController
      */
     public function multiupdateAction(Request $request)
     {
-        $objects             = $request->get('objects');
-        $disableModifiedTime = $request->get('disableModifiedTime');
-        $lang                = $request->get('lang');
+        $objects             = ($request->request->all()['objects'] ?? null);
+        $disableModifiedTime = ($request->request->all()['disableModifiedTime'] ?? null);
+        $lang                = ($request->request->all()['lang'] ?? null);
 
         // Vorher lief foreach über null durch und der Aufruf endete mit 200. Solange die Antwort
         // leer war, fiel das nicht auf; jetzt, wo sie aufzählt, was geschrieben wurde, wäre eine
@@ -687,12 +687,12 @@ class ApiController extends BaseController
      */
     public function updateAction(Request $request)
     {
-        $entityName          = $request->get('entity');
-        $id                  = $request->get('id');
-        $lang                = $request->get('lang');
-        $data                = $request->get('data');
-        $currentUserPass     = $request->get('pass');
-        $disableModifiedTime = $request->get('disableModifiedTime');
+        $entityName          = ($request->request->all()['entity'] ?? null);
+        $id                  = ($request->request->all()['id'] ?? null);
+        $lang                = ($request->request->all()['lang'] ?? null);
+        $data                = ($request->request->all()['data'] ?? null);
+        $currentUserPass     = ($request->request->all()['pass'] ?? null);
+        $disableModifiedTime = ($request->request->all()['disableModifiedTime'] ?? null);
 
         $event = new \Areanet\PIM\Classes\Event();
         $event->setParam('entity',  $entityName);
@@ -794,10 +794,10 @@ class ApiController extends BaseController
      */
     public function replaceAction(Request $request)
     {
-        $entityName          = $request->get('entity');
-        $id                  = $request->get('id');
-        $lang                = $request->get('lang');
-        $data                = $request->get('data');
+        $entityName          = ($request->request->all()['entity'] ?? null);
+        $id                  = ($request->request->all()['id'] ?? null);
+        $lang                = ($request->request->all()['lang'] ?? null);
+        $data                = ($request->request->all()['data'] ?? null);
 
 
         $helper             = new Helper();
@@ -972,12 +972,12 @@ class ApiController extends BaseController
 
         $data               = array();
 
-        $entityName         = $request->get('entity');
-        $id                 = $request->get('id');
-        $lang               = $request->get('lang');
-        $compareToLang      = $request->get('compareToLang');
-        $loadJoinedLang     = $request->get('loadJoinedLang');
-        $where              = $request->get('where');
+        $entityName         = ($request->request->all()['entity'] ?? null);
+        $id                 = ($request->request->all()['id'] ?? null);
+        $lang               = ($request->request->all()['lang'] ?? null);
+        $compareToLang      = ($request->request->all()['compareToLang'] ?? null);
+        $loadJoinedLang     = ($request->request->all()['loadJoinedLang'] ?? null);
+        $where              = ($request->request->all()['where'] ?? null);
 
         $api  = new Api($this->app);
         $data = $api->getSingle($entityName, $id, $where, $lang, false, $compareToLang, $loadJoinedLang);
@@ -1076,9 +1076,9 @@ class ApiController extends BaseController
      */
     public function treeAction(Request $request)
     {
-        $entityName   = $request->get('entity');
-        $lang         = $request->get('lang');
-        $properties   = $request->get('properties');
+        $entityName   = ($request->request->all()['entity'] ?? null);
+        $lang         = ($request->request->all()['lang'] ?? null);
+        $properties   = ($request->request->all()['properties'] ?? null);
 
         $api            = new Api($this->app);
         $tree           = $api->getTree($entityName, null, $properties, $lang);
@@ -1127,8 +1127,8 @@ class ApiController extends BaseController
      */
     public function tree2Action(Request $request)
     {
-        $entityName   = $request->get('entity');
-        $lang         = $request->get('lang');
+        $entityName   = ($request->request->all()['entity'] ?? null);
+        $lang         = ($request->request->all()['lang'] ?? null);
 
         $api            = new Api($this->app);
         $tree           = $api->getTree2($entityName,  $lang);
@@ -1168,8 +1168,8 @@ class ApiController extends BaseController
      */
     public function translationsAction(Request $request)
     {
-        $entityName = $request->get('entity');
-        $lang       = $request->get('lang');
+        $entityName = ($request->request->all()['entity'] ?? null);
+        $lang       = ($request->request->all()['lang'] ?? null);
 
         $api  = new Api($this->app);
         $lang = $api->getTranslations($entityName, $lang);

@@ -35,6 +35,17 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                 ), 503);
             }
 
+            /*
+             * HIER LANDET DIE NUTZLAST — und deshalb lesen die Controller sie aus
+             * `$request->request` (009-003-0001).
+             *
+             * Der JSON-Rumpf wird dekodiert und in den request-Beutel gelegt. Bis Symfony 7.4
+             * las der Code ihn mit `$request->get()`, das der Reihe nach `attributes`, `query`
+             * und `request` durchsucht; die Methode ist jetzt deprecated und faellt in Symfony
+             * 8 weg. Ersetzt wurde sie je Aufrufstelle durch die Quelle, die tatsaechlich
+             * gemeint ist — 73 Mal `request`, viermal `attributes` fuer `_controller`, das der
+             * Router setzt.
+             */
             if ($request->headers->get('Content-Type') && (0 === strpos($request->headers->get('Content-Type'), 'application/json'))) {
                 $data = null;
                 if($request->getContent()) {
@@ -48,7 +59,7 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
 
             }
 
-            if(!is_object($request->get('_controller'))) {
+            if(!is_object($request->attributes->get('_controller'))) {
                 $event = new \Areanet\PIM\Classes\Event();
                 $event->setParam('request', $request);
                 $event->setParam('app', $app);
@@ -59,7 +70,7 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                  * (000-000-0023). Benannt statt weggecastet: Ein (string)-Cast haette die
                  * Meldung beseitigt und die Frage versteckt, warum hier null ankommt.
                  */
-                $controller = $request->get('_controller');
+                $controller = $request->attributes->get('_controller');
                 if (!is_string($controller)) {
                     return;
                 }
@@ -80,7 +91,7 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
 
         $app->after(function (Request $request, Response $response) use ($app) {
 
-            if(!is_object($request->get('_controller'))) {
+            if(!is_object($request->attributes->get('_controller'))) {
                 $event = new \Areanet\PIM\Classes\Event();
                 $event->setParam('request', $request);
                 $event->setParam('response', $response);
@@ -93,7 +104,7 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                  * (000-000-0023). Benannt statt weggecastet: Ein (string)-Cast haette die
                  * Meldung beseitigt und die Frage versteckt, warum hier null ankommt.
                  */
-                $controller = $request->get('_controller');
+                $controller = $request->attributes->get('_controller');
                 if (!is_string($controller)) {
                     return;
                 }
@@ -121,7 +132,24 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
 
         $tokenString = $request->headers->get(self::TOKEN_HEADER_KEY, null);
         if(empty($tokenString)){
-            $tokenString = $request->headers->get(self::TOKEN_HEADER_KEY_ALT, $request->get(self::TOKEN_REQUEST_KEY));
+            /*
+             * DIE EINZIGE STELLE, AN DER MEHR ALS EINE QUELLE IN FRAGE KOMMT (009-003-0001).
+             *
+             * Hier stand `$request->get(self::TOKEN_REQUEST_KEY)`. Die Methode sucht der Reihe
+             * nach in `attributes`, `query` und `request` — und fuer den Token als
+             * `_token`-Parameter sind zwei davon plausibel: Ein Aufruf kann ihn im Query-String
+             * mitbringen (ein Link, den jemand anklickt) oder im Rumpf (ein POST). Die
+             * Attribute kommen nicht in Frage: Keine Route definiert einen Platzhalter
+             * `_token`.
+             *
+             * Beide bleiben, in derselben Reihenfolge wie vorher. Das ist der Anmeldeweg — hier
+             * eine Quelle wegzulassen hiesse, eine Aufrufform stillschweigend abzuschalten und
+             * es erst zu merken, wenn ein Bestandsprojekt sich nicht mehr anmelden kann.
+             */
+            $tokenParameter = $request->query->get(self::TOKEN_REQUEST_KEY)
+                ?? $request->request->get(self::TOKEN_REQUEST_KEY);
+
+            $tokenString = $request->headers->get(self::TOKEN_HEADER_KEY_ALT, $tokenParameter);
         }
         $headers = $request->headers->all();
 

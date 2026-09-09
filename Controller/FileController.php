@@ -83,9 +83,9 @@ class FileController extends BaseController
         $uploadType    = $file->getClientMimeType();
         $uploadSize    = $file->getSize();
 
-        if($request->get("id")){
+        if(($request->request->all()["id"] ?? null)){
 
-            $fileObject = $this->em->getRepository('Areanet\PIM\Entity\File')->find($request->get("id"));
+            $fileObject = $this->em->getRepository('Areanet\PIM\Entity\File')->find(($request->request->all()["id"] ?? null));
 
             if (!$fileObject) {
                 $fileObject = new File();
@@ -93,7 +93,7 @@ class FileController extends BaseController
                 $metadata = $this->em->getClassMetaData(get_class($fileObject));
                 $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_NONE);
                 if(Config\Adapter::getConfig()->DB_GUID_STRATEGY) $metadata->setIdGenerator(new AssignedGenerator());
-                $fileObject->setId($request->get("id"));
+                $fileObject->setId(($request->request->all()["id"] ?? null));
 
                 $extension      = pathinfo($uploadName, PATHINFO_EXTENSION);
                 $baseFilename   = pathinfo($uploadName, PATHINFO_FILENAME);
@@ -176,8 +176,8 @@ class FileController extends BaseController
                 $fileObject = new File();
 
 
-                if($request->get("folder")){
-                    $folder = $this->em->getRepository('Areanet\PIM\Entity\Folder')->find($request->get("folder"));
+                if(($request->request->all()["folder"] ?? null)){
+                    $folder = $this->em->getRepository('Areanet\PIM\Entity\Folder')->find(($request->request->all()["folder"] ?? null));
                     if($folder){
                         $fileObject->setFolder($folder);
                     }
@@ -447,8 +447,8 @@ class FileController extends BaseController
     
     public function overwriteAction(Request $request): JsonResponse
     {
-        $sourceId   = $request->get("sourceId");
-        $destId     = $request->get("destId");
+        $sourceId   = ($request->request->all()["sourceId"] ?? null);
+        $destId     = ($request->request->all()["destId"] ?? null);
 
         if(!Permission::isWritable($this->app['auth.user'], 'PIM\\File')){
             throw new AccessDeniedHttpException("Zugriff auf PIM\\File verweigert.");
