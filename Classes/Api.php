@@ -624,16 +624,29 @@ class Api
          */
         $schema = $this->getSchema();
 
-        $entitiesToExclude = array(
-            'PIM\\Folder', 'PIM\\Token', 'PIM\\Group', 'PIM\\ThumbnailSetting',
-            'PIM\\Permission', 'PIM\\Nav', 'PIM\\NavItem', 'PIM\\Log', '_hash'
-        );
-
+        /**
+         * Die zweite Ausschlussliste ist weg (000-000-0013).
+         *
+         * Hier stand eine fest verdrahtete Liste — Folder, Token, Group, ThumbnailSetting,
+         * Permission, Nav, NavItem, Log — in dreifacher Ausfertigung, in getAll(), getCount()
+         * und getDeleted(). Sie stand in keiner Annotation und in keiner Konfiguration: Ein
+         * Projekt konnte nicht erkennen, warum eine Entity nie synchronisiert wird.
+         *
+         * Die betroffenen Entities tragen jetzt `@PIM\Config(excludeFromSync=true)`, jede mit
+         * ihrer Begruendung an der Klasse. Damit gibt es EINEN Mechanismus statt zwei, und er
+         * steht im Schema, das jeder Client lesen kann.
+         *
+         * Zwei Eintraege der alten Liste waren tot: `PIM\Token` steht nicht im Schema (die
+         * Entity leitet sich nicht von Base ab), `PIM\PushToken` gibt es im Baum nicht.
+         *
+         * `_hash` bleibt hier: Das ist kein Entity-Name, sondern der Schema-Hash. Es laesst
+         * sich nicht annotieren, weil es keine Klasse gibt, an die man es schreiben koennte.
+         */
         $helper   = new Helper();
         $entities = array();
 
         foreach(array_keys($schema) as $entityShortName){
-            if(in_array($entityShortName, $entitiesToExclude)){
+            if($entityShortName === '_hash'){
                 continue;
             }
 
@@ -763,16 +776,20 @@ class Api
 
         $schema = $this->getSchema();
 
-        $entitiesToExclude = array(
-            'PIM\\File', 'PIM\\Folder', 'PIM\\Token', 'PIM\\Group', 'PIM\\PushToken', 'PIM\\ThumbnailSetting',
-            'PIM\\Permission', 'PIM\\Nav', 'PIM\\NavItem', 'PIM\\Log', '_hash'
-        );
+        /**
+         * Was hier uebrig bleibt, ist KEINE Sync-Entscheidung (000-000-0013).
+         *
+         * Die gemeinsame Liste ist zu `excludeFromSync` an den Entities geworden und wird
+         * unten geprueft. `PIM\File` bleibt hier stehen, weil Dateien in dieser Statistik
+         * gesondert gezaehlt werden — `filesCount` und `filesSize` weiter oben. Sie ein
+         * zweites Mal unter `details` zu fuehren, waere doppelt.
+         */
         $details = array();
         foreach($schema as $entityName => $entityConfig){
 
             if($entity && $entity != $entityName) continue;
 
-            if(in_array($entityName, $entitiesToExclude)){
+            if($entityName === '_hash' || $entityName === 'PIM\\File'){
                 continue;
             }
 
@@ -905,29 +922,58 @@ class Api
 
         $schema = $this->getSchema();
 
-        $entitiesToExclude = array(
-            'PIM\\Folder', 'PIM\\Token', 'PIM\\Group', 'PIM\\ThumbnailSetting',
-            'PIM\\Permission', 'PIM\\Nav', 'PIM\\NavItem', 'PIM\\Log', '_hash'
-        );
-
         foreach($schema as $entityName => $entityConfig){
 
-            if(in_array($entityName, $entitiesToExclude)){
+            if($entityName === '_hash'){
+                continue;
+            }
+
+            /**
+             * excludeFromSync — hier neu, siehe 000-000-0013.
+             *
+             * getDeleted() hat es NIE geprueft: Es hatte nur seine fest verdrahtete Liste.
+             * getAll() und getCount() pruefen es seit 000-000-0007 beziehungsweise seit jeher.
+             * Eine Entity, die aus dem Bestand ausgeschlossen ist, aber ihre Loeschungen
+             * meldet, ergibt keinen Sinn — ein Sync-Client bekaeme Loeschmeldungen zu
+             * Objekten, die er nie erhalten hat.
+             */
+            if(!empty($entityConfig['settings']['excludeFromSync'])){
                 continue;
             }
 
             $query = "SELECT model_name, model_id FROM `pim_log` WHERE model_name = ? AND (mode = 'DEL' OR (mode = 'USERDEL' AND users = ?))";
 
             $params  = array($entityName, $this->app['auth.user']->getId());
+            /**
+             * `>=` statt `>` — die Grenzsekunde gehoert dazu (000-000-0013).
+             *
+             * `pim_log.created` ist ein datetime mit Sekundenaufloesung. Ein Lebenszyklus, der
+             * in derselben Sekunde ablaeuft — bei je einem API-Aufruf der Normalfall —
+             * hinterlaesst Zeilen mit identischem Zeitstempel. Mit `>` verliert ein
+             * Sync-Client jede Loeschung, die in derselben Sekunde stattfand wie die, deren
+             * Zeitstempel er sich gemerkt hat: Sie ist nicht groesser, also kommt sie nie.
+             *
+             * `>=` liefert die Grenzsekunde stattdessen erneut. Eine Loeschung doppelt zu
+             * melden ist folgenlos — der Client loescht etwas, das schon weg ist. Eine
+             * Loeschung zu verlieren ist es nicht: Das Objekt bleibt beim Client fuer immer
+             * stehen, und nichts weist je darauf hin.
+             *
+             * getAll() filtert seit jeher mit `modified >= :lastModified`. Die beiden Haelften
+             * derselben Synchronisation lagen also auf verschiedenen Seiten der Grenze.
+             *
+             * Die eigentliche Loesung waere eine hoehere Aufloesung oder eine monoton
+             * steigende Sequenz. Beides braucht eine Spalte und damit eine Migration fuer
+             * jedes Bestandsprojekt; das gehoert zum Kernel-Wechsel und nicht hierher.
+             */
             $tsQuery = "";
             if($lastMofified){
                 if(is_array($lastMofified)){
                     if(isset($lastMofified[$entityName])){
-                        $tsQuery = " AND `created` > ?";
+                        $tsQuery = " AND `created` >= ?";
                         $params[] = $lastMofified[$entityName];
                     }
                 }else{
-                    $tsQuery = " AND `created` > ?";
+                    $tsQuery = " AND `created` >= ?";
                     $params[] = $lastMofified;
                 }
             }

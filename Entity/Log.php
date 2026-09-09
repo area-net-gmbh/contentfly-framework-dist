@@ -6,6 +6,11 @@ use Areanet\PIM\Classes\Annotations as PIM;
 
 /**
  * @ORM\Entity
+ * @PIM\Config(excludeFromSync=true)
+ *
+ * excludeFromSync: Das Protokoll ist die QUELLE der Sync-API. Es mitzusynchronisieren hiesse, die Buchfuehrung ueber die Synchronisation zu synchronisieren.
+ * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
+ * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
  * @ORM\Table(name="pim_log")
  */
 class Log extends Base

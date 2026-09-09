@@ -6,6 +6,11 @@ use Areanet\PIM\Classes\Annotations as PIM;
 
 /**
  * @ORM\Entity
+ * @PIM\Config(excludeFromSync=true)
+ *
+ * excludeFromSync: Rechteverwaltung, wie PIM\Group.
+ * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
+ * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
  * @ORM\Table(name="pim_permission")
  */
 class Permission extends Base

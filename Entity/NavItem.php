@@ -7,7 +7,11 @@ use Areanet\PIM\Classes\Annotations as PIM;
 /**
  * @ORM\Entity
  * @ORM\Table(name="pim_navItem")
- * @PIM\Config(sortRestrictTo="nav")
+ * @PIM\Config(sortRestrictTo="nav", excludeFromSync=true)
+ *
+ * excludeFromSync: Navigationsstruktur der geloeschten Oberflaeche.
+ * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
+ * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
  */
 class NavItem extends BaseSortable
 {
