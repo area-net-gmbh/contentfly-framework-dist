@@ -22,7 +22,6 @@ use Areanet\PIM\Entity\BaseTree;
 use Areanet\PIM\Entity\File;
 use Areanet\PIM\Entity\Log;
 use Areanet\PIM\Entity\User;
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\DBAL\ConnectionException;

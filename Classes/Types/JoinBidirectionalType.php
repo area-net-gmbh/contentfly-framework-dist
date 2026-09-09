@@ -7,7 +7,7 @@ use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Entity\Base;
 use Areanet\PIM\Entity\BaseSortable;
 use Doctrine\Common\Annotations\Annotation;
-use Doctrine\Common\Annotations\AnnotationReader;
+use Areanet\PIM\Classes\Metadaten\Metadatenleser;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -54,9 +54,9 @@ class JoinBidirectionalType extends Type
 
             $targetEntity = new $annotations->targetEntity();
             if($targetEntity instanceof BaseSortable){
-                $annotationReader   = new AnnotationReader();
+                $metadaten          = new Metadatenleser();
                 $reflect            = new \ReflectionClass($targetEntity);
-                $classAnnotations   = $annotationReader->getClassAnnotations($reflect);
+                $classAnnotations   = $metadaten->klasse($reflect);
 
                 foreach($classAnnotations as $classAnnotation) {
                     if ($classAnnotation instanceof \Areanet\PIM\Classes\Annotations\Config) {

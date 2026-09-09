@@ -17,7 +17,7 @@ use Areanet\PIM\Entity\Log;
 use Areanet\PIM\Entity\User;
 use DateTime;
 use DirectoryIterator;
-use Doctrine\Common\Annotations\AnnotationReader;
+use Areanet\PIM\Classes\Metadaten\Metadatenleser;
 use Doctrine\Common\Persistence\Mapping\MappingException;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -1521,7 +1521,7 @@ class Api
 
             $defaultValues = $reflect->getDefaultProperties();
 
-            $annotationReader = new AnnotationReader();
+            $metadaten = new Metadatenleser();
 
             // Siehe oben: 'export' und 'extended' entfallen mit 000-000-0012.
             $permissions[$entityName] = array(
@@ -1564,7 +1564,7 @@ class Api
                 $settings['type']  = 'tree';
             }
 
-            $classAnnotations = $annotationReader->getClassAnnotations($reflect);
+            $classAnnotations = $metadaten->klasse($reflect);
 
             $skipEntity = false;
 
@@ -1605,7 +1605,7 @@ class Api
                 $reflectionProperty = new ReflectionProperty($className, $prop->getName());
 
 
-                $propertyAnnotations = $annotationReader->getPropertyAnnotations($reflectionProperty);
+                $propertyAnnotations = $metadaten->eigenschaft($reflectionProperty);
 
                 $allPropertyAnnotations = array();
                 foreach($propertyAnnotations as $propertyAnnotation){
