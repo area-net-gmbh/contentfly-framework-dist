@@ -1,20 +1,37 @@
 <?php
 namespace Areanet\PIM\Classes\Annotations;
 
-use Doctrine\Common\Annotations\Annotation;
+use Attribute;
 
 /**
  * Datenrelevante Konfiguration einer Entity oder einer ihrer Eigenschaften.
  *
- * Von den ursprünglich 24 Feldern beschrieben die meisten Eingabemasken der
- * PIM-Oberfläche. Mit ihr sind sie entfallen — ersatzlos, ohne Duldungsphase. Übrig
- * bleibt, was das Verhalten der API steuert: Verschlüsselung, Sync, Filter, Sortierung
- * und das Datenmodell selbst. Die Liste der gestrichenen Felder und der Weg für
+ * Von den urspruenglich 24 Feldern beschrieben die meisten Eingabemasken der
+ * PIM-Oberflaeche. Mit ihr sind sie entfallen — ersatzlos, ohne Duldungsphase. Uebrig
+ * bleibt, was das Verhalten der API steuert: Verschluesselung, Sync, Filter, Sortierung
+ * und das Datenmodell selbst. Die Liste der gestrichenen Felder und der Weg fuer
  * Bestandsprojekte stehen in `an_project/docs/pim-annotationen-migration.md`.
  *
+ * Sie ist **Annotation und Attribut zugleich** (`010-001-0001`). Doctrines eigene
+ * Mapping-Klassen sind in 2.20 genau das, und der Grund ist derselbe: Solange die Entities
+ * noch Docblocks tragen, liest sie der `AnnotationReader`; sobald sie umgestellt sind
+ * (`010-001-0003`), liest sie die Reflection. Der Umbau laesst sich dadurch in Schritte
+ * zerlegen, die einzeln gruen sind.
+ *
+ * `@NamedArgumentConstructor` ist dafuer noetig: Ohne den Vermerk uebergibt der `DocParser`
+ * dem Konstruktor **ein Array** statt benannter Argumente, und die Klasse waere als
+ * Annotation nicht mehr lesbar.
+ *
+ * **Beide Ziele**, und das ist gemessen: `@PIM\Config` steht an Klassen (`Group`, `Nav`,
+ * `Tag`, `File` — `labelProperty`, `sortBy`, `excludeFromSync`) und an Eigenschaften
+ * (`unique`, `isFilterable`). Sie ist mit 25 von 36 Verwendungen die haeufigste `@PIM`-
+ * Annotation im Baum.
+ *
  * @Annotation
+ * @NamedArgumentConstructor
  */
-final class Config extends Annotation
+#[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_PROPERTY)]
+final class Config
 {
     /**
      * Nimmt die Entity aus der Sync-API heraus — `Classes/Api.php`.
@@ -24,7 +41,7 @@ final class Config extends Annotation
     public $excludeFromSync = false;
 
     /**
-     * Verschlüsselt den Wert in der Datenbank — `StringType`, `TextareaType`.
+     * Verschluesselt den Wert in der Datenbank — `StringType`, `TextareaType`.
      *
      * @var boolean
      */
@@ -36,7 +53,7 @@ final class Config extends Annotation
     public $unique = false;
 
     /**
-     * Gibt die Eigenschaft für die Filter der API frei — `Classes/Type.php`.
+     * Gibt die Eigenschaft fuer die Filter der API frei — `Classes/Type.php`.
      *
      * @var boolean
      */
@@ -77,4 +94,25 @@ final class Config extends Annotation
      */
     public $sortRestrictTo = null;
 
+    /**
+     * Nimmt die Werte als benannte Argumente entgegen.
+     *
+     * Die Vorgaben sind dieselben wie an den Feldern — wer ein Argument weglaesst, bekommt
+     * genau den Wert, den die Annotation ihm bisher gab. Bewusst **ohne** Typangaben: Unter
+     * Annotationen war jedes Feld untypisiert, und ein hier ergaenzter Typ waere eine neue
+     * Einschraenkung fuer Bestandsprojekte, nicht bloss eine Praezisierung.
+     */
+    public function __construct($excludeFromSync = false, $encoded = false, $unique = false, $isFilterable = false, $i18n_universal = false, $labelProperty = '', $type = '', $sortBy = null, $sortOrder = null, $sortRestrictTo = null)
+    {
+        $this->excludeFromSync = $excludeFromSync;
+        $this->encoded = $encoded;
+        $this->unique = $unique;
+        $this->isFilterable = $isFilterable;
+        $this->i18n_universal = $i18n_universal;
+        $this->labelProperty = $labelProperty;
+        $this->type = $type;
+        $this->sortBy = $sortBy;
+        $this->sortOrder = $sortOrder;
+        $this->sortRestrictTo = $sortRestrictTo;
+    }
 }
