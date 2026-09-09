@@ -1737,9 +1737,27 @@ class Api
 
         $object = $queryBuilder->getQuery()->getOneOrNullResult();
 
+        /**
+         * Nicht gefunden heisst null (000-000-0006).
+         *
+         * BIS HIERHER GAB DIESE METHODE EINE JsonResponse ZURUECK — eine fertige HTTP-Antwort
+         * aus einer Klasse, die keine Controller ist. Jeder interne Aufrufer prueft mit
+         * `if(!$object)`, und eine JsonResponse ist wahr. Die Pruefung lief also ins Leere, und
+         * der Code danach arbeitete mit der Antwort weiter, als waere sie das Objekt:
+         *
+         *   Helper::getUsersRemoved(): Argument #1 must be of type ...Entity\Base,
+         *   ...HttpFoundation\JsonResponse given, called in Api.php on line 488
+         *
+         * Das war die Ursache dafuer, dass eine unbekannte Id ueber die API als 500 ankam,
+         * obwohl doUpdate() und doDelete() jeweils eine ContentflyException mit 404 vorsehen —
+         * sie wurden nie erreicht. Ein TypeError ist kein Exception, und die Fehlerkette von
+         * Silex nimmt nur Exceptions an; deshalb fiel er bis zum globalen Handler durch.
+         *
+         * `/api/single` gab die Antwort sogar aus: Der Aufrufer bekam 200 und als Rumpf
+         * `data: {"headers": {}}` — die JsonResponse, durch json_encode gedreht.
+         */
         if (!$object) {
-            return new JsonResponse(array('message' => "Object not found"), Messages::contentfly_status_not_found);
-
+            return null;
         }
 
         if($compareToLang && $compareToLang != $lang) {

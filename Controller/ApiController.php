@@ -940,6 +940,14 @@ class ApiController extends BaseController
 
         $api  = new Api($this->app);
         $data = $api->getSingle($entityName, $id, $where, $lang, false, $compareToLang, $loadJoinedLang);
+
+        // Seit 000-000-0006 meldet getSingle() "nicht gefunden" mit null statt mit einer
+        // fertigen JsonResponse. Die Entscheidung, welchen Statuscode das ergibt, gehoert
+        // hierher und nicht in die Api-Klasse. Vorher antwortete dieser Endpunkt mit 200 und
+        // `data: {"headers": {}}` — der serialisierten Antwort, die er weiterreichte.
+        if($data === null){
+            throw new ContentflyException(Messages::contentfly_general_not_found, $entityName, Messages::contentfly_status_not_found);
+        }
         $currentDate    = new \Datetime();
 
         return $this->renderResponse(array('ts' => $currentDate->format('Y-m-d H:i:s'), 'data' => $data));

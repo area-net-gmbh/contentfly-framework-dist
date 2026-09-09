@@ -419,6 +419,9 @@ class FileController extends BaseController
             ));
         }else{
 
+            // WEB_ROOT ist der Mountpunkt aus der Konfiguration, Vorgabe '/'. Bis 000-000-0006
+            // hat bootstrap-web.php ihn aus $_SERVER['PHP_SELF'] ueberschrieben; der Redirect
+            // zeigte dann ueberall ausser hinter der mitgelieferten .htaccess ins Leere.
             $redirectUri = Config\Adapter::getConfig()->WEB_ROOT."data/files/$id/".basename($fileName);
             return $this->app->redirect($redirectUri, 301);
         }

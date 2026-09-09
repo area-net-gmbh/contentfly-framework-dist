@@ -305,7 +305,20 @@ class Config{
 
 
     /**
-     * @var string (Unter)Ordner für <base href>
+     * Unter welchem Pfad die Anwendung im Web erreichbar ist.
+     *
+     * Liegt sie im Wurzelverzeichnis des Hosts, bleibt es bei '/'. Liegt sie in einem
+     * Unterverzeichnis, gehoert hier '/unterverzeichnis/' hin — mit Schraegstrich am Ende.
+     *
+     * Bis 000-000-0006 hat `bootstrap-web.php` diesen Wert bei jedem Request aus
+     * `$_SERVER['PHP_SELF']` ueberschrieben. Das traf unter Apache mit der mitgelieferten
+     * .htaccess zu und sonst nirgends; unter dem eingebauten PHP-Server zeigte die
+     * Dateiauslieferung anschliessend auf `/index.php/file/get/data/files/…`. Der Mountpunkt
+     * ist eine Angabe des Betreibers, keine, die sich aus der Umgebung erraten laesst.
+     *
+     * Benutzt von `FileController::getAction()` fuer den Redirect auf `data/files/…`.
+     *
+     * @var string
      */
     public $WEB_ROOT = '/';
 
