@@ -103,10 +103,6 @@ class Config{
      */
     public $APP_MAILTO = null;
 
-    /**
-     * @var string Default sender mail address
-     */
-    public $APP_MAILFROM = null;
 
     /**
      * @var boolean Show detailed error messages

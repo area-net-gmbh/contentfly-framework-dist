@@ -536,33 +536,6 @@ class ApiController extends BaseController
         }
     }
 
-    public function mailAction(Request $request)
-    {
-
-
-        $mailto = $request->get("mailto");
-        if(!$mailto){
-            return new JsonResponse(array('message' => "No mailto address"), 500);
-        }
-        $data    = $request->get("data", array());
-        $subject = $request->get("subject", "Anfrage über PIM-API");
-
-        $body = "";
-        foreach($data as $name=>$value){
-            $body .= $name.":\t\t\t".$value."\n";
-        }
-
-        mail($mailto, $subject, $body, 'From: '.APP_MAILFROM);
-
-        $return = array(
-            'mailto' => $mailto,
-            'subject' => $subject
-        );
-
-        $data = json_encode($return);
-        return $this->renderResponse(array('data' => $data));
-    }
-
     public function multiupdateAction(Request $request, Application $app)
     {
         $objects             = $request->get('objects');

@@ -38,7 +38,6 @@ class ApiControllerProvider extends BaseControllerProvider
         $controllers->post('/tree2',   "api.controller:tree2Action")->before($checkAuth);
         $controllers->post('/translations',   "api.controller:translationsAction")->before($checkAuth);
         $controllers->post('/all',   "api.controller:allAction")->before($checkAuth);
-        $controllers->post('/mail', "api.controller:mailAction")->before($checkAuth);
         $controllers->post('/delete', "api.controller:deleteAction")->before($checkAuth);
         $controllers->post('/update', "api.controller:updateAction")->before($checkAuth);
         $controllers->post('/replace', "api.controller:replaceAction")->before($checkAuth);
