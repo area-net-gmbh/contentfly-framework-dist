@@ -53,9 +53,15 @@ class SystemController extends BaseController
     public function doAction(Request $request)
     {
         $method = $request->get('method');
-        
-        if(!method_exists($this, $method)){
-            throw new \Exception("Methode $method nicht verfügbar.");
+
+        /*
+         * `method` fehlt, wenn der Aufrufer sie nicht mitschickt. Bis PHP 8.0 ergab
+         * method_exists($this, null) still false, seit 8.1 ist es eine Deprecation
+         * (000-000-0023). Das Ergebnis bleibt dasselbe: derselbe Fehler wie bei einer
+         * unbekannten Methode — nur ohne Umweg ueber eine Meldung im Log.
+         */
+        if (!is_string($method) || !method_exists($this, $method)) {
+            throw new \Exception('Methode '.(is_string($method) ? $method : '').' nicht verfügbar.');
         }
 
         $date = new \DateTime();

@@ -277,7 +277,12 @@ class Base extends Serializable
      */
     public function hasUserId($id)
     {
-        $ids = explode(',', $this->users);
+        /*
+         * `users` ist eine nullable Spalte: Kein Eintrag heisst keine Treffer. Bis PHP 8.0
+         * ergab explode(',', null) still array(""), seit 8.1 ist es eine Deprecation
+         * (000-000-0023). Das Ergebnis bleibt dasselbe — der leere Fall steht jetzt da.
+         */
+        $ids = $this->users !== null ? explode(',', $this->users) : array();
 
         return in_array($id, $ids) || $this->id == $id;
     }
@@ -321,7 +326,12 @@ class Base extends Serializable
      */
     public function hasGroupId($id)
     {
-        $ids = explode(',', $this->groups);
+        /*
+         * `groups` ist eine nullable Spalte: Kein Eintrag heisst keine Treffer. Bis PHP 8.0
+         * ergab explode(',', null) still array(""), seit 8.1 ist es eine Deprecation
+         * (000-000-0023). Das Ergebnis bleibt dasselbe — der leere Fall steht jetzt da.
+         */
+        $ids = $this->groups !== null ? explode(',', $this->groups) : array();
 
         return in_array($id, $ids);
     }

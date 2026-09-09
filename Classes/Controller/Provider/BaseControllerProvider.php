@@ -52,7 +52,19 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                 $event = new \Areanet\PIM\Classes\Event();
                 $event->setParam('request', $request);
                 $event->setParam('app', $app);
-                $controllerAction = str_replace(':', '.', strtolower($request->get('_controller')));
+                /*
+                 * `_controller` fehlt bei internen Anfragen ganz — der Fall ist gueltig, der
+                 * Hook hat dann nichts zu verteilen. Bis PHP 8.0 ergab strtolower(null) still
+                 * "", seit 8.1 ist es eine Deprecation und ab PHP 9 ein TypeError
+                 * (000-000-0023). Benannt statt weggecastet: Ein (string)-Cast haette die
+                 * Meldung beseitigt und die Frage versteckt, warum hier null ankommt.
+                 */
+                $controller = $request->get('_controller');
+                if (!is_string($controller)) {
+                    return;
+                }
+
+                $controllerAction = str_replace(':', '.', strtolower($controller));
                 if (empty($controllerAction)) {
                     return;
                 }
@@ -74,7 +86,19 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                 $event->setParam('response', $response);
                 $event->setParam('app', $app);
 
-                $controllerAction = str_replace(':', '.', strtolower($request->get('_controller')));
+                /*
+                 * `_controller` fehlt bei internen Anfragen ganz — der Fall ist gueltig, der
+                 * Hook hat dann nichts zu verteilen. Bis PHP 8.0 ergab strtolower(null) still
+                 * "", seit 8.1 ist es eine Deprecation und ab PHP 9 ein TypeError
+                 * (000-000-0023). Benannt statt weggecastet: Ein (string)-Cast haette die
+                 * Meldung beseitigt und die Frage versteckt, warum hier null ankommt.
+                 */
+                $controller = $request->get('_controller');
+                if (!is_string($controller)) {
+                    return;
+                }
+
+                $controllerAction = str_replace(':', '.', strtolower($controller));
                 if (empty($controllerAction)) {
                     return;
                 }
