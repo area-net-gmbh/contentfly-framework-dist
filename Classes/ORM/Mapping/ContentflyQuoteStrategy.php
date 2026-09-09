@@ -1,22 +1,42 @@
 <?php
 namespace Areanet\PIM\Classes\ORM\Mapping;
 
+use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\ORM\Mapping\ClassMetadata;
-use Doctrine\ORM\Mapping\QuoteStrategy;
+use Doctrine\ORM\Mapping\DefaultQuoteStrategy;
 
-
-class ContentflyQuoteStrategy implements QuoteStrategy
+/**
+ * Quotiert jeden Bezeichner ausser `id` und `lang` — die eigene Regel des Frameworks.
+ *
+ * ERBT SEIT 009-005-0002 VON `DefaultQuoteStrategy`, statt `QuoteStrategy` selbst zu
+ * implementieren. Der Grund ist `getColumnAlias()`: Die eigene Fassung rief
+ * `AbstractPlatform::getSQLResultCasing()`, und die Methode gibt es in DBAL 3 nicht mehr —
+ * jede DQL-Abfrage starb daran, also praktisch die ganze Anwendung.
+ *
+ * Doctrines Fassung tut fuer MySQL dasselbe (`spalte_zaehler`), kuerzt zusaetzlich auf die
+ * maximale Bezeichnerlaenge der Plattform und entfernt Sonderzeichen. Sie zu erben statt sie
+ * abzuschreiben heisst, dass der naechste Doctrine-Sprung sie mitbringt; abgeschrieben waere
+ * sie beim uebernaechsten wieder falsch.
+ *
+ * Alle uebrigen Methoden bleiben ueberschrieben: Doctrine quotiert nur, was in den Metadaten
+ * als `quoted` markiert ist, dieses Framework quotiert grundsaetzlich. Das ist der Zweck der
+ * Klasse und aendert sich hier nicht.
+ */
+class ContentflyQuoteStrategy extends DefaultQuoteStrategy
 {
     private function quote($token, AbstractPlatform $platform)
     {
-        // implement your quote strategy
-        switch ($platform->getName()) {
-            case 'mysql':
-                return $token == 'id' || $token == 'lang'   ? $token : '`' . $token . '`';
-            default:
-                return $token;
+        /*
+         * `instanceof` statt `getName()` (009-005-0002): AbstractPlatform::getName() ist in
+         * DBAL 3 deprecated und faellt in DBAL 4 weg. AbstractMySQLPlatform deckt MySQL,
+         * MariaDB und die versionierten Abkoemmlinge ab — getName() lieferte fuer alle 'mysql'.
+         */
+        if ($platform instanceof AbstractMySQLPlatform) {
+            return $token == 'id' || $token == 'lang' ? $token : '`' . $token . '`';
         }
+
+        return $token;
     }
 
     /**
@@ -68,18 +88,14 @@ class ContentflyQuoteStrategy implements QuoteStrategy
     }
 
     /**
-     * {@inheritdoc}
+     * Die Feldnamen, unquotiert.
+     *
+     * Bleibt ueberschrieben. Doctrines Fassung liefert quotierte Spaltennamen; diese hier die
+     * blossen Feldnamen — die Abweichung ist aelter als 009-005 und wird hier nicht angefasst,
+     * weil sie mit dem Schnitt nichts zu tun hat.
      */
     public function getIdentifierColumnNames(ClassMetadata $class, AbstractPlatform $platform)
     {
         return $class->identifier;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getColumnAlias($columnName, $counter, AbstractPlatform $platform, ?ClassMetadata $class = null)
-    {
-        return $platform->getSQLResultCasing($columnName . '_' . $counter);
     }
 }

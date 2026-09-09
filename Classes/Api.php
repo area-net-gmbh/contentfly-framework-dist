@@ -137,7 +137,9 @@ class Api
 
             if($object->getLang() != $mainLang){
 
-                $this->em->getConnection()->exec('SET FOREIGN_KEY_CHECKS = 0;');
+                // executeStatement() statt exec() (009-005-0002). exec() gibt es in DBAL 3
+                // noch, aber als @deprecated — und Epic 009 baut deprecation-frei.
+                $this->em->getConnection()->executeStatement('SET FOREIGN_KEY_CHECKS = 0;');
 
                 //$query = $this->em->createQuery("SELECT COUNT(e) FROM $entityFullName e WHERE e.id = :id");
                 //$query->setParameter('id', $object->getId());
@@ -902,7 +904,8 @@ class Api
                 }
             }
 
-            $files = $this->app['database']->fetchAssoc($query, $params);
+            // fetchAssoc() ist in DBAL 3 entfallen (009-005-0002).
+            $files = $this->app['database']->fetchAssociative($query, $params);
             $data['filesCount'] = intval($files['records']);
             $data['filesSize'] = $files['size'] ?: 0;
         }
@@ -980,7 +983,8 @@ class Api
 
             $query .= $tsQuery;
 
-            if(($deletedObjects = $this->app['database']->fetchAll($query, $params))){
+            // fetchAll() ist in DBAL 3 entfallen (009-005-0002).
+            if(($deletedObjects = $this->app['database']->fetchAllAssociative($query, $params))){
                 $data   = array_merge($data, $deletedObjects);
             }
 
@@ -1937,7 +1941,9 @@ class Api
             ->groupBy('lang')
             ->setParameter('lang', $lang);
 
-        return $queryBuilder->execute()->fetchAll();
+        // executeQuery() statt execute() — letzteres ist in DBAL 3 @deprecated — und
+        // fetchAllAssociative() statt fetchAll(), das am Result entfallen ist (009-005-0002).
+        return $queryBuilder->executeQuery()->fetchAllAssociative();
     }
 
     /**
@@ -2081,7 +2087,8 @@ class Api
               on e.id = t.id $joinI18NCond
             ORDER BY t.parent_id, t.sorting ";
 
-        $records = $this->app['database']->fetchAll($statement);
+        // fetchAll() ist in DBAL 3 entfallen (009-005-0002).
+        $records = $this->app['database']->fetchAllAssociative($statement);
 
         return $this->treeSort($records, $dbFields, null);
     }
@@ -2355,7 +2362,9 @@ class Api
             }
         }
 
-        return $queryBuilder->execute()->fetchAll();
+        // executeQuery() statt execute() — letzteres ist in DBAL 3 @deprecated — und
+        // fetchAllAssociative() statt fetchAll(), das am Result entfallen ist (009-005-0002).
+        return $queryBuilder->executeQuery()->fetchAllAssociative();
 
     }
 

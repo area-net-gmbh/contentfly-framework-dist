@@ -169,7 +169,7 @@ if(Adapter::getConfig()->APP_LANGUAGES){
 if($app['is_installed']) {
     if (Adapter::getConfig()->DB_GUID_STRATEGY) {
         define('APPCMS_ID_TYPE', 'string');
-        define('APPCMS_ID_STRATEGY', 'UUID');
+        define('APPCMS_ID_STRATEGY', 'CUSTOM');
     } else {
         define('APPCMS_ID_TYPE', Adapter::getConfig()->DB_ID_INTEGER_TYPE);
         define('APPCMS_ID_STRATEGY', 'AUTO');

@@ -210,7 +210,7 @@ class InstallCommand extends Command
     {
         if ($db['strategy'] === 'guid') {
             define('APPCMS_ID_TYPE', 'string');
-            define('APPCMS_ID_STRATEGY', 'UUID');
+            define('APPCMS_ID_STRATEGY', 'CUSTOM');
         } else {
             define('APPCMS_ID_TYPE', 'integer');
             define('APPCMS_ID_STRATEGY', 'AUTO');

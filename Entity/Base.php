@@ -16,9 +16,21 @@ class Base extends Serializable
 {
 
     /**
+     * Die Id.
+     *
+     * `CUSTOM` statt `UUID` seit 009-005-0002: Doctrines `ORM\Id\UuidGenerator` liess die
+     * Datenbank die GUID erzeugen (`SELECT UUID()`) und stuetzte sich dafuer auf
+     * `AbstractPlatform::getGuidExpression()` — die Methode gibt es in DBAL 3 nicht mehr.
+     * Erzeugt wird sie jetzt in PHP, siehe Areanet\PIM\Classes\ORM\Id\UuidGenerator.
+     *
+     * `@ORM\CustomIdGenerator` steht auch dann hier, wenn die Integer-Strategie laeuft
+     * (APPCMS_ID_STRATEGY = 'AUTO'). Doctrine liest die Angabe nur bei `CUSTOM` aus; sie
+     * bedingt zu setzen ginge in einer Annotation nicht, ohne die Konstante zu verdoppeln.
+     *
      * @ORM\Column(type=APPCMS_ID_TYPE)
      * @ORM\Id
      * @ORM\GeneratedValue(strategy=APPCMS_ID_STRATEGY)
+     * @ORM\CustomIdGenerator(class="Areanet\PIM\Classes\ORM\Id\UuidGenerator")
      */
     protected $id;
 
