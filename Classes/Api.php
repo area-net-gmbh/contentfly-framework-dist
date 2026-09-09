@@ -60,7 +60,7 @@ class Api
     /** @var  @var Request $request */
     protected mixed $request;
 
-    public function __construct($app, $request = null, User $user = null)
+    public function __construct($app, $request = null, ?User $user = null)
     {
         $this->app              = $app;
         $this->em               = $app['orm.em'];

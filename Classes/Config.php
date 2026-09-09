@@ -328,7 +328,7 @@ class Config{
      * @param string $host Hostname for config settings
      * @param Config $config Copy this config settings for overwriting
      */
-    public function __construct($host = 'default', Config $config = null)
+    public function __construct($host = 'default', ?Config $config = null)
     {
 
         if($config !== null){

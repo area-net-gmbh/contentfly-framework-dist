@@ -12,14 +12,14 @@ abstract class LoginManager extends Manager
     /* @var $request Request */
     var $request = null;
 
-    public function __construct(Application $app, Request $request = null)
+    public function __construct(Application $app, ?Request $request = null)
     {
         $this->request = $request;
 
         parent::__construct($app);
     }
 
-    public function createManagedUser($alias, Group $group = null, $isAdmin = false){
+    public function createManagedUser($alias, ?Group $group = null, $isAdmin = false){
         $class = get_class($this);
 
         $alias = md5($class).'-'.$alias;

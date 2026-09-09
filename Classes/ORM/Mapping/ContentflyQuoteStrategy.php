@@ -78,7 +78,7 @@ class ContentflyQuoteStrategy implements QuoteStrategy
     /**
      * {@inheritdoc}
      */
-    public function getColumnAlias($columnName, $counter, AbstractPlatform $platform, ClassMetadata $class = null)
+    public function getColumnAlias($columnName, $counter, AbstractPlatform $platform, ?ClassMetadata $class = null)
     {
         return $platform->getSQLResultCasing($columnName . '_' . $counter);
     }
