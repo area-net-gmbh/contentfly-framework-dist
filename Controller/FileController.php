@@ -408,7 +408,21 @@ class FileController extends BaseController
                 readfile($fileName);
             };
 
-            return $this->app->stream($stream, 200, array(
+            /**
+             * Direkt eine StreamedResponse (009-001-0004).
+             *
+             * Vorher `$this->app->stream(...)` — eine Bequemlichkeit von Silex, deren ganzer
+             * Rumpf `return new StreamedResponse($callback, $status, $headers)` lautet. Der
+             * Umweg ueber die Anwendung brachte nichts und haette 009-002 eine Methode mehr
+             * nachzubauen gegeben.
+             *
+             * DASS HIER GESTREAMT WIRD, HAENGT MIT bootstrap.php ZUSAMMEN: Dort ist bewusst
+             * KEIN ob_start() gesetzt (000-000-0018). Eine StreamedResponse schreibt ihren
+             * Rumpf beim Senden, nicht beim Erzeugen; ein Ausgabepuffer darueber wuerde die
+             * Auslieferung grosser Dateien in den Speicher ziehen. Wer das eine aendert, muss
+             * das andere mitdenken.
+             */
+            return new StreamedResponse($stream, 200, array(
                 'Content-Type'   => $mimeType,
                 'Content-length' => filesize($fileName),
                 'Cache-Control' => 'max-age='.Config\Adapter::getConfig()->FILE_CACHE_LIFETIME.', public',
@@ -423,7 +437,10 @@ class FileController extends BaseController
             // hat bootstrap-web.php ihn aus $_SERVER['PHP_SELF'] ueberschrieben; der Redirect
             // zeigte dann ueberall ausser hinter der mitgelieferten .htaccess ins Leere.
             $redirectUri = Config\Adapter::getConfig()->WEB_ROOT."data/files/$id/".basename($fileName);
-            return $this->app->redirect($redirectUri, 301);
+
+            // Direkt eine RedirectResponse (009-001-0004) — $this->app->redirect() tat nichts
+            // anderes, als genau diese zu bauen.
+            return new RedirectResponse($redirectUri, 301);
         }
 
     }

@@ -1,8 +1,6 @@
 <?php
 namespace Areanet\PIM\Classes\Kernel;
 
-use Symfony\Component\HttpFoundation\RedirectResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 /**
@@ -24,10 +22,11 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
  *   über den Wechsel hinweg unverändert und wird deshalb geerbt statt neu erfunden.
  * - **`mount()`, `before()`, `after()`, `extend()`** — Silex beziehungsweise Pimple. Diese vier
  *   sind der eigentliche Grund für diese Schnittstelle.
- * - **`redirect()`, `stream()`** — Bequemlichkeiten von Silex, die nichts tun, als eine
- *   Response zu bauen. Sie stehen hier **vorübergehend**: `009-001-0004` ersetzt die drei
- *   Aufrufstellen durch die Symfony-Klassen, die sie ohnehin zurückgeben, und nimmt die beiden
- *   Methoden danach wieder heraus. Bis dahin wäre die Schnittstelle sonst unvollständig.
+ * WAS HIER STAND UND WIEDER WEG IST — `redirect()` und `stream()`. Beides Bequemlichkeiten von
+ * Silex, deren ganzer Rumpf `return new RedirectResponse(...)` beziehungsweise
+ * `return new StreamedResponse(...)` lautete. `009-001-0004` hat die drei Aufrufstellen im
+ * `FileController` auf die Symfony-Klassen umgestellt; damit gab es keinen Aufrufer mehr, und
+ * eine Zusicherung ohne Aufrufer ist Ballast, den `009-002` sonst nachbauen muesste.
  *
  * WAS BEWUSST FEHLT — `register()`. `InstallCommand::bootDoctrine()` ruft es, und es steht
  * damit in der gemessenen Oberfläche. Aufgenommen ist es trotzdem nicht: Sein Parametertyp ist
@@ -63,22 +62,4 @@ interface ApplicationInterface extends \ArrayAccess, HttpKernelInterface
 
     /** Hook nach der Action. */
     public function after($callback, $priority = 0);
-
-    /**
-     * Vorübergehend, siehe Klassenkommentar: entfällt mit 009-001-0004.
-     *
-     * Ohne Rückgabetyp, obwohl es immer eine RedirectResponse ist: Silex' Methode deklariert
-     * keinen, und eine Implementierung ohne Rückgabetyp erfüllt keine Signatur mit einem.
-     * Die Angabe steht deshalb im @return, nicht in der Signatur.
-     *
-     * @return RedirectResponse
-     */
-    public function redirect($url, $status = 302);
-
-    /**
-     * Vorübergehend, siehe Klassenkommentar: entfällt mit 009-001-0004.
-     *
-     * @return StreamedResponse
-     */
-    public function stream($callback = null, $status = 200, array $headers = []);
 }

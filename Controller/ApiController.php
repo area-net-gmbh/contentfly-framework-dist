@@ -812,6 +812,29 @@ class ApiController extends BaseController
             $object = $this->em->getRepository($entityFullName)->find($id);
         }
 
+        /**
+         * Zwei interne Sub-Requests — und was beim Kernel-Wechsel an ihnen zu pruefen ist
+         * (009-001-0004).
+         *
+         * `replace` entscheidet nicht selbst, ob angelegt oder geaendert wird, sondern schickt
+         * die Anfrage noch einmal durch die Anwendung — an `/api/insert`, wenn es das Objekt
+         * nicht gibt, sonst an `/api/update`. Das ist kein Aufruf der Methode, sondern ein
+         * vollstaendiger Request durch den Kernel: **before- und after-Hooks laufen ein zweites
+         * Mal**, und der Ereignisname, den `BaseControllerProvider` daraus bildet, lautet dann
+         * `pim.controller.before.api.insertaction` statt `…replaceaction`.
+         *
+         * Die drei Zeilen davor sind der Grund, warum das ueberhaupt geht: Die Id aus dem
+         * Request wandert nach `data.id`, und `$subRequest` uebernimmt `request` und `query`
+         * des Originals per Referenz — anders kaeme der Rumpf nicht mit, weil
+         * `Request::create()` ihn aus `getContent()` nicht erneut parst.
+         *
+         * `handle()` kommt aus Symfonys `HttpKernelInterface`, nicht aus Silex. Der Aufruf
+         * bleibt also woertlich stehen. **Zu pruefen ist etwas anderes:** ob `SUB_REQUEST` beim
+         * neuen Kernel dieselben Listener durchlaeuft. Symfony unterscheidet Haupt- und
+         * Unteranfrage in `kernel.request`; ein Listener, der heute mitlaeuft, kann dort
+         * uebersprungen werden — und das waere ein Verhaltenswechsel, den nur
+         * `UpdateReplaceApiTest` sichtbar macht.
+         */
         if(!$object){
             $subRequest = Request::create('/api/insert', 'POST', $request->attributes->all(), $request->cookies->all(), $request->files->all(), $request->server->all(), $request->getContent());
 
