@@ -157,7 +157,13 @@ $app['auth.user'] = null;
 Adapter::setHostname(HOST);
 date_default_timezone_set(Adapter::getConfig()->APP_TIMEZONE);
 
-$app->register(new Silex\Provider\ServiceControllerServiceProvider());
+/*
+ * Der ServiceControllerServiceProvider ist mit Silex entfallen (009-002-0002).
+ *
+ * Er erlaubte, einen Controller als "dienst:methode" zu benennen — also als Container-Schluessel
+ * plus Methodenname statt als Klasse. Genau davon lebt der RouteManager. Die Faehigkeit bleibt,
+ * sie liegt jetzt im Controller-Resolver der Anwendung; gebaut wird sie in 009-002-0003.
+ */
 
 
 if(Adapter::getConfig()->APP_LANGUAGES){
@@ -175,26 +181,53 @@ if($app['is_installed']) {
         define('APPCMS_ID_STRATEGY', 'AUTO');
     }
 
-    $app->register(new Silex\Provider\DoctrineServiceProvider(), array(
-        'dbs.options' => array(
-            'pim' => array(
-                'driver' => 'pdo_mysql',
-                'host' => Adapter::getConfig()->DB_HOST,
-                // Ohne den Port landet die Verbindung immer auf 3306 - und zwar still,
-                // also auf irgendeiner MySQL, die dort zufaellig lauscht (Task 000-000-0004).
-                'port' => Adapter::getConfig()->DB_PORT,
-                'dbname' => Adapter::getConfig()->DB_NAME,
-                'user' => Adapter::getConfig()->DB_USER,
-                'password' => Adapter::getConfig()->DB_PASS,
+    /*
+     * Die Datenbankverbindung, selbst gebaut (009-002-0002).
+     *
+     * Hier stand `$app->register(new Silex\Provider\DoctrineServiceProvider(), …)`. Der
+     * Provider legte `$app['dbs']` als Sammlung benannter Verbindungen an und `$app['db']` als
+     * Verweis auf die erste. Beide Schluessel werden im Baum gelesen — `bin/console.php` und
+     * `EntityManagerFactory` — und bleiben deshalb genau so bestehen.
+     *
+     * Gebaut wird die Verbindung mit `DriverManager`, wie es `$app['database']` weiter unten
+     * seit jeher tut. Der Unterschied zwischen den beiden: `$app['db']` ist die Verbindung, die
+     * der EntityManager benutzt, `$app['database']` eine zweite fuer direktes SQL. Dass es zwei
+     * sind, ist aelter als dieser Task und wird hier nicht angefasst.
+     */
+    $app['dbs.options'] = array(
+        'pim' => array(
+            'driver'   => 'pdo_mysql',
+            'host'     => Adapter::getConfig()->DB_HOST,
+            // Ohne den Port landet die Verbindung immer auf 3306 - und zwar still,
+            // also auf irgendeiner MySQL, die dort zufaellig lauscht (Task 000-000-0004).
+            'port'     => Adapter::getConfig()->DB_PORT,
+            'dbname'   => Adapter::getConfig()->DB_NAME,
+            'user'     => Adapter::getConfig()->DB_USER,
+            'password' => Adapter::getConfig()->DB_PASS,
+            'charset'  => Adapter::getConfig()->DB_CHARSET,
+            'defaultTableOptions' => array(
                 'charset' => Adapter::getConfig()->DB_CHARSET,
-                'defaultTableOptions' => array(
-                    'charset' => Adapter::getConfig()->DB_CHARSET,
-                    'collate' => Adapter::getConfig()->DB_COLLATE
-                )
-
+                'collate' => Adapter::getConfig()->DB_COLLATE
             )
-        ),
-    ));
+        )
+    );
+
+    $app['dbs'] = function ($app) {
+        $verbindungen = array();
+
+        foreach ($app['dbs.options'] as $name => $optionen) {
+            $verbindungen[$name] = DriverManager::getConnection($optionen);
+        }
+
+        return $verbindungen;
+    };
+
+    // Die erste benannte Verbindung, wie sie der Provider ausgewiesen hat.
+    $app['db'] = function ($app) {
+        $verbindungen = $app['dbs'];
+
+        return reset($verbindungen);
+    };
 }
 
 $app->register(new ConsoleServiceProvider(), array(
@@ -355,7 +388,11 @@ if($app['is_installed']) {
     $evm->addEventListener(Events::loadClassMetadata, new LoadMetadata());
 }
 
-$app->register(new Silex\Provider\ValidatorServiceProvider());
+/*
+ * Der ValidatorServiceProvider ist mit symfony/validator entfallen (009-002-0001). Er wurde
+ * registriert, und `$app['validator']` hat ihn nie jemand abgeholt — im ganzen Baum keine
+ * Fundstelle, keine @Assert-Annotation, kein anderes Paket, das ihn anfordert.
+ */
 
 if(Adapter::getConfig()->APP_FORCE_SSL && !defined('APPCMS_CONSOLE')){
     if ( !(isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] == 'on' ||

@@ -4,7 +4,7 @@ namespace Areanet\PIM\Command;
 use Areanet\PIM\Classes\Config\Adapter;
 use Doctrine\ORM\Tools\SchemaTool;
 use Areanet\PIM\Classes\Kernel\Command;
-use Silex\Provider\DoctrineServiceProvider;
+use Doctrine\DBAL\DriverManager;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -216,20 +216,31 @@ class InstallCommand extends Command
             define('APPCMS_ID_STRATEGY', 'AUTO');
         }
 
-        $app->register(new DoctrineServiceProvider(), array(
-            'dbs.options' => array(
-                'pim' => array(
-                    'driver'   => 'pdo_mysql',
-                    'host'     => $db['host'],
-                    'port'     => $db['port'],
-                    'dbname'   => $db['name'],
-                    'user'     => $db['user'],
-                    'password' => $db['pass'],
-                    'charset'  => Adapter::getConfig()->DB_CHARSET,
-                    'collate'  => Adapter::getConfig()->DB_COLLATE,
-                ),
-            ),
-        ));
+        /*
+         * Die Verbindung, selbst gebaut (009-002-0002) — wie im regulaeren Bootstrap.
+         *
+         * Hier stand `$app->register(new DoctrineServiceProvider(), …)`. Der Provider ist mit
+         * Silex entfallen; was er anlegte, waren `$app['dbs']` und `$app['db']`, und beide
+         * werden weiter unten und in bin/console.php gelesen.
+         */
+        $app['dbs'] = function () use ($db) {
+            return array('pim' => DriverManager::getConnection(array(
+                'driver'   => 'pdo_mysql',
+                'host'     => $db['host'],
+                'port'     => $db['port'],
+                'dbname'   => $db['name'],
+                'user'     => $db['user'],
+                'password' => $db['pass'],
+                'charset'  => Adapter::getConfig()->DB_CHARSET,
+                'collate'  => Adapter::getConfig()->DB_COLLATE,
+            )));
+        };
+
+        $app['db'] = function ($app) {
+            $verbindungen = $app['dbs'];
+
+            return reset($verbindungen);
+        };
 
         // Dieselbe Konstruktion wie im regulaeren Bootstrap — siehe 006-002-0005.
         // Weicht sie ab, installiert der Installer gegen ein anderes Schema, als die
