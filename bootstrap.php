@@ -2,6 +2,23 @@
 const ROOT_DIR = __DIR__ . '/../..';
 
 require_once ROOT_DIR.'/lib/contentfly/version.php';
+/*
+ * ZWEI AUTOLOADER, UND DIE REIHENFOLGE IST DIE ENTSCHEIDUNG.
+ *
+ * Root zuerst, custom/ ergaenzend. Registrieren beide dasselbe PSR-4-Praefix, bedient es der
+ * ZUERST geladene Baum — also immer der Root, unabhaengig davon, welche Version aktueller ist.
+ * Das ist ab 006-004-0001 eine Zusicherung, nicht mehr eine Nebenwirkung: Framework schlaegt
+ * Projekt. Wer die beiden Bloecke tauscht, kehrt sie um.
+ *
+ * Begruendung und die verworfene Alternative (ein einziger Autoloader) stehen in
+ * an_project/docs/architecture.md unter "Key decisions", 2026-09-09.
+ *
+ * DIE ZUSICHERUNG HAENGT AN EINER BEDINGUNG: dass sich die beiden Baeume nicht ueberschneiden.
+ * Frueher taten sie es — psr/log lag in 1.1.3 und 3.0.2 gleichzeitig im Prozess, dazu zwei
+ * symfony/polyfill-* in unvereinbaren Staenden und ein handkopiertes PHPMailer\PHPMailer\, das
+ * in keiner installed.json stand. Jahrelang, ohne dass es jemandem auffiel. Geprueft wird die
+ * Bedingung deshalb in tests/Unit/AutoloaderUeberschneidungTest.php.
+ */
 require_once ROOT_DIR.'/vendor/autoload.php';
 if(file_exists(ROOT_DIR.'/custom/vendor/autoload.php')){
     require_once ROOT_DIR.'/custom/vendor/autoload.php';
