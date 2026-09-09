@@ -5,8 +5,7 @@ use Areanet\PIM\Classes\Config;
 use Areanet\PIM\Classes\Controller\Provider\BaseControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Route;
 use Areanet\PIM\Controller\ApiController;
-use Silex\Application;
-use Silex\ControllerProviderInterface;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 

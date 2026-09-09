@@ -2,8 +2,8 @@
 namespace Areanet\PIM\Classes\Controller\Provider;
 
 use Areanet\PIM\Classes\Config\Adapter;
-use Silex\Api\ControllerProviderInterface;
-use Silex\Application;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
+use Areanet\PIM\Classes\Kernel\ControllerProviderInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 

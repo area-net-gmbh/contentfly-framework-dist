@@ -210,9 +210,14 @@ $app->options("{anything}", function () {
 })->assert("anything", ".*");
 
 
-$app->mount('/api', new ApiControllerProvider('/api'));
-$app->mount('/auth', new AuthControllerProvider('/auth'));
-$app->mount('/file', new FileControllerProvider('/file'));
-$app->mount('/system', new SystemControllerProvider('/system'));
+/*
+ * connect() wird selbst gerufen (009-001-0003) — dieselbe Aenderung wie im RouteManager.
+ * Die Provider implementieren nicht mehr Silex' ControllerProviderInterface, also erkennt
+ * mount() sie nicht mehr als solche; uebergeben wird die fertige Sammlung.
+ */
+$app->mount('/api',    (new ApiControllerProvider('/api'))->connect($app));
+$app->mount('/auth',   (new AuthControllerProvider('/auth'))->connect($app));
+$app->mount('/file',   (new FileControllerProvider('/file'))->connect($app));
+$app->mount('/system', (new SystemControllerProvider('/system'))->connect($app));
 
 $app->run();

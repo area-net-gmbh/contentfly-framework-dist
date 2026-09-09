@@ -51,8 +51,7 @@ use Doctrine\Common\Cache\FilesystemCache;
 use Doctrine\Common\Cache\MemcachedCache;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Events;
-use Knp\Console\ConsoleEvent;
-use Knp\Console\ConsoleEvents;
+use Areanet\PIM\Classes\Kernel\ConsoleEvents;
 use Areanet\PIM\Classes\Kernel\Application;
 use Knp\Provider\ConsoleServiceProvider;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -320,11 +319,12 @@ $app['routeManager'] = function ($app) {
 };
 
 $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app) {
-    $dispatcher->addListener(ConsoleEvents::INIT, function (ConsoleEvent $event) {
-        $app = $event->getApplication();
-        $app->add(new InstallCommand());
-        $app->add(new SetupCommand());
-        $app->add(new TokenCleanupCommand());
+    // Ohne Typangabe am Ereignis, siehe ConsoleManager (009-001-0003).
+    $dispatcher->addListener(ConsoleEvents::INIT, function ($event) {
+        $console = $event->getApplication();
+        $console->add(new InstallCommand());
+        $console->add(new SetupCommand());
+        $console->add(new TokenCleanupCommand());
     });
     return $dispatcher;
 });

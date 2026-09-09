@@ -4,8 +4,7 @@ namespace Areanet\PIM\Classes\Controller\Provider\Base;
 use Areanet\PIM\Classes\Controller\Provider\BaseControllerProvider;
 use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Controller\AuthController;
-use Silex\Application;
-use Silex\ControllerProviderInterface;
+use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
