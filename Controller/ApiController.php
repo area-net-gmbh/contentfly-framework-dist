@@ -5,6 +5,7 @@ use Areanet\PIM\Classes\Annotations\ManyToMany;
 use Areanet\PIM\Classes\Api;
 use \Areanet\PIM\Classes\Config;
 use Areanet\PIM\Classes\Controller\BaseController;
+use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\Entity\EntityDuplicateException;
 use Areanet\PIM\Classes\Exceptions\Entity\EntityNotFoundException;
 use Areanet\PIM\Classes\Exceptions\File\FileExistsException;
@@ -13,6 +14,7 @@ use Areanet\PIM\Classes\File\Backend\FileSystem;
 use Areanet\PIM\Classes\File\Processing;
 use Areanet\PIM\Classes\File\Processing\Standard;
 use Areanet\PIM\Classes\Helper;
+use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\Permission;
 use Areanet\PIM\Entity\Base;
 use Areanet\PIM\Entity\BaseSortable;
@@ -536,25 +538,78 @@ class ApiController extends BaseController
         }
     }
 
+    /**
+     * Aktualisiert einen Stapel von Objekten — ganz oder gar nicht.
+     *
+     * ENTSCHEIDUNG ZU 000-000-0009: Von den drei dort offengelassenen Richtungen (Transaktion,
+     * Fehlersammlung, nur die Antwort verbessern) gilt die TRANSAKTION.
+     *
+     * Der Grund ist nicht Sauberkeit, sondern was der Aufrufer hinterher weiß. Vorher lief der
+     * Stapel ohne Transaktion durch: Scheiterte das dritte von fünf Objekten, blieben zwei
+     * geändert, drei unberührt, und die Antwort war ein Fehler ohne Angabe, wie weit es kam.
+     * Der Aufrufer musste den Zustand seiner Daten zurückfragen, um ihn zu kennen.
+     *
+     * Die Fehlersammlung (Richtung 2) hätte das gemeldet, aber den Mischzustand behalten — und
+     * sie hängt daran, dass die Antwort ankommt. Geht sie unterwegs verloren, ist der Aufrufer
+     * wieder da, wo er vorher war. Die Transaktion hält auch dann: Kommt keine Antwort, wurde
+     * entweder alles geschrieben oder nichts, und ein Wiederholen des ganzen Stapels ist sicher.
+     *
+     * DAS IST EINE VERHALTENSÄNDERUNG und als solche in an_project/docs/breaking-changes.md
+     * vermerkt. Ein Projekt, das sich darauf verlassen hat, dass die Objekte vor dem Fehler
+     * geschrieben bleiben, bekommt sie jetzt zurückgerollt.
+     *
+     * Gefangen wird \Throwable, nicht \Exception: doUpdate() nimmt entity, id und data typisiert
+     * entgegen: ein Eintrag ohne diese Schlüssel löst einen TypeError aus, und der ist kein
+     * Exception. Würde er hier durchfallen, bliebe die Transaktion offen und die Verbindung
+     * räumte sie am Ende des Requests ohne Commit ab — richtig im Ergebnis, aber aus Versehen.
+     */
     public function multiupdateAction(Request $request, Application $app)
     {
         $objects             = $request->get('objects');
         $disableModifiedTime = $request->get('disableModifiedTime');
         $lang                = $request->get('lang');
 
-        foreach($objects as $object){
-            $api = new Api($this->app, $request);
-            $updateUniversalLangProps = $api->doUpdate($object['entity'], $object['id'], $object['data'], $disableModifiedTime, null, $lang);
-
-            if($updateUniversalLangProps){
-                foreach ($updateUniversalLangProps['i18nObjects'] as $i18nObject) {
-
-                    $api->doUpdate($object['entity'], $i18nObject['id'], $updateUniversalLangProps['i18nProperties'], $disableModifiedTime, null, $i18nObject['lang'], true);
-                }
-            }
+        // Vorher lief foreach über null durch und der Aufruf endete mit 200. Solange die Antwort
+        // leer war, fiel das nicht auf; jetzt, wo sie aufzählt, was geschrieben wurde, wäre eine
+        // leere Liste auf einen kaputten Request hin eine falsche Auskunft.
+        if(!is_array($objects)){
+            throw new ContentflyException(Messages::contentfly_general_invalid_params, 'objects');
         }
 
-        return $this->renderResponse(array());
+        $verbindung     = $this->app['orm.em']->getConnection();
+        $aktualisiert   = array();
+
+        $verbindung->beginTransaction();
+
+        try{
+            foreach($objects as $object){
+                $api = new Api($this->app, $request);
+                $updateUniversalLangProps = $api->doUpdate($object['entity'], $object['id'], $object['data'], $disableModifiedTime, null, $lang);
+
+                if($updateUniversalLangProps){
+                    foreach ($updateUniversalLangProps['i18nObjects'] as $i18nObject) {
+
+                        $api->doUpdate($object['entity'], $i18nObject['id'], $updateUniversalLangProps['i18nProperties'], $disableModifiedTime, null, $i18nObject['lang'], true);
+                    }
+                }
+
+                // Ein Eintrag je Objekt aus dem Request, in dessen Reihenfolge. Die Mitschriften
+                // in die übrigen Sprachen sind Folge desselben Eintrags und keine eigenen.
+                $aktualisiert[] = array('entity' => $object['entity'], 'id' => $object['id']);
+            }
+
+            $verbindung->commit();
+        }catch(\Throwable $e){
+            $verbindung->rollBack();
+            throw $e;
+        }
+
+        $currentDate = new \DateTime();
+
+        return $this->renderResponse(array(
+            'ts'    => $currentDate->format('Y-m-d H:i:s'),
+            'data'  => $aktualisiert
+        ));
     }
 
     /**
