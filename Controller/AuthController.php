@@ -4,7 +4,7 @@ use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Controller\BaseController;
 use Areanet\PIM\Classes\LoginProvider;
-use Areanet\PIM\Classes\Manager\LoginManager;
+use Areanet\PIM\Classes\Security\Fremdkennung;
 use Areanet\PIM\Classes\Security\Tokenhandler;
 use Areanet\PIM\Classes\Security\Zugangstoken;
 use Areanet\PIM\Entity\RevokedToken;
@@ -109,15 +109,70 @@ class AuthController extends BaseController
             return new JsonResponse(array('message' => $meldung), 401);
         };
 
-        $loginProviderClass = ($request->request->all()['loginManager'] ?? null);
-        if(($loginProvider = $this->getLoginProvider($request, $loginProviderClass))){
+        /*
+         * DER NAME WAEHLT AUS EINER ALLOWLIST, NICHT EINE KLASSE (013-004-0001).
+         *
+         * Hier stand der Klassenname aus dem Request, aufgeloest zu `Custom\Classes\<Name>`.
+         * Der Praefix und eine `instanceof`-Pruefung begrenzten den Schaden — aber die Auswahl
+         * lag beim Aufrufer, und welche Klasse eine Anwendung instanziiert, ist eine
+         * Entscheidung des Betreibers.
+         *
+         * Der Parameter heisst weiterhin `loginManager`: Bestandsclients schicken ihn so, und
+         * ihn umzubenennen waere ein Bruch am Draht ohne Gewinn innerhalb dieser Story. Was er
+         * benennt, ist jetzt ein Eintrag im Verzeichnis — ein Klassenname steht dort nicht und
+         * wird damit abgewiesen wie jeder andere unbekannte Name.
+         */
+        $anbieterName = ($request->request->all()['loginManager'] ?? null);
+        $loginProvider = null;
+
+        if (!empty($anbieterName)) {
+            $loginProvider = $this->app['anmeldeanbieter']->holen(is_string($anbieterName) ? $anbieterName : null);
+
+            /*
+             * EIN UNBEKANNTER NAME WIRD ABGEWIESEN, nicht auf die Passwortpruefung
+             * zurueckgefuehrt. Sonst waere ein Tippfehler im Providernamen eine stille
+             * Anmeldung ueber den falschen Weg — und ein geratener Name ein Orakel dafuer,
+             * welche Fremdsysteme diese Installation kennt.
+             */
+            if (!$loginProvider) {
+                return $abweisen('Ungültiger Benutzername.');
+            }
+        }
+
+        if ($loginProvider) {
             try {
-                $user = $loginProvider->auth();
-                if(!($user instanceof User)){
-                    return $abweisen('Ungültiger Benutzer vom LoginManager');
-                }
-            }catch(\Exception $e){
-                return $abweisen($e->getMessage());
+                $fremd = $loginProvider->pruefen($request);
+            } catch (\Throwable) {
+                /*
+                 * Auch eine Ausnahme ist eine Ablehnung. Ihre Meldung nach aussen zu geben —
+                 * so lief es bis 013-004-0001 — machte den Provider zum Erzaehler: Ein
+                 * LDAP-Fehler stand woertlich in der Antwort, samt Servernamen.
+                 */
+                $fremd = null;
+            }
+
+            if (!$fremd instanceof Fremdkennung) {
+                return $abweisen('Benutzername und/oder Passwort fehlerhaft.');
+            }
+
+            /*
+             * NOCH KEINE PROVISIONIERUNG (013-004-0001).
+             *
+             * Gefunden wird ein Benutzer, der es schon gibt. Anlegen, Passwort sperren und die
+             * Fremdkennung in einer eigenen Spalte fuehren ist `013-004-0002` — bis dahin
+             * bleibt `createManagedUser()` unangetastet, und dieser Weg meldet nur an, was
+             * bereits eingerichtet ist.
+             */
+            $user = $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(
+                array('alias' => $fremd->kennung)
+            );
+
+            if (!$user instanceof User) {
+                return $abweisen('Ungültiger Benutzername.');
+            }
+
+            if (!$user->getIsActive()) {
+                return $abweisen('Der Benutzer ist gesperrt.');
             }
         }else{
 
@@ -446,46 +501,5 @@ class AuthController extends BaseController
         unset($this->app['auth.user']);
 
         return new JsonResponse(array('message' => 'Logout successful'));
-    }
-
-    protected function getLoginProvider(Request $request, $loginProviderClassName){
-        if(empty($loginProviderClassName)){
-            return null;
-        }
-
-        $loginProviderClass = self::providerKlasse($loginProviderClassName);
-
-        if(!class_exists($loginProviderClass)){
-            return null;
-        }
-
-        $loginProvider = new $loginProviderClass($this->app, $request);
-        if(!($loginProvider instanceof LoginManager)){
-            return null;
-        }
-
-        return $loginProvider;
-    }
-
-    /**
-     * Loest den Namen eines LoginManagers zur Klasse auf (013-001-0005).
-     *
-     * DIE BEDINGUNG WAR VERDREHT. Hier stand `substr($name, 7) == 'Plugins'` — das schneidet
-     * **ab** Position 7, statt die ersten sieben Zeichen zu pruefen. Fuer
-     * `Plugins\Auth\Ldap` ergibt das `\Auth\Ldap`, die Bedingung greift nie, und der Name
-     * wurde faelschlich zu `Custom\Classes\Plugins\Auth\Ldap`. **LoginManager aus Plugins
-     * funktionierten dadurch nicht** — und es fiel niemandem auf, weil `plugins/` leer ist.
-     *
-     * Ein Name mit `Plugins`-Praefix bleibt jetzt, wie er ist; jeder andere wird unter
-     * `Custom\Classes\` gesucht.
-     *
-     * Herausgezogen als eigene Methode, damit die Aufloesung ohne laufende Anwendung pruefbar
-     * ist: Ein end-to-end-Nachweis braeuchte ein Plugin, und es gibt keines.
-     */
-    public static function providerKlasse(string $name): string
-    {
-        return str_starts_with($name, 'Plugins')
-            ? $name
-            : 'Custom\Classes\\'.$name;
     }
 }

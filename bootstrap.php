@@ -47,6 +47,7 @@ use Areanet\PIM\Classes\ORM\EntityManagerFactory;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Areanet\PIM\Classes\Security\Anbieterverzeichnis;
 use Areanet\PIM\Classes\Security\Anmeldebremse;
 use Areanet\PIM\Classes\Security\Anmeldetreiber;
 use Areanet\PIM\Classes\Security\Benutzerlader;
@@ -325,6 +326,22 @@ $cachePoolBauen = static function (string $namensraum, string $verzeichnis): \Ps
  * Bequemlichkeit fuer den Entwickler, kein Grund, die Anwendung offen stehen zu lassen. Und
  * ein Zaehler, der ueber Requests hinweg nicht ueberlebt, zaehlt nichts.
  */
+/**
+ * Die Allowlist der Anmeldeprovider (013-004-0001).
+ *
+ * LEER, UND DAS IST DER VORGABEZUSTAND. Ein Projekt traegt seine Provider in `custom/app.php`
+ * ein; das Framework bringt keinen mit. Solange nichts eingetragen ist, gibt es keinen Weg an
+ * der Passwortpruefung vorbei — die Anmeldung ueber ein Fremdsystem ist eine Entscheidung, die
+ * jemand treffen muss, nicht eine, die man erbt.
+ *
+ * Sie steht ausserhalb von `is_installed`: Ein Projekt registriert seine Provider, bevor
+ * irgendetwas geprueft wird, und eine Registrierung, die von der Installation abhinge, waere
+ * eine Falle.
+ */
+$app['anmeldeanbieter'] = function () {
+    return new Anbieterverzeichnis();
+};
+
 $app['loginbremse'] = function () use ($cachePoolBauen) {
     return new Anmeldebremse($cachePoolBauen('loginbremse', ROOT_DIR . '/data/cache/loginbremse'));
 };
