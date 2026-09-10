@@ -4,11 +4,24 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
+use Symfony\Component\Security\Core\User\UserInterface;
 
+/**
+ * DER BENUTZER IST SEIT 013-002-0001 AUCH EIN SYMFONY-BENUTZER.
+ *
+ * `UserInterface` verlangt drei Methoden, und mehr wird hier auch nicht abgebildet. Das ist die
+ * Grenze, die die Story ausdruecklich zieht: Das Contentfly-eigene Berechtigungsmodell —
+ * `Permission`, `I18nPermission`, `Group`, `isAdmin` — wird NICHT durch Symfony-Rollen ersetzt.
+ * Abgebildet wird nur, was der Zugriffsschutz braucht, um einen Benutzer zu identifizieren.
+ *
+ * Wer hier anfaengt, Berechtigungen in Rollen zu uebersetzen, baut ein zweites
+ * Berechtigungsmodell neben dem vorhandenen — und zwei Modelle, die dasselbe sagen sollen,
+ * laufen auseinander.
+ */
 #[ORM\Entity]
 #[ORM\Table(name: 'pim_user')]
 #[PIM\Config(labelProperty: 'alias')]
-class User extends Base
+class User extends Base implements UserInterface
 {
 
 
@@ -288,5 +301,53 @@ class User extends Base
         }
 
         return $data;
+    }
+
+    // ── Symfony-Benutzer (013-002-0001) ────────────────────────────────────────────────
+
+    /**
+     * Die Kennung, unter der dieser Benutzer nachgeladen wird.
+     *
+     * Der `alias` und nicht die Id: Er ist unique, er steht in jedem Token-Zusammenhang, und er
+     * ist das, was ein Mensch als Benutzernamen kennt.
+     */
+    public function getUserIdentifier(): string
+    {
+        return (string) $this->alias;
+    }
+
+    /**
+     * Nur was der Zugriffsschutz braucht — siehe Klassenkommentar.
+     *
+     * `ROLE_USER` fuer jeden angemeldeten Benutzer, `ROLE_ADMIN` zusaetzlich fuer einen
+     * Administrator. Die feinen Rechte bleiben, wo sie sind: in `Permission` und
+     * `I18nPermission`, gelesen vom Contentfly-eigenen Modell.
+     *
+     * @return string[]
+     */
+    public function getRoles(): array
+    {
+        $rollen = array('ROLE_USER');
+
+        if ($this->isAdmin) {
+            $rollen[] = 'ROLE_ADMIN';
+        }
+
+        return $rollen;
+    }
+
+    /**
+     * Absichtlich leer.
+     *
+     * Die Methode soll fluechtige Zugangsdaten vom Objekt raeumen — ein Klartextpasswort etwa,
+     * das waehrend der Anmeldung daran haengt. Hier haengt keines: `$pass` ist der gespeicherte
+     * Argon2id-Hash (013-001-0001), kein fluechtiger Wert, und er wird nirgends serialisiert.
+     *
+     * Symfony hat die Methode mit 7.3 als deprecated markiert; sie steht aber weiter im
+     * Interface und muss deshalb deklariert werden. Gerufen wird sie in diesem Baum von
+     * niemandem — das Deprecation-Gate der CI wuerde es melden.
+     */
+    public function eraseCredentials(): void
+    {
     }
 }
