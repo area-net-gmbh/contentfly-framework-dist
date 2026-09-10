@@ -374,6 +374,31 @@ class Config{
     public $SECURITY_CIPHER_METHOD = 'AES-256-CBC';
     public $SECURITY_CIPHER_KEY    = null;
 
+    /**
+     * Das Signaturgeheimnis fuer JWT.
+     *
+     * NEU MIT 013-002-0003, und wie `SECURITY_CIPHER_KEY` **ohne Standardwert**. Ein im
+     * Repository hinterlegtes Geheimnis ist keines: Jede Installation, die vergisst es zu
+     * setzen, signierte dann mit einem oeffentlich bekannten Wert — und niemand merkt es, weil
+     * alles funktioniert. Ohne Wert weist der JWT-Zweig jeden Token ab, statt ihn
+     * stillschweigend zu ueberspringen.
+     *
+     * Der Wert gehoert in die Umgebung, nicht in eine committete Datei; die ausgelieferte
+     * `custom/config.php` liest ihn von dort.
+     *
+     * MINDESTENS 32 BYTE. `firebase/php-jwt` ab 7.0 weist ein kuerzeres Geheimnis fuer HS256 ab
+     * („Provided key is too short") — beim Signieren wie beim Pruefen. Der Handler faengt das
+     * mit jedem anderen Fehler ab: Ein Betreiber mit zu kurzem Geheimnis bekommt kein halb
+     * funktionierendes System, sondern gar keines. Das ist die richtige Richtung, denn HS256
+     * mit einem kurzen Geheimnis ist ratbar.
+     *
+     * Ausgestellt werden JWT erst mit `013-003`. Diese Fassung verifiziert nur — Schluesselwechsel
+     * mit Kennung im Token-Header und Uebergangszeit gehoeren zu jener Story.
+     *
+     * @var string|null
+     */
+    public $SECURITY_JWT_SECRET    = null;
+
 
     /**
      * Unter welchem Pfad die Anwendung im Web erreichbar ist.
