@@ -45,9 +45,9 @@ use Areanet\PIM\Command\SetupCommand;
 use Areanet\PIM\Command\TokenCleanupCommand;
 use Areanet\PIM\Classes\ORM\EntityManagerFactory;
 use Doctrine\Common\Cache\ApcCache;
-use Doctrine\Common\Cache\ApcuCache;
-use Doctrine\Common\Cache\FilesystemCache;
 use Doctrine\Common\Cache\MemcachedCache;
+use Symfony\Component\Cache\Adapter\ApcuAdapter;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Events;
 use Areanet\PIM\Classes\Kernel\ConsoleEvents;
@@ -265,13 +265,20 @@ if($app['is_installed']) {
     if (!Adapter::getConfig()->APP_DEBUG && !defined('APPCMS_CONSOLE')) {
         switch (Adapter::getConfig()->APP_CACHE_DRIVER) {
             /*
-             * setNamespace() statt eines Konstruktor-Arguments (009-003-0002).
+             * PSR-6 STATT doctrine/cache (010-002-0001).
              *
-             * Hier stand `new ApcCache('query')`. Die Klasse hat gar keinen Konstruktor — das
-             * Argument wurde stillschweigend verworfen, und beide Caches teilten sich
-             * denselben Namensraum. Gemeint war offensichtlich eine Trennung; PHPStan hat es
-             * gemeldet ("does not have a constructor and must be instantiated without any
-             * parameters"), und die Absicht laesst sich mit setNamespace() ausdruecken.
+             * ORM 2.20 nimmt beides entgegen, ORM 3 nur noch PSR-6 — also laesst sich der
+             * Wechsel hier gegen ein unveraendertes ORM messen. Die Adapter kommen aus
+             * symfony/cache; der Stack steht ohnehin auf Symfony 7.4.
+             *
+             * DIE TRENNUNG DER NAMENSRAEUME IST DER EMPFINDLICHE TEIL. Sie war jahrelang
+             * beabsichtigt und griff nicht: Bis 009-003-0002 stand hier `new ApcCache('query')`,
+             * und die Klasse hat gar keinen Konstruktor — das Argument wurde stillschweigend
+             * verworfen, beide Caches lagen im selben Namensraum. Bei Symfonys Adaptern ist
+             * der Namensraum ein Konstruktor-Argument, das nicht ins Leere laufen kann.
+             *
+             * `apc` und `memcached` stehen noch auf doctrine/cache; sie entscheidet
+             * 010-002-0002.
              */
             case 'apc':
                 $config->setQueryCacheImpl($cacheImpl = new ApcCache());
@@ -280,10 +287,8 @@ if($app['is_installed']) {
                 $cacheImpl->setNamespace('metadata');
                 break;
             case 'apcu':
-                $config->setQueryCacheImpl($cacheImpl = new ApcuCache());
-                $cacheImpl->setNamespace('query');
-                $config->setMetadataCacheImpl($cacheImpl = new ApcuCache());
-                $cacheImpl->setNamespace('metadata');
+                $config->setQueryCache(new ApcuAdapter('query'));
+                $config->setMetadataCache(new ApcuAdapter('metadata'));
                 break;
             case 'memcached':
                 $cache = new MemcachedCache();
@@ -294,8 +299,11 @@ if($app['is_installed']) {
                 break;
             case 'filesystem':
             default:
-                $config->setQueryCacheImpl(new FilesystemCache(ROOT_DIR . '/data/cache/query'));
-                $config->setMetadataCacheImpl(new FilesystemCache(ROOT_DIR . '/data/cache/metadata'));
+                // Namensraum leer, Verzeichnis ausdruecklich: Die Trennung liegt hier in den
+                // Pfaden, wie bisher. Ein zusaetzlicher Namensraum wuerde nur eine weitere
+                // Ebene darunter anlegen.
+                $config->setQueryCache(new FilesystemAdapter('', 0, ROOT_DIR . '/data/cache/query'));
+                $config->setMetadataCache(new FilesystemAdapter('', 0, ROOT_DIR . '/data/cache/metadata'));
                 break;
         }
     }
