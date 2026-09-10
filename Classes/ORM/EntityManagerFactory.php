@@ -2,7 +2,9 @@
 namespace Areanet\PIM\Classes\ORM;
 
 use Doctrine\DBAL\Connection;
+use Areanet\PIM\Classes\Events\LoadMetadata;
 use Doctrine\ORM\Configuration;
+use Doctrine\ORM\Events;
 use Psr\Cache\CacheItemPoolInterface;
 use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 use Doctrine\ORM\EntityManager;
@@ -141,6 +143,31 @@ final class EntityManagerFactory
         //
         // Sie war der erste von zwei Blockern des Sprungs — an dieser Zeile starb der ganze
         // Baum, 196 von 268 Tests (Messung im Story-Text).
-        return new EntityManager($connection, $config);
+        $em = new EntityManager($connection, $config);
+
+        /*
+         * DER modified_index-LISTENER GEHOERT HIERHER (010-005-0002).
+         *
+         * Er haengt jeder Entity einen Index auf `modified` an. Registriert wurde er in
+         * bootstrap.php — INNERHALB von `if($app['is_installed'])`. `appcms:install` laeuft
+         * aber genau dann, wenn is_installed FALSCH ist: Der Listener griff dort nie, der Index
+         * wurde nie angelegt, und `orm:validate-schema` meldete seither bei JEDER Installation,
+         * dass Schema und Mapping nicht deckungsgleich sind.
+         *
+         * DAS IST DIE DRITTE AUFLAGE DESSELBEN FEHLERS IN EPIC 010, und deshalb steht die
+         * Registrierung jetzt hier statt beim Aufrufer:
+         *
+         *   010-002-0005   Der Metadaten-Cache wurde nach dem EntityManager gesetzt und
+         *                  erreichte die ClassMetadataFactory nie.
+         *   010-003-0002   Der Installer wiederholte den Mapping-Block aus bootstrap.php,
+         *                  und die Wiederholung wich ab.
+         *   010-005-0002   Dieser Listener.
+         *
+         * Die Regel dahinter: Was fuer JEDEN EntityManager gelten muss, gehoert in die Factory.
+         * Steht es beim Aufrufer, muss es dort mehrfach stehen — und irgendwo fehlt es dann.
+         */
+        $em->getEventManager()->addEventListener(Events::loadClassMetadata, new LoadMetadata());
+
+        return $em;
     }
 }

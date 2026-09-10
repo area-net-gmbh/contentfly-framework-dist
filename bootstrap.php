@@ -33,7 +33,6 @@ use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Auth;
 use Areanet\PIM\Classes\Mailer;
 use Areanet\PIM\Classes\Config\Adapter;
-use Areanet\PIM\Classes\Events\LoadMetadata;
 use Areanet\PIM\Classes\Helper;
 use Areanet\PIM\Classes\Manager\ConsoleManager;
 use Areanet\PIM\Classes\Manager\PluginManager;
@@ -49,7 +48,6 @@ use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Doctrine\DBAL\DriverManager;
-use Doctrine\ORM\Events;
 use Areanet\PIM\Classes\Kernel\ConsoleEvents;
 use Areanet\PIM\Classes\Kernel\Application;
 use Areanet\PIM\Classes\Kernel\Console;
@@ -439,10 +437,17 @@ $app['database'] = function ($app){
     return  DriverManager::getConnection($connectionParams);
 };
 
-if($app['is_installed']) {
-    $evm = $app['orm.em']->getEventManager();
-    $evm->addEventListener(Events::loadClassMetadata, new LoadMetadata());
-}
+/*
+ * DER LoadMetadata-LISTENER STAND HIER (bis 010-005-0002).
+ *
+ * Und griff beim Installieren nicht: Der Block lag in `if($app['is_installed'])`,
+ * `appcms:install` laeuft aber genau dann, wenn das falsch ist. Der Index `modified_index`
+ * wurde deshalb nie angelegt, und `orm:validate-schema` meldete bei jeder Installation, dass
+ * Schema und Mapping nicht deckungsgleich sind.
+ *
+ * Registriert wird er jetzt in `EntityManagerFactory::erzeugen()` — dort, wo jeder
+ * EntityManager vorbeikommt, der des Installers eingeschlossen.
+ */
 
 /*
  * Der ValidatorServiceProvider ist mit symfony/validator entfallen (009-002-0001). Er wurde
