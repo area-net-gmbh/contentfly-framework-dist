@@ -224,7 +224,7 @@ class AuthController extends BaseController
             return null;
         }
 
-        $loginProviderClass = substr($loginProviderClassName, 7) == 'Plugins' ? $loginProviderClassName : "Custom\Classes\\$loginProviderClassName";
+        $loginProviderClass = self::providerKlasse($loginProviderClassName);
 
         if(!class_exists($loginProviderClass)){
             return null;
@@ -236,5 +236,27 @@ class AuthController extends BaseController
         }
 
         return $loginProvider;
+    }
+
+    /**
+     * Loest den Namen eines LoginManagers zur Klasse auf (013-001-0005).
+     *
+     * DIE BEDINGUNG WAR VERDREHT. Hier stand `substr($name, 7) == 'Plugins'` — das schneidet
+     * **ab** Position 7, statt die ersten sieben Zeichen zu pruefen. Fuer
+     * `Plugins\Auth\Ldap` ergibt das `\Auth\Ldap`, die Bedingung greift nie, und der Name
+     * wurde faelschlich zu `Custom\Classes\Plugins\Auth\Ldap`. **LoginManager aus Plugins
+     * funktionierten dadurch nicht** — und es fiel niemandem auf, weil `plugins/` leer ist.
+     *
+     * Ein Name mit `Plugins`-Praefix bleibt jetzt, wie er ist; jeder andere wird unter
+     * `Custom\Classes\` gesucht.
+     *
+     * Herausgezogen als eigene Methode, damit die Aufloesung ohne laufende Anwendung pruefbar
+     * ist: Ein end-to-end-Nachweis braeuchte ein Plugin, und es gibt keines.
+     */
+    public static function providerKlasse(string $name): string
+    {
+        return str_starts_with($name, 'Plugins')
+            ? $name
+            : 'Custom\Classes\\'.$name;
     }
 }

@@ -32,8 +32,23 @@ class ApiControllerProvider extends BaseControllerProvider
             }
         };
 
-        $controllers->post('/login',  "api.controller:loginAction");
-        $controllers->post('/logout', "api.controller:logoutAction")->before($checkAuth);
+        /*
+         * `/api/login` UND `/api/logout` SIND ENTFALLEN (013-001-0005).
+         *
+         * Sie zeigten auf `api.controller:loginAction` und `:logoutAction` — beide Methoden gibt
+         * es im ApiController nicht und gab es in diesem Baum nie.
+         *
+         * Aufgefallen sind sie nie, weil sie den Router gar nicht erreichten: `Routensammlung`
+         * zaehlt je Provider durch, `/api/login` hiess `login_0` und wurde beim Mounten von
+         * `/auth/login` gleichen Namens verdraengt. Der Namensvetter ist mit demselben Task
+         * behoben — womit diese beiden Routen erstmals wirksam geworden waeren, und zwar als
+         * Fehler aus dem Controller-Resolver statt als 405.
+         *
+         * ENTFERNT STATT UMGEBOGEN. Sie auf `auth.controller` zeigen zu lassen waere ein
+         * zweiter Name fuer dieselbe Sache und eine zweite Oberflaeche, die man absichern muss.
+         * Die funktionierenden Routen sind `/auth/login` und `/auth/logout`; ein Aufruf von
+         * `/api/login` antwortet mit 405, wie jeder unbekannte Pfad.
+         */
         $controllers->post('/single', "api.controller:singleAction")->before($checkAuth);
         $controllers->post('/list',   "api.controller:listAction")->before($checkAuth);
         $controllers->post('/tree',   "api.controller:treeAction")->before($checkAuth);

@@ -126,7 +126,29 @@ class Application extends Container implements ApplicationInterface
          * bootstrap-web.php mountet '/api', custom/app.php 'api/v1/example/'. Silex hat beides
          * angenommen.
          */
-        $controllers->addPrefix('/'.trim($prefix, '/'));
+        $pfadPraefix = '/'.trim($prefix, '/');
+        $controllers->addPrefix($pfadPraefix);
+
+        /*
+         * DER NAMENSPRAEFIX IST KEINE KOSMETIK (013-001-0005).
+         *
+         * `Routensammlung` zaehlt ihre Routen **je Provider** durch: Die erste Route von
+         * ApiControllerProvider heisst `login_0`, die erste von AuthControllerProvider heisst
+         * ebenfalls `login_0`. `RouteCollection::addCollection()` ueberschreibt beim Namen —
+         * die spaeter gemountete Sammlung verdraengt die frueher gemountete, lautlos.
+         *
+         * GEMESSEN: 30 registrierte Routen, 29 in der Sammlung. Verschwunden waren
+         * `POST /api/login` und `POST /api/logout` — beide von ihren Namensvettern unter
+         * `/auth` verdraengt. Sie galten als "tote Routen, die auf nicht existierende Methoden
+         * zeigen"; in Wahrheit erreichten sie den Router nie, und ein Aufruf endete im
+         * OPTIONS-Catch-All mit 405, nicht im Controller-Resolver.
+         *
+         * Der Praefix kommt aus dem Mountpunkt und macht die Namen ueber alle Sammlungen
+         * hinweg eindeutig. Die Namen selbst benutzt niemand — es gibt keinen `url_generator`
+         * —, aber eindeutig muessen sie sein, sonst ist Mounten ein Gluecksspiel.
+         */
+        $controllers->addNamePrefix(trim(preg_replace('/[^A-Za-z0-9]+/', '_', $pfadPraefix), '_').'_');
+
         $this->routen->addCollection($controllers);
 
         return $this;
