@@ -13,7 +13,7 @@ use Areanet\PIM\Entity\Log;
 use DateTime;
 use DirectoryIterator;
 use Doctrine\ORM\Id\AssignedGenerator;
-use Doctrine\ORM\Mapping\ClassMetadataInfo;
+use Doctrine\ORM\Mapping\ClassMetadata;
 use Exception;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -91,7 +91,7 @@ class FileController extends BaseController
                 $fileObject = new File();
 
                 $metadata = $this->em->getClassMetaData(get_class($fileObject));
-                $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_NONE);
+                $metadata->setIdGeneratorType(ClassMetadata::GENERATOR_TYPE_NONE);
                 if(Config\Adapter::getConfig()->DB_GUID_STRATEGY) $metadata->setIdGenerator(new AssignedGenerator());
                 $fileObject->setId(($request->request->all()["id"] ?? null));
 

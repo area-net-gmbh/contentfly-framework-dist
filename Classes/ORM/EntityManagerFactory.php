@@ -133,6 +133,14 @@ final class EntityManagerFactory
             $config->setMetadataCache($metadatenCache);
         }
 
-        return EntityManager::create($connection, $config);
+        // `new EntityManager(...)` STATT `EntityManager::create(...)` (010-003-0001).
+        //
+        // Die statische Fabrik ist in ORM 3 entfernt; in 2.20 ist sie deprecated und der
+        // Konstruktor bereits public. Deshalb steht die Umstellung HIER, vor dem
+        // Versionssprung: Sie laesst sich gegen ein unveraendertes ORM messen.
+        //
+        // Sie war der erste von zwei Blockern des Sprungs — an dieser Zeile starb der ganze
+        // Baum, 196 von 268 Tests (Messung im Story-Text).
+        return new EntityManager($connection, $config);
     }
 }

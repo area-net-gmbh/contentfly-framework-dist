@@ -23,7 +23,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Id\AssignedGenerator;
-use Doctrine\ORM\Mapping\ClassMetadataInfo;
+use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\MappedSuperclass;
 use Doctrine\ORM\Mapping\Table;
 use Doctrine\ORM\NonUniqueResultException;
@@ -308,7 +308,7 @@ class Api
 
             if($property == 'id' && !empty($value)){
                 $metadata = $this->em->getClassMetaData(get_class($object));
-                $metadata->setIdGeneratorType(ClassMetadataInfo::GENERATOR_TYPE_NONE);
+                $metadata->setIdGeneratorType(ClassMetadata::GENERATOR_TYPE_NONE);
                 if(Config\Adapter::getConfig()->DB_GUID_STRATEGY) $metadata->setIdGenerator(new AssignedGenerator());
 
             }
