@@ -452,6 +452,38 @@ class Config{
      */
     public $SECURITY_JWT_KEY_ID_PREVIOUS = null;
 
+    /**
+     * Wie ein Fremdsystem auf Contentfly-Gruppen abgebildet wird (013-004-0003).
+     *
+     * JE ANBIETERNAME EIN EINTRAG, mit drei Schluesseln:
+     *
+     *   gruppen  Fremdgruppe => Name einer Contentfly-Gruppe. Der ERSTE Treffer in dieser
+     *            Reihenfolge gewinnt — die Reihenfolge ist damit eine Entscheidung und kein
+     *            Zufall.
+     *   admin    Liste von Fremdgruppen, die das Adminflag setzen.
+     *   vorgabe  Gruppe fuer den Fall, dass nichts passt. Fehlt sie, bleibt der Benutzer ohne
+     *            Gruppe.
+     *
+     * OHNE EINTRAG PASSIERT NICHTS — kein Gruppenwechsel, und vor allem KEIN Adminflag. Eine
+     * Abbildung, die im Zweifel Rechte vergibt, ist die falsche Richtung; das Fremdsystem soll
+     * Rechte begruenden, nicht ihr Fehlen.
+     *
+     * SIE WIRKT BEI JEDER ANMELDUNG. Wer im Fremdsystem aus einer Gruppe faellt, faellt beim
+     * naechsten Login auch hier heraus — genau deshalb stehen Rollen NICHT im JWT
+     * (`013-003-0001`).
+     *
+     * Beispiel:
+     *
+     *     array('ldap' => array(
+     *         'gruppen' => array('CN=Redaktion' => 'Redakteure', 'CN=Admins' => 'Administratoren'),
+     *         'admin'   => array('CN=Admins'),
+     *         'vorgabe' => 'Gaeste',
+     *     ))
+     *
+     * @var array<string, array{gruppen?: array<string,string>, admin?: array<int,string>, vorgabe?: string|null}>
+     */
+    public $SECURITY_PROVIDER_GRUPPEN = array();
+
 
     /**
      * Unter welchem Pfad die Anwendung im Web erreichbar ist.

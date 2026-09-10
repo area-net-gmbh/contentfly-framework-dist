@@ -50,6 +50,7 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Areanet\PIM\Classes\Security\Anbieterverzeichnis;
 use Areanet\PIM\Classes\Security\Anmeldebremse;
 use Areanet\PIM\Classes\Security\Benutzerbereitstellung;
+use Areanet\PIM\Classes\Security\Gruppenabbildung;
 use Areanet\PIM\Classes\Security\Anmeldetreiber;
 use Areanet\PIM\Classes\Security\Benutzerlader;
 use Areanet\PIM\Classes\Security\Tokenhandler;
@@ -410,6 +411,11 @@ if($app['is_installed']) {
     // Legt Benutzer an, die ein Fremdsystem erkannt hat (013-004-0002).
     $app['benutzerbereitstellung'] = function ($app) {
         return new Benutzerbereitstellung($app['orm.em']);
+    };
+
+    // Bildet ab, was ein Fremdsystem an Gruppen liefert (013-004-0003).
+    $app['gruppenabbildung'] = function ($app) {
+        return new Gruppenabbildung($app['orm.em']);
     };
 
     $app['tokenhandler'] = function ($app) {

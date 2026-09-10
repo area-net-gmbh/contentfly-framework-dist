@@ -166,10 +166,18 @@ class AuthController extends BaseController
              * `createManagedUser()` selbst — jedes Projekt fuer sich, mit jeweils eigenen
              * Fehlern.
              */
-            $user = $this->app['benutzerbereitstellung']->findenOderAnlegen(
-                strtolower(trim((string) $anbieterName)),
-                $fremd
-            );
+            $anbieter = strtolower(trim((string) $anbieterName));
+
+            $user = $this->app['benutzerbereitstellung']->findenOderAnlegen($anbieter, $fremd);
+
+            /*
+             * GRUPPE UND ADMINFLAG BEI JEDER ANMELDUNG (013-004-0003).
+             *
+             * Nicht nur beim Anlegen: Wer im Fremdsystem aus einer Gruppe faellt, faellt hier
+             * beim naechsten Login heraus. Genau deshalb stehen Rollen und Gruppen NICHT im JWT
+             * (013-003-0001) — dort waeren sie bis zum Ablauf eingefroren.
+             */
+            $this->app['gruppenabbildung']->anwenden($anbieter, $fremd, $user);
 
             if (!$user->getIsActive()) {
                 return $abweisen('Der Benutzer ist gesperrt.');
