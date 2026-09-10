@@ -8,7 +8,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Raeumt abgelaufene Anmeldetoken aus `pim_token` (000-000-0015).
+ * Raeumt abgelaufene Anmeldetoken aus `pim_token` (000-000-0015) und gegenstandslose
+ * Sperrlisten-Eintraege aus `pim_revoked_token` (013-003-0003).
  *
  * ── Wogegen ──────────────────────────────────────────────────────────────────────────
  *
@@ -21,7 +22,9 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * Der Task liess offen, ob 013-003 die Tokentabelle durch JWT ersetzt. Tut es nicht: Die Story
  * behaelt den opaquen DB-Token ausdruecklich als REFRESH-Token — "genau der Mechanismus, der
- * ohnehin existiert". Die Tabelle bleibt also, und mit ihr das Wachstum.
+ * ohnehin existiert". Die Tabelle bleibt also, und mit ihr das Wachstum. Eingeloest hat sich das
+ * mit 013-003-0001: Ein Refresh-Token IST eine `pim_token`-Zeile, nur mit `purpose = refresh`.
+ * Sie unterliegt demselben Zeitlimit und wird von diesem Command mit aufgeraeumt.
  *
  * ── Was als abgelaufen gilt ──────────────────────────────────────────────────────────
  *
@@ -103,6 +106,27 @@ class TokenCleanupCommand extends Command
             }
         }
 
+        /*
+         * DIE SPERRLISTE HAENGT AN DEMSELBEN LAUF (013-003-0003).
+         *
+         * Ein Eintrag ist gegenstandslos, sobald das Token, das er sperrt, ohnehin abgelaufen
+         * waere. Er hier mit wegzuraeumen ist kein Beiwerk, sondern der Grund, warum die Liste
+         * klein bleibt — das Kundenprojekt hatte eine solche Liste ohne Verfall, und sie musste
+         * unbegrenzt wachsen.
+         *
+         * KEIN ZWEITER AUFRAEUMWEG: Ein Betreiber, der dieses Command im Cron hat, soll nicht
+         * herausfinden muessen, dass es ein zweites gibt.
+         */
+        $gesperrt = $em->createQuery(
+            "SELECT s FROM Areanet\\PIM\\Entity\\RevokedToken s WHERE s.expiresAt < :jetzt"
+        )->setParameter('jetzt', $jetzt)->getResult();
+
+        foreach ($gesperrt as $eintrag) {
+            if (!$trocken) {
+                $em->remove($eintrag);
+            }
+        }
+
         if (!$trocken) {
             $em->flush();
         }
@@ -112,6 +136,13 @@ class TokenCleanupCommand extends Command
             $trocken ? '→' : '✓',
             $abgelaufen,
             $geprueft,
+            $trocken ? ' (--dry-run, nichts entfernt)' : ' und entfernt'
+        ));
+
+        $output->writeln(sprintf(
+            '%s %d Sperrlisten-Eintrag/-Eintraege gegenstandslos%s.',
+            $trocken ? '→' : '✓',
+            count($gesperrt),
             $trocken ? ' (--dry-run, nichts entfernt)' : ' und entfernt'
         ));
 

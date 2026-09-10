@@ -7,6 +7,7 @@ use Areanet\PIM\Classes\LoginProvider;
 use Areanet\PIM\Classes\Manager\LoginManager;
 use Areanet\PIM\Classes\Security\Tokenhandler;
 use Areanet\PIM\Classes\Security\Zugangstoken;
+use Areanet\PIM\Entity\RevokedToken;
 use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
@@ -377,24 +378,69 @@ class AuthController extends BaseController
      * @apiGroup User
      * @apiHeader {String} X-Token Acces-Token
      * @apiHeader {String} Content-Type=application/json
+     * @apiParam {String} refreshToken Optional; wer mit einem Access-JWT abmeldet, entzieht damit
+     *                                 zugleich sein Refresh-Token (013-003-0003)
      */
-    public function logoutAction()
+    public function logoutAction(Request $request)
     {
         /*
          * NICHT JEDE ANMELDUNG HAT EINE ZEILE (013-002-0004).
          *
-         * `$app['auth.token']` traegt die Zeile aus `pim_token` — im JWT-Zweig gibt es keine,
-         * und das ist der ganze Gewinn jenes Zweigs. Ausgestellt werden JWT erst mit `013-003`;
-         * die Pruefung steht trotzdem schon hier, weil die Moeglichkeit mit dieser Story
-         * entsteht und nicht mit jener.
-         *
-         * Was Abmelden bei einem zustandslosen Token bedeutet — Refresh-Token entziehen,
-         * Restfenster ueber eine Sperrliste —, entscheidet `013-003`.
+         * `$app['auth.token']` traegt die Zeile aus `pim_token` — im JWT-Zweig gibt es keine.
          */
         if ($this->app['auth.token']) {
             $this->em->remove($this->app['auth.token']);
-            $this->em->flush();
         }
+
+        /*
+         * ABMELDEN BEI EINEM ZUSTANDSLOSEN TOKEN (013-003-0003).
+         *
+         * Zwei Dinge, und beide sind noetig:
+         *
+         *   1. Das vorgezeigte Access-JWT auf die Sperrliste, bis zu seinem `exp`. Sonst gaelte
+         *      es nach dem Abmelden weiter — bei einem abgegriffenen Token ist genau das der
+         *      Schaden.
+         *   2. Das Refresh-Token loeschen. Sonst holt sich der Inhaber gleich ein neues
+         *      Access-JWT, und Punkt 1 war umsonst.
+         *
+         * DER CLIENT MUSS SEIN REFRESH-TOKEN MITSCHICKEN, und das ist eine bewusste
+         * Entscheidung. Das Access-JWT sagt nicht, zu welcher Refresh-Zeile es gehoert — die
+         * Verbindung stuende sonst als sechster Claim darin, und der Claim-Satz aus
+         * `013-003-0001` ist absichtlich klein. Alle Refresh-Zeilen des Benutzers zu loeschen
+         * waere die Alternative; das meldete ihn auf allen seinen Geraeten ab, was beim Abmelden
+         * an einem davon niemand erwartet.
+         *
+         * Ohne mitgeschicktes Refresh-Token wird nur das Access-JWT gesperrt; die Refresh-Zeile
+         * verfaellt dann ueber ihr eigenes Zeitlimit.
+         */
+        if (($claims = $this->app['tokenhandler']->letzteClaims())) {
+            $sperre = new RevokedToken();
+            $sperre->setJti((string) $claims['jti']);
+            $sperre->setExpiresAt((new \DateTime())->setTimestamp((int) $claims['exp']));
+
+            $this->em->persist($sperre);
+        }
+
+        $mitgeschickt = $request->query->get('refreshToken') ?? ($request->request->all()['refreshToken'] ?? null);
+
+        if (is_string($mitgeschickt) && $mitgeschickt !== '') {
+            $zeile = $this->em->getRepository('Areanet\PIM\Entity\Token')->findOneBy(
+                array('token' => Token::hashen($mitgeschickt))
+            );
+
+            /*
+             * NUR DAS EIGENE. Ohne diese Pruefung waere `logout` ein Endpunkt, mit dem ein
+             * beliebiger angemeldeter Benutzer fremde Sitzungen beenden koennte — er muesste
+             * nur ein fremdes Refresh-Token raten oder in die Finger bekommen.
+             */
+            if ($zeile instanceof Token
+                && $zeile->istRefreshToken()
+                && $zeile->getUser() === $this->app['auth.user']) {
+                $this->em->remove($zeile);
+            }
+        }
+
+        $this->em->flush();
 
         unset($this->app['auth.token']);
         unset($this->app['auth.user']);

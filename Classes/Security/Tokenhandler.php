@@ -2,6 +2,7 @@
 namespace Areanet\PIM\Classes\Security;
 
 use Areanet\PIM\Classes\Config\Adapter;
+use Areanet\PIM\Entity\RevokedToken;
 use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -58,6 +59,17 @@ final class Tokenhandler implements AccessTokenHandlerInterface
      */
     private ?Token $letzterToken = null;
 
+    /**
+     * Die Claims des zuletzt geprueften Access-JWT — oder null.
+     *
+     * Der Abmelden-Weg braucht `jti` und `exp`, um das Token auf die Sperrliste zu setzen
+     * (013-003-0003). Sie ein zweites Mal aus dem Token zu lesen hiesse, ein zweites Mal die
+     * Signatur zu pruefen — dieselbe Arbeit fuer dasselbe Ergebnis.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $letzteClaims = null;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
     ) {
@@ -66,6 +78,7 @@ final class Tokenhandler implements AccessTokenHandlerInterface
     public function getUserBadgeFrom(#[\SensitiveParameter] string $accessToken): UserBadge
     {
         $this->letzterToken = null;
+        $this->letzteClaims = null;
 
         return $this->siehtNachJwtAus($accessToken)
             ? $this->ausJwt($accessToken)
@@ -75,6 +88,14 @@ final class Tokenhandler implements AccessTokenHandlerInterface
     public function letzterToken(): ?Token
     {
         return $this->letzterToken;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function letzteClaims(): ?array
+    {
+        return $this->letzteClaims;
     }
 
     // ── Die Verzweigung ────────────────────────────────────────────────────────────────
@@ -154,6 +175,32 @@ final class Tokenhandler implements AccessTokenHandlerInterface
         if (!is_string($kennung) || $kennung === '') {
             $this->abweisen();
         }
+
+        $jti = $claims->jti ?? null;
+
+        if (!is_string($jti) || $jti === '') {
+            $this->abweisen();
+        }
+
+        /*
+         * DIE SPERRLISTE (013-003-0003).
+         *
+         * EIN LESEZUGRIFF, UND ER IST DER PREIS FUER DEN WIDERRUF. Ohne ihn gaelte ein
+         * abgemeldetes Token bis zu seinem `exp` weiter — bei einem Token, das jemand abgegriffen
+         * hat, ist genau das der Schaden.
+         *
+         * WAS DER JWT-ZWEIG DAMIT WEITERHIN NICHT TUT: `pim_token` anfassen. Der
+         * Sliding-Expiration-Write bei JEDEM Request, der Grund fuer den ganzen Umbau, bleibt
+         * weg. Hier steht ein Lesezugriff auf eine kleine Tabelle mit einem Unique-Index gegen
+         * einen Schreibzugriff auf die Tokentabelle.
+         */
+        $gesperrt = $this->em->getRepository(RevokedToken::class)->findOneBy(array('jti' => $jti));
+
+        if ($gesperrt instanceof RevokedToken) {
+            $this->abweisen();
+        }
+
+        $this->letzteClaims = (array) $claims;
 
         // Ohne eigenen Lader: Den Benutzer holt der Benutzerlader, den der Authenticator kennt.
         return new UserBadge($kennung);
