@@ -822,7 +822,15 @@ class Api
 
             $tableName = $entityConfig['settings']['dbname'];
 
-            $query = "SELECT 1  FROM `$tableName`";
+            // ZAEHLEN STATT HOLEN (010-005-0001). Hier stand `SELECT 1`, und gezaehlt
+            // wurde mit `rowCount()` — eine Zeile je Treffer ging ueber die Verbindung und in
+            // den Speicher, nur um abgezaehlt zu werden. Bei einer grossen Tabelle ist das der
+            // Unterschied zwischen einer Zahl und einem Datenuebertrag.
+            //
+            // Dazu ist `rowCount()` fuer eine LESEabfrage nicht zugesichert: DBAL sagt, der
+            // Rueckgabewert haenge dann vom Treiber ab. Dass es unter MySQL ging, war kein
+            // Vertrag. Befund aus 009-005-0002.
+            $query = "SELECT COUNT(*) FROM `$tableName`";
 
             if($entityConfig['settings']['type'] == 'tree'){
                 $treeTableName = $entityConfig['i18n'] ? 'pim_i18n_tree' : 'pim_tree';
@@ -861,21 +869,21 @@ class Api
 
             $query .= $tsQuery;
 
-            $entityCount        = $this->app['database']->executeQuery($query, $params)->rowCount();
+            $entityCount        = (int) $this->app['database']->executeQuery($query, $params)->fetchOne();
             $data['dataCount'] += $entityCount;
             $details[$entityName] = $entityCount;
             foreach($entityConfig['properties'] as $field => $fieldOptions){
                 if($fieldOptions['type'] == 'multifile'){
                     $joinTableName = $fieldOptions['foreign'] ?:  $tableName . "_" . $field;
                     $joinQuery  = "
-                        SELECT 1  
+                        SELECT COUNT(*)
                         FROM `$joinTableName` 
                         INNER JOIN `pim_file`  
                         ON file_id = id";
 
                     $joinQuery .= $tsQuery;
 
-                    $joinEntityCount    = $this->app['database']->executeQuery($joinQuery, $params)->rowCount();
+                    $joinEntityCount    = (int) $this->app['database']->executeQuery($joinQuery, $params)->fetchOne();
                     $data['dataCount'] += $joinEntityCount;
                 }
 
@@ -890,14 +898,14 @@ class Api
                     }
 
                     $joinQuery  = "
-                        SELECT 1
+                        SELECT COUNT(*)
                         FROM `$joinTableName` 
                         INNER JOIN `$treeTableName`  
                         ON $joinField = id";
 
                     $joinQuery .= $tsQuery;
 
-                    $joinEntityCount    = $this->app['database']->executeQuery($joinQuery, $params)->rowCount();
+                    $joinEntityCount    = (int) $this->app['database']->executeQuery($joinQuery, $params)->fetchOne();
 
                     $data['dataCount'] += $joinEntityCount;
                 }
