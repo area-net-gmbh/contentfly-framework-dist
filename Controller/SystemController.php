@@ -98,15 +98,34 @@ class SystemController extends BaseController
         return new JsonResponse(array('method' => $method, 'datetime' => $date->format('Y-m-d H:i:s'),  'message' => $this->$method($request) ));
     }
 
+    /**
+     * Leert den Schema-Cache: die Datei und die beiden Doctrine-Caches.
+     *
+     * PSR-6 STATT doctrine/cache (010-002-0003). Hier stand
+     * `getQueryCacheImpl()->deleteAll()`. Die `…Impl()`-Getter liefern heute noch etwas — ORM
+     * 2.20 verpackt den PSR-6-Pool in `Doctrine\Common\Cache\Psr6\DoctrineProvider` —, aber
+     * diese Bruecke liegt in `doctrine/cache`, und das Paket geht mit `010-002-0004`.
+     *
+     * DIE PRUEFUNG AUF `null` IST NICHT VORSORGLICH, SONDERN NOETIG. Der Cache wird im
+     * Bootstrap nur eingerichtet, wenn `!APP_DEBUG && !APPCMS_CONSOLE` gilt; ohne ihn liefern
+     * die Getter `null`. Bisher stand hier stattdessen `if(!APP_DEBUG)` — dieselbe Bedingung,
+     * aber nur die halbe: An `APPCMS_CONSOLE` war nicht gedacht. Dass es gutging, lag daran,
+     * dass diese Methode ueber HTTP gerufen wird und die Konstante dort nie gesetzt ist. Zwei
+     * Bedingungen, die an verschiedenen Stellen stehen und sich zufaellig decken, sind eine
+     * Verabredung auf Zeit; die Methode fragt jetzt selbst.
+     */
     protected function flushSchemaCache(Request $request)
     {
         if(file_exists(ROOT_DIR.'/data/cache/schema.cache')){
             unlink(ROOT_DIR.'/data/cache/schema.cache');
         }
 
-        if(!Adapter::getConfig()->APP_DEBUG){
-            $this->app['orm.em']->getConfiguration()->getQueryCacheImpl()->deleteAll();
-            $this->app['orm.em']->getConfiguration()->getMetadataCacheImpl()->deleteAll();
+        $konfiguration = $this->app['orm.em']->getConfiguration();
+
+        foreach (array($konfiguration->getQueryCache(), $konfiguration->getMetadataCache()) as $cache) {
+            if ($cache !== null) {
+                $cache->clear();
+            }
         }
 
         return 'Schema-Cache wurde geleert!';
