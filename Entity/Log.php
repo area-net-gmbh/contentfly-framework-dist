@@ -21,23 +21,18 @@ class Log extends Base
     const UPDATED   = 'UPT';
     const USERDEL   = 'USERDEL';
 
-    /**
-     * Die Id.
+    /*
+     * `$id` IST HIER ENTFALLEN (010-003-0002).
      *
-     * `CUSTOM` statt `UUID` seit 009-005-0002: Doctrines `ORM\Id\UuidGenerator` liess die
-     * Datenbank die GUID erzeugen (`SELECT UUID()`) und stuetzte sich dafuer auf
-     * `AbstractPlatform::getGuidExpression()` — die Methode gibt es in DBAL 3 nicht mehr.
-     * Erzeugt wird sie jetzt in PHP, siehe Areanet\PIM\Classes\ORM\Id\UuidGenerator.
+     * Die Deklaration wiederholte die aus `Entity\Base` Zeichen fuer Zeichen — dieselbe
+     * Spalte, dieselbe Strategie, derselbe CustomIdGenerator. ORM 2 hat die Wiederholung
+     * stillschweigend ueberschrieben; ORM 3 lehnt sie ab:
      *
-     * `@ORM\CustomIdGenerator` steht auch dann hier, wenn die Integer-Strategie laeuft
-     * (APPCMS_ID_STRATEGY = 'AUTO'). Doctrine liest die Angabe nur bei `CUSTOM` aus; sie
-     * bedingt zu setzen ginge in einer Annotation nicht, ohne die Konstante zu verdoppeln.
+     *     Duplicate definition of column 'id' on entity 'Areanet\PIM\Entity\Log'
+     *     in a field or discriminator column mapping.
+     *
+     * Geerbt wird sie aus `Base`, samt der Begruendung, die dort steht.
      */
-    #[ORM\Column(type: APPCMS_ID_TYPE)]
-    #[ORM\Id]
-    #[ORM\GeneratedValue(strategy: APPCMS_ID_STRATEGY)]
-    #[ORM\CustomIdGenerator(class: 'Areanet\\PIM\\Classes\\ORM\\Id\\UuidGenerator')]
-    protected $id;
 
     #[ORM\Column(type: 'boolean', nullable: true)]
     protected $isHidden;
@@ -57,19 +52,17 @@ class Log extends Base
     #[PIM\Select(options: 'UPT=Geändert, DEL=Gelöscht, INS=Erstellt, USERDEL=Gelöscht für')]
     protected $mode;
 
-    #[ORM\Column(type: 'text', nullable: true)]
-    #[PIM\Virtualjoin(targetEntity: 'Areanet\\PIM\\Entity\\User')]
-    protected $users;
-
-    /**
-     * @var \DateTime
+    /*
+     * `$users`, `$created` UND `$userCreated` SIND HIER ENTFALLEN (010-003-0002).
+     *
+     * Alle drei wiederholten die Deklaration aus `Entity\Base`. ORM 2 hat die Wiederholung
+     * stillschweigend ueberschrieben, ORM 3 lehnt sie ab („Duplicate definition of column").
+     *
+     * EINE DER DREI WAR NICHT WORTGLEICH: `$created` stand hier ohne
+     * `options: ['default' => 'CURRENT_TIMESTAMP']`, das `Base` setzt. Die Abweichung war
+     * nirgends begruendet und sieht nach einer unvollstaendigen Kopie aus; ihre Wirkung auf
+     * das erzeugte Schema ist mit dem Datenbankvergleich dieses Tasks nachgemessen.
      */
-    #[ORM\Column(type: 'datetime', nullable: true)]
-    protected $created;
-
-    #[ORM\ManyToOne(targetEntity: 'Areanet\\PIM\\Entity\\User')]
-    #[ORM\JoinColumn(name: 'usercreated_id', referencedColumnName: 'id', onDelete: 'SET NULL')]
-    protected $userCreated;
 
     #[ORM\Column(type: 'text', nullable: true)]
     protected $data;

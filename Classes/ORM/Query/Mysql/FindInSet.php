@@ -18,7 +18,7 @@ class FindInSet extends FunctionNode
         $parser->match(TokenType::T_CLOSE_PARENTHESIS);
     }
 
-    public function getSql(\Doctrine\ORM\Query\SqlWalker $sqlWalker){
+    public function getSql(\Doctrine\ORM\Query\SqlWalker $sqlWalker): string{
         return 'FIND_IN_SET(' .
             $this->needle->dispatch($sqlWalker) . ', ' .
             $this->haystack->dispatch($sqlWalker) .

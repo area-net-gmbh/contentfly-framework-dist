@@ -13,7 +13,7 @@ class Distance extends FunctionNode {
     private $firstArg;
     private $secondArg;
 
-    public function getSql(\Doctrine\ORM\Query\SqlWalker $sqlWalker) {
+    public function getSql(\Doctrine\ORM\Query\SqlWalker $sqlWalker): string {
         //Need to do this hacky linestring length thing because
         //despite what MySQL manual claims, DISTANCE isn't actually implemented...
         return 'GLength(LineString(' .

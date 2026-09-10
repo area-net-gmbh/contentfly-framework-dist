@@ -13,7 +13,7 @@ use Doctrine\ORM\Query\TokenType;
 class PointStr extends FunctionNode {
     private $arg;
 
-    public function getSql(\Doctrine\ORM\Query\SqlWalker $sqlWalker) {
+    public function getSql(\Doctrine\ORM\Query\SqlWalker $sqlWalker): string {
         return 'GeomFromText(' . $this->arg->dispatch($sqlWalker) . ')';
     }
 
