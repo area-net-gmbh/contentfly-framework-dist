@@ -91,6 +91,25 @@ class AuthController extends BaseController
             }
         }
 
+        /*
+         * UMSCHLUESSELUNG BEIM LOGIN (013-001-0001).
+         *
+         * Passt das Passwort und liegt der Hash noch im alten SHA-256-Format — oder mit
+         * veralteten Parametern —, wird er hier ersetzt. Kein Zwangs-Reset, keine Migration im
+         * Voraus: Nach dem ersten Login jedes Benutzers ist der alte Hash weg.
+         *
+         * ES STEHT HIER UND NICHT IN `isPass()`: Eine Pruefung darf nichts schreiben. Sonst
+         * haette jeder Aufruf eine Nebenwirkung, auch der aus `Api::doUpdate()`, wo das
+         * bisherige Passwort nur bestaetigt wird.
+         *
+         * Der Weg ueber den LoginManager ist ausgenommen — dort prueft ein Fremdsystem, und
+         * `$user->getPass()` steht in keinem Zusammenhang mit dem eingegebenen Wort.
+         */
+        if (!$loginProvider && $user->brauchtNeuenHash()) {
+            $user->setPass(($request->request->all()['pass'] ?? null));
+            $this->em->flush();
+        }
+
         if(self::CHECK_LOGIN_INTERVAL) {
             $lastToken = $this->em->getRepository('Areanet\PIM\Entity\Token')->findOneBy(array('user' => $user), array('created' => 'DESC'));
             if ($lastToken) {
