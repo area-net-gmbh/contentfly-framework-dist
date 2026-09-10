@@ -5,6 +5,7 @@ use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Controller\BaseController;
 use Areanet\PIM\Classes\LoginProvider;
 use Areanet\PIM\Classes\Manager\LoginManager;
+use Areanet\PIM\Classes\Security\Zugangstoken;
 use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
@@ -43,6 +44,7 @@ class AuthController extends BaseController
      * @apiParam {String} alias Benutzername
      * @apiParam {String} pass Passwort
      * @apiParam {String} loginManager Optionaler Login-Manager
+     * @apiParam {String} tokenType "jwt" fuer ein Access-JWT samt Refresh-Token; ohne Angabe ein opaques Token (013-003-0001)
      * @apiParam {Boolean} withSchema Schema zurückgeben
      * @apiParamExample {json} Request-Beispiel:
      *     {
@@ -169,8 +171,37 @@ class AuthController extends BaseController
          */
         $bremse->entsperren($kennung);
 
+        /*
+         * WELCHEN TOKENTYP DER LOGIN AUSGIBT (013-003-0001).
+         *
+         * NUR AUF ANFORDERUNG, und ausdruecklich NICHT ueber einen Konfigurationsschalter. Ein
+         * solcher Schalter kippte die Antwort fuer JEDEN Client auf einmal — und die Zusage
+         * dieser Story lautet, dass ein Bestandsclient nichts merkt. Wer JWT will, sagt es je
+         * Anfrage; wer nichts sagt, bekommt, was er immer bekommen hat.
+         */
+        $jwtGewuenscht = strtolower((string) ($request->request->all()['tokenType'] ?? '')) === 'jwt';
+
+        if ($jwtGewuenscht && !Zugangstoken::eingerichtet()) {
+            /*
+             * Die Meldung richtet sich an den Betreiber, nicht an den Aufrufer: Sie nennt das
+             * fehlende Feld und sonst nichts. Ueber Konten, Passwoerter oder vorhandene Tokens
+             * sagt sie nichts aus — ein Angreifer erfaehrt nur, dass diese Installation keine
+             * JWT ausstellt.
+             */
+            return new JsonResponse(
+                array('message' => 'JWT sind auf dieser Installation nicht eingerichtet: SECURITY_JWT_SECRET fehlt.'),
+                500
+            );
+        }
+
         $token = new Token();
         $token->setUser($user);
+
+        if ($jwtGewuenscht) {
+            // Die Zeile wird zum Refresh-Token. Als Zugangstoken taugt sie damit nicht mehr —
+            // der opaque Zweig des Tokenhandler weist sie ab.
+            $token->setPurpose(Token::ZWECK_REFRESH);
+        }
 
         $this->em->persist($token);
         $this->em->flush();
@@ -185,6 +216,19 @@ class AuthController extends BaseController
             'token' => $token->getKlartext(),
             'user' => $user->toValueObject($this->app, 'PIM\User', false)
         );
+
+        if ($jwtGewuenscht) {
+            $zugang = Zugangstoken::ausstellen($user);
+
+            /*
+             * `token` bleibt das, was der Client vorzeigt — jetzt eben das Access-JWT. Damit
+             * aendert sich fuer einen umsteigenden Client genau ein Feldwert und kein Feldname.
+             * Das Refresh-Token kommt daneben; einloesen laesst es sich ab 013-003-0002.
+             */
+            $response['token']        = $zugang['token'];
+            $response['refreshToken'] = $token->getKlartext();
+            $response['expiresIn']    = $zugang['exp'] - time();
+        }
 
         if(($tempData = $user->getTempData())){
             $response['data'] = $tempData;

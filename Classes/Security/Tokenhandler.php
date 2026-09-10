@@ -130,8 +130,21 @@ final class Tokenhandler implements AccessTokenHandlerInterface
         }
 
         try {
-            $claims = JWT::decode($token, new Key($geheimnis, 'HS256'));
+            $claims = JWT::decode($token, new Key($geheimnis, Zugangstoken::VERFAHREN));
         } catch (\Throwable) {
+            $this->abweisen();
+        }
+
+        /*
+         * DER AUSGEBER WIRD GEPRUEFT (013-003-0001).
+         *
+         * Die Bibliothek prueft Signatur und Ablauf, den `iss` nicht. Ohne diese Zeile gaelte
+         * hier jedes Token, das mit demselben Geheimnis signiert wurde — auch eines, das eine
+         * ganz andere Anwendung fuer einen ganz anderen Zweck ausgestellt hat. Geteilte
+         * Geheimnisse sind eine schlechte Idee, aber sie kommen vor, und dann soll die
+         * Anwendung nicht das schwaechste Glied sein.
+         */
+        if (($claims->iss ?? null) !== Zugangstoken::AUSGEBER) {
             $this->abweisen();
         }
 
@@ -162,6 +175,21 @@ final class Tokenhandler implements AccessTokenHandlerInterface
         );
 
         if (!$zeile instanceof Token) {
+            $this->abweisen();
+        }
+
+        /*
+         * EIN REFRESH-TOKEN IST KEIN ZUGANGSTOKEN (013-003-0001).
+         *
+         * Es ist eine gewoehnliche Zeile in `pim_token` — und dieser Zweig nahm bis hierhin
+         * jede Zeile an. Ein Refresh-Token gilt laenger als ein Access-JWT, das ist sein Zweck;
+         * ohne diese Pruefung waere es damit ein langlebiger Generalschluessel fuer die ganze
+         * API, also genau das, was das Refresh-Modell verhindern soll.
+         *
+         * Abgewiesen wird wie alles andere: Wer ein Refresh-Token an der falschen Tuer
+         * vorzeigt, erfaehrt nicht, dass es an einer anderen passen wuerde.
+         */
+        if ($zeile->istRefreshToken()) {
             $this->abweisen();
         }
 

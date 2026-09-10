@@ -399,6 +399,20 @@ class Config{
      */
     public $SECURITY_JWT_SECRET    = null;
 
+    /**
+     * Lebensdauer eines Access-JWT in Sekunden. Vorgabe: 15 Minuten.
+     *
+     * NEU MIT 013-003-0001. Kurzlebigkeit ist die ganze Sicherheitsleistung eines zustandslosen
+     * Tokens: Es laesst sich nicht zurueckrufen, solange es gilt, also entscheidet die Dauer
+     * ueber die Groesse des Fensters. Erneuert wird ueber das Refresh-Token, ohne dass sich
+     * jemand neu anmelden muss.
+     *
+     * Wer den Wert hochsetzt, kauft sich Bequemlichkeit mit genau diesem Fenster.
+     *
+     * @var integer
+     */
+    public $SECURITY_JWT_TTL       = 900;
+
 
     /**
      * Unter welchem Pfad die Anwendung im Web erreichbar ist.

@@ -53,6 +53,24 @@ class Token
     protected $referrer;
 
     /**
+     * Wozu diese Zeile da ist (013-003-0001).
+     *
+     * `null` heisst: ein gewoehnlicher Zugangstoken, wie bisher. `refresh` heisst: ein
+     * Refresh-Token, das genau eine Sache darf — ein neues Access-JWT holen.
+     *
+     * DIE SPALTE IST NICHT KOSMETIK. Der opaque Zweig des `Tokenhandler` nahm bis hierhin JEDE
+     * Zeile aus `pim_token` als Zugangstoken an. Ein Refresh-Token ist aber laenger gueltig als
+     * ein Access-JWT — das ist sein Zweck —, und ohne diesen Vermerk waere es damit ein
+     * langlebiger Generalschluessel fuer die ganze API. Genau das soll das Refresh-Modell
+     * verhindern.
+     */
+    #[ORM\Column(type: 'string', length: 20, nullable: true)]
+    protected $purpose;
+
+    /** Der Wert von `$purpose` fuer ein Refresh-Token. */
+    public const ZWECK_REFRESH = 'refresh';
+
+    /**
      * @var \DateTime
      */
     #[ORM\Column(type: 'datetime')]
@@ -203,6 +221,25 @@ class Token
     public function setReferrer($referrer): void
     {
         $this->referrer = $referrer;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getPurpose()
+    {
+        return $this->purpose;
+    }
+
+    public function setPurpose(?string $purpose): void
+    {
+        $this->purpose = $purpose;
+    }
+
+    /** Ob diese Zeile ein Refresh-Token ist — und damit KEIN Zugangstoken. */
+    public function istRefreshToken(): bool
+    {
+        return $this->purpose === self::ZWECK_REFRESH;
     }
 
     
