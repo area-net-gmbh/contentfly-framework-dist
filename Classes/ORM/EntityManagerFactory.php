@@ -3,6 +3,7 @@ namespace Areanet\PIM\Classes\ORM;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\Configuration;
+use Psr\Cache\CacheItemPoolInterface;
 use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 use Doctrine\ORM\EntityManager;
 use Doctrine\Persistence\Mapping\Driver\MappingDriverChain;
@@ -50,13 +51,17 @@ final class EntityManagerFactory
      * @param string                $proxyDir     Verzeichnis für die generierten Proxies
      * @param bool                  $autoGenerateProxies
      * @param array<string,string>  $numericFunctions  eigene DQL-Funktionen
+     * @param CacheItemPoolInterface|null $abfrageCache  PSR-6-Pool oder null fuer keinen Cache
+     * @param CacheItemPoolInterface|null $metadatenCache dito
      */
     public static function erzeugen(
         Connection $connection,
         array $mappings,
         string $proxyDir,
         bool $autoGenerateProxies,
-        array $numericFunctions = array()
+        array $numericFunctions = array(),
+        ?CacheItemPoolInterface $abfrageCache = null,
+        ?CacheItemPoolInterface $metadatenCache = null
     ): EntityManager {
         $config = new Configuration();
 
@@ -100,6 +105,32 @@ final class EntityManagerFactory
 
         foreach ($numericFunctions as $name => $klasse) {
             $config->addCustomNumericFunction($name, $klasse);
+        }
+
+        /*
+         * DIE CACHES GEHOEREN HIERHER, NICHT IN DEN BOOTSTRAP (010-002-0005).
+         *
+         * Bis hierher setzte bootstrap.php sie auf der Konfiguration, NACHDEM diese Methode
+         * den EntityManager gebaut hatte. Fuer den Abfrage-Cache ging das gut: Doctrine liest
+         * `getQueryCache()` bei jeder Abfrage. Der Metadaten-Cache dagegen wird GENAU EINMAL
+         * gelesen — in `EntityManager::__construct()`, ueber `configureMetadataCache()`. Was
+         * danach kommt, sieht die ClassMetadataFactory nie.
+         *
+         * Gemessen, ohne Datenbank: Cache vor dem EntityManager gesetzt -> 2 Cache-Dateien
+         * nach einer Metadaten-Abfrage; danach gesetzt -> 0. Und im Testlauf gegen den echten
+         * Server blieb `data/cache/metadata` leer, mit doctrine/cache genauso wie mit PSR-6 —
+         * der Metadaten-Cache hat also nie gegriffen.
+         *
+         * `null` heisst: kein Cache. Der Aufrufer entscheidet das, nicht diese Methode — im
+         * Debug-Modus und auf der Konsole soll keiner laufen, sonst arbeitet ein Entwickler
+         * gegen veraltete Metadaten.
+         */
+        if ($abfrageCache !== null) {
+            $config->setQueryCache($abfrageCache);
+        }
+
+        if ($metadatenCache !== null) {
+            $config->setMetadataCache($metadatenCache);
         }
 
         return EntityManager::create($connection, $config);

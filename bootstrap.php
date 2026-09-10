@@ -245,40 +245,25 @@ if($app['is_installed']) {
     // Ersetzt dflydev/doctrine-orm-service-provider (006-002-0005). Der Provider ist seit
     // 2018 unverändert und benutzt einen Namensraum, den doctrine/persistence 2.0 verschoben
     // hat — er blockierte damit jedes PHP-8-taugliche ORM. Uebergangsloesung bis Epic 009.
-    $app['orm.em'] = function ($app) {
-        return EntityManagerFactory::erzeugen(
-            $app['dbs']['pim'],
-            array(
-                array('namespace' => 'Areanet\PIM\Entity', 'path' => ROOT_DIR . '/lib/contentfly/Entity'),
-                array('namespace' => 'Custom\Entity',       'path' => ROOT_DIR . '/custom/Entity'),
-            ),
-            ROOT_DIR . '/data/cache/doctrine',
-            (bool) Adapter::getConfig()->APP_AUTOGENERATE_PROXIES,
-            array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet')
-        );
-    };
+    /**
+     * Waehlt die beiden Caches — oder keine.
+     *
+     * Sie werden der Factory UEBERGEBEN statt hinterher auf der Konfiguration gesetzt: Der
+     * Metadaten-Cache wird in `EntityManager::__construct()` genau einmal gelesen, alles
+     * danach sieht die ClassMetadataFactory nie (010-002-0005).
+     *
+     * Kein Cache im Debug-Modus und nicht auf der Konsole: Dort soll ein Entwickler nicht
+     * gegen veraltete Metadaten arbeiten. Diese Bedingung stand vorher weiter unten und ist
+     * unveraendert.
+     *
+     * @return array{0: ?\Psr\Cache\CacheItemPoolInterface, 1: ?\Psr\Cache\CacheItemPoolInterface}
+     */
+    $cachesWaehlen = static function (): array {
+        if (Adapter::getConfig()->APP_DEBUG || defined('APPCMS_CONSOLE')) {
+            return array(null, null);
+        }
 
-    $config = $app['orm.em']->getConfiguration();
-    $config->setQuoteStrategy(new ContentflyQuoteStrategy());
-
-    if (!Adapter::getConfig()->APP_DEBUG && !defined('APPCMS_CONSOLE')) {
         switch (Adapter::getConfig()->APP_CACHE_DRIVER) {
-            /*
-             * PSR-6 STATT doctrine/cache (010-002-0001).
-             *
-             * ORM 2.20 nimmt beides entgegen, ORM 3 nur noch PSR-6 — also laesst sich der
-             * Wechsel hier gegen ein unveraendertes ORM messen. Die Adapter kommen aus
-             * symfony/cache; der Stack steht ohnehin auf Symfony 7.4.
-             *
-             * DIE TRENNUNG DER NAMENSRAEUME IST DER EMPFINDLICHE TEIL. Sie war jahrelang
-             * beabsichtigt und griff nicht: Bis 009-003-0002 stand hier `new ApcCache('query')`,
-             * und die Klasse hat gar keinen Konstruktor — das Argument wurde stillschweigend
-             * verworfen, beide Caches lagen im selben Namensraum. Bei Symfonys Adaptern ist
-             * der Namensraum ein Konstruktor-Argument, das nicht ins Leere laufen kann.
-             *
-             * `apc` und `memcached` stehen noch auf doctrine/cache; sie entscheidet
-             * 010-002-0002.
-             */
             case 'apc':
                 // ENTFALLEN MIT 010-002-0002 — und ausdruecklich abgewiesen, nicht
                 // stillschweigend auf die Vorgabe zurueckgefallen.
@@ -305,9 +290,7 @@ if($app['is_installed']) {
                     );
                 }
 
-                $config->setQueryCache(new ApcuAdapter('query'));
-                $config->setMetadataCache(new ApcuAdapter('metadata'));
-                break;
+                return array(new ApcuAdapter('query'), new ApcuAdapter('metadata'));
             case 'memcached':
                 if (!MemcachedAdapter::isSupported()) {
                     throw new \RuntimeException(
@@ -328,19 +311,41 @@ if($app['is_installed']) {
                     Adapter::getConfig()->APP_CACHE_MEMCACHED_DSN
                 );
 
-                $config->setQueryCache(new MemcachedAdapter($verbindung, 'query'));
-                $config->setMetadataCache(new MemcachedAdapter($verbindung, 'metadata'));
-                break;
+                return array(
+                    new MemcachedAdapter($verbindung, 'query'),
+                    new MemcachedAdapter($verbindung, 'metadata')
+                );
             case 'filesystem':
             default:
                 // Namensraum leer, Verzeichnis ausdruecklich: Die Trennung liegt hier in den
                 // Pfaden, wie bisher. Ein zusaetzlicher Namensraum wuerde nur eine weitere
                 // Ebene darunter anlegen.
-                $config->setQueryCache(new FilesystemAdapter('', 0, ROOT_DIR . '/data/cache/query'));
-                $config->setMetadataCache(new FilesystemAdapter('', 0, ROOT_DIR . '/data/cache/metadata'));
-                break;
+                return array(
+                    new FilesystemAdapter('', 0, ROOT_DIR . '/data/cache/query'),
+                    new FilesystemAdapter('', 0, ROOT_DIR . '/data/cache/metadata')
+                );
         }
-    }
+    };
+
+    $app['orm.em'] = function ($app) use ($cachesWaehlen) {
+        [$abfrageCache, $metadatenCache] = $cachesWaehlen();
+
+        return EntityManagerFactory::erzeugen(
+            $app['dbs']['pim'],
+            array(
+                array('namespace' => 'Areanet\PIM\Entity', 'path' => ROOT_DIR . '/lib/contentfly/Entity'),
+                array('namespace' => 'Custom\Entity',       'path' => ROOT_DIR . '/custom/Entity'),
+            ),
+            ROOT_DIR . '/data/cache/doctrine',
+            (bool) Adapter::getConfig()->APP_AUTOGENERATE_PROXIES,
+            array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet'),
+            $abfrageCache,
+            $metadatenCache
+        );
+    };
+
+    $config = $app['orm.em']->getConfiguration();
+    $config->setQuoteStrategy(new ContentflyQuoteStrategy());
 
     $app['typeManager'] = function ($app) {
         return new TypeManager($app);
