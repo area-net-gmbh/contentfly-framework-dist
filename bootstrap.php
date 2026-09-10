@@ -47,6 +47,7 @@ use Areanet\PIM\Classes\ORM\EntityManagerFactory;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Areanet\PIM\Classes\Security\Anmeldebremse;
 use Doctrine\DBAL\DriverManager;
 use Areanet\PIM\Classes\Kernel\ConsoleEvents;
 use Areanet\PIM\Classes\Kernel\Application;
@@ -240,12 +241,96 @@ $app['mailer'] = function ($app) {
     return (new Mailer($app))->mail;
 };
 
+/**
+ * Baut EINEN Cache-Pool nach `APP_CACHE_DRIVER`.
+ *
+ * Herausgezogen mit 013-001-0003: Der Treiber wird jetzt an drei Stellen gebraucht — die
+ * beiden Doctrine-Caches und der Speicher der Anmeldebremse. Die Auswahl steht deshalb
+ * einmal hier statt dreimal nebeneinander.
+ *
+ * Der Namensraum trennt die Poolinhalte, das Verzeichnis tut dasselbe fuer `filesystem`.
+ */
+$cachePoolBauen = static function (string $namensraum, string $verzeichnis): \Psr\Cache\CacheItemPoolInterface {
+    static $memcached = null;
+
+    switch (Adapter::getConfig()->APP_CACHE_DRIVER) {
+        case 'apc':
+            // ENTFALLEN MIT 010-002-0002 — und ausdruecklich abgewiesen, nicht
+            // stillschweigend auf die Vorgabe zurueckgefallen.
+            //
+            // Der Zweig benutzte `Doctrine\Common\Cache\ApcCache`, und die ruft
+            // `apc_fetch()`. Die APC-Erweiterung gibt es fuer PHP 7 und 8 nicht mehr;
+            // gemessen ist `function_exists('apc_fetch')` false. Er konnte auf keiner
+            // unterstuetzten Version laufen — eine Falle, keine Einstellung.
+            //
+            // Ein stiller Rueckfall auf `filesystem` waere bequemer und falsch: Der
+            // Betreiber haette weiter geglaubt, sein Cache liege im geteilten Speicher.
+            throw new \RuntimeException(
+                'APP_CACHE_DRIVER = "apc" gibt es nicht mehr. Die APC-Erweiterung ist mit '
+                .'PHP 7 entfallen; der Nachfolger heisst "apcu". Siehe '
+                .'an_project/docs/breaking-changes.md.'
+            );
+        case 'apcu':
+            // Die Pruefung ist der Unterschied zwischen einer Meldung und einem Fatal
+            // beim ersten Zugriff.
+            if (!ApcuAdapter::isSupported()) {
+                throw new \RuntimeException(
+                    'APP_CACHE_DRIVER = "apcu" verlangt die Erweiterung apcu; sie ist in '
+                    .'diesem PHP nicht geladen.'
+                );
+            }
+
+            return new ApcuAdapter($namensraum);
+        case 'memcached':
+            if (!MemcachedAdapter::isSupported()) {
+                throw new \RuntimeException(
+                    'APP_CACHE_DRIVER = "memcached" verlangt die Erweiterung memcached; sie '
+                    .'ist in diesem PHP nicht geladen.'
+                );
+            }
+
+            // EIN SERVER STEHT JETZT IN DER KONFIGURATION (010-002-0002).
+            //
+            // Vorher: `new Memcached()` ohne einen einzigen `addServer()`. Ein solcher
+            // Client speichert nichts — der Zweig war selbst mit vorhandener Erweiterung
+            // wirkungslos, und zwar lautlos.
+            //
+            // Und er teilte sich EINE Instanz fuer beide Caches, waehrend die anderen
+            // Zweige trennen. Hier trennen jetzt die Namensraeume, wie bei apcu. Die
+            // Verbindung selbst wird geteilt — sie ist der Kanal, nicht der Inhalt.
+            $memcached ??= MemcachedAdapter::createConnection(
+                Adapter::getConfig()->APP_CACHE_MEMCACHED_DSN
+            );
+
+            return new MemcachedAdapter($memcached, $namensraum);
+        case 'filesystem':
+        default:
+            // Namensraum leer, Verzeichnis ausdruecklich: Die Trennung liegt hier in den
+            // Pfaden, wie bisher. Ein zusaetzlicher Namensraum wuerde nur eine weitere
+            // Ebene darunter anlegen.
+            return new FilesystemAdapter('', 0, $verzeichnis);
+    }
+};
+
+/**
+ * Die Anmeldebremse (013-001-0003).
+ *
+ * SIE BEKOMMT IMMER EINEN SPEICHER — anders als die Doctrine-Caches, die im Debug-Modus und
+ * auf der Konsole abgeschaltet sind. Eine Bremse gegen das Durchprobieren von Passwoertern,
+ * die sich mit `APP_DEBUG` selbst abschaltet, waere keine: Der Debug-Modus ist eine
+ * Bequemlichkeit fuer den Entwickler, kein Grund, die Anwendung offen stehen zu lassen. Und
+ * ein Zaehler, der ueber Requests hinweg nicht ueberlebt, zaehlt nichts.
+ */
+$app['loginbremse'] = function () use ($cachePoolBauen) {
+    return new Anmeldebremse($cachePoolBauen('loginbremse', ROOT_DIR . '/data/cache/loginbremse'));
+};
+
 if($app['is_installed']) {
     // Ersetzt dflydev/doctrine-orm-service-provider (006-002-0005). Der Provider ist seit
     // 2018 unverändert und benutzt einen Namensraum, den doctrine/persistence 2.0 verschoben
     // hat — er blockierte damit jedes PHP-8-taugliche ORM. Uebergangsloesung bis Epic 009.
     /**
-     * Waehlt die beiden Caches — oder keine.
+     * Waehlt die beiden Doctrine-Caches — oder keine.
      *
      * Sie werden der Factory UEBERGEBEN statt hinterher auf der Konfiguration gesetzt: Der
      * Metadaten-Cache wird in `EntityManager::__construct()` genau einmal gelesen, alles
@@ -257,73 +342,15 @@ if($app['is_installed']) {
      *
      * @return array{0: ?\Psr\Cache\CacheItemPoolInterface, 1: ?\Psr\Cache\CacheItemPoolInterface}
      */
-    $cachesWaehlen = static function (): array {
+    $cachesWaehlen = static function () use ($cachePoolBauen): array {
         if (Adapter::getConfig()->APP_DEBUG || defined('APPCMS_CONSOLE')) {
             return array(null, null);
         }
 
-        switch (Adapter::getConfig()->APP_CACHE_DRIVER) {
-            case 'apc':
-                // ENTFALLEN MIT 010-002-0002 — und ausdruecklich abgewiesen, nicht
-                // stillschweigend auf die Vorgabe zurueckgefallen.
-                //
-                // Der Zweig benutzte `Doctrine\Common\Cache\ApcCache`, und die ruft
-                // `apc_fetch()`. Die APC-Erweiterung gibt es fuer PHP 7 und 8 nicht mehr;
-                // gemessen ist `function_exists('apc_fetch')` false. Er konnte auf keiner
-                // unterstuetzten Version laufen — eine Falle, keine Einstellung.
-                //
-                // Ein stiller Rueckfall auf `filesystem` waere bequemer und falsch: Der
-                // Betreiber haette weiter geglaubt, sein Cache liege im geteilten Speicher.
-                throw new \RuntimeException(
-                    'APP_CACHE_DRIVER = "apc" gibt es nicht mehr. Die APC-Erweiterung ist mit '
-                    .'PHP 7 entfallen; der Nachfolger heisst "apcu". Siehe '
-                    .'an_project/docs/breaking-changes.md.'
-                );
-            case 'apcu':
-                // Die Pruefung ist der Unterschied zwischen einer Meldung und einem Fatal
-                // beim ersten Zugriff.
-                if (!ApcuAdapter::isSupported()) {
-                    throw new \RuntimeException(
-                        'APP_CACHE_DRIVER = "apcu" verlangt die Erweiterung apcu; sie ist in '
-                        .'diesem PHP nicht geladen.'
-                    );
-                }
-
-                return array(new ApcuAdapter('query'), new ApcuAdapter('metadata'));
-            case 'memcached':
-                if (!MemcachedAdapter::isSupported()) {
-                    throw new \RuntimeException(
-                        'APP_CACHE_DRIVER = "memcached" verlangt die Erweiterung memcached; sie '
-                        .'ist in diesem PHP nicht geladen.'
-                    );
-                }
-
-                // EIN SERVER STEHT JETZT IN DER KONFIGURATION (010-002-0002).
-                //
-                // Vorher: `new Memcached()` ohne einen einzigen `addServer()`. Ein solcher
-                // Client speichert nichts — der Zweig war selbst mit vorhandener Erweiterung
-                // wirkungslos, und zwar lautlos.
-                //
-                // Und er teilte sich EINE Instanz fuer beide Caches, waehrend die anderen
-                // Zweige trennen. Hier trennen jetzt die Namensraeume, wie bei apcu.
-                $verbindung = MemcachedAdapter::createConnection(
-                    Adapter::getConfig()->APP_CACHE_MEMCACHED_DSN
-                );
-
-                return array(
-                    new MemcachedAdapter($verbindung, 'query'),
-                    new MemcachedAdapter($verbindung, 'metadata')
-                );
-            case 'filesystem':
-            default:
-                // Namensraum leer, Verzeichnis ausdruecklich: Die Trennung liegt hier in den
-                // Pfaden, wie bisher. Ein zusaetzlicher Namensraum wuerde nur eine weitere
-                // Ebene darunter anlegen.
-                return array(
-                    new FilesystemAdapter('', 0, ROOT_DIR . '/data/cache/query'),
-                    new FilesystemAdapter('', 0, ROOT_DIR . '/data/cache/metadata')
-                );
-        }
+        return array(
+            $cachePoolBauen('query',    ROOT_DIR . '/data/cache/query'),
+            $cachePoolBauen('metadata', ROOT_DIR . '/data/cache/metadata')
+        );
     };
 
     $app['orm.em'] = function ($app) use ($cachesWaehlen) {

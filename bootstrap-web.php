@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\AcceptHeader;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Areanet\PIM\Classes\Security\VertrauteProxies;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /*
@@ -27,6 +28,24 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  * Gelesen hat ihn zuletzt niemand mehr: Der Fehlerhandler holt sich den Request seit
  * 000-000-0006 direkt aus `$app['request_stack']`, und das ist auch der Weg fuer jeden anderen.
  */
+
+/*
+ * VERTRAUTE PROXIES — VOR ALLEM ANDEREN (013-001-0003).
+ *
+ * `setTrustedProxies()` wurde bis hierhin im ganzen Baum nirgends gerufen. Das war folgenlos,
+ * solange niemand die Adresse des Aufrufers auswertete; mit der Anmeldebremse pro IP ist es
+ * die Voraussetzung dafuer, dass sie den Richtigen trifft.
+ *
+ * Es steht ganz oben, weil die Angabe global auf `Request` gesetzt wird und gelten muss, bevor
+ * irgendein Request entsteht — `Application::run()` baut ihn erst am Ende dieser Datei.
+ *
+ * Ohne Eintrag in `APP_TRUSTED_PROXIES` passiert hier nichts, und die Anwendung verhaelt sich
+ * wie bisher.
+ */
+VertrauteProxies::anwenden(
+    Config\Adapter::getConfig()->APP_TRUSTED_PROXIES,
+    (string) Config\Adapter::getConfig()->APP_TRUSTED_HEADERS
+);
 
 header("Content-Security-Policy: ".Config\Adapter::getConfig()->APP_CS_POLICY);
 header("X-Content-Type-Options: nosniff");

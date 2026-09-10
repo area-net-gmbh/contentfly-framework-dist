@@ -249,6 +249,43 @@ class Config{
 
 
     /**
+     * Proxies, hinter denen die Anwendung steht.
+     *
+     * NEU MIT 013-001-0003, und zwar als Voraussetzung fuer die Anmeldebremse: `setTrustedProxies()`
+     * wurde im ganzen Baum nirgends gerufen. Ohne diese Angabe liefert
+     * `Request::getClientIp()` die Adresse des naechsten Hops — hinter einem Loadbalancer also
+     * dessen eigene. Eine Begrenzung pro IP traefe dann ihn und damit alle Benutzer dahinter,
+     * waehrend der Angreifer ungebremst weiterraet.
+     *
+     * LEER HEISST: unveraendert. Wer keine Proxies eintraegt, betreibt die Anwendung direkt —
+     * dann stimmt die Adresse ohnehin, und `setTrustedProxies()` wird gar nicht erst gerufen.
+     *
+     * Erlaubt sind einzelne Adressen, CIDR-Netze und der Sonderwert 'REMOTE_ADDR' von
+     * HttpFoundation ("der unmittelbare Absender, wer immer das ist") — als Array oder als
+     * Zeichenkette mit Kommas, damit der Wert auch aus einer Umgebungsvariablen kommen kann.
+     *
+     * Beispiel: array('10.0.0.0/8', '192.168.1.5')
+     *
+     * @var array|string
+     */
+    public $APP_TRUSTED_PROXIES = array();
+
+    /**
+     * Welchen Weiterleitungs-Headern dabei geglaubt wird.
+     *
+     * Die Vorgabe ist die enge: nur die X-Forwarded-*-Header. `forwarded` schaltet stattdessen
+     * auf den standardisierten Einzelheader aus RFC 7239 um. BEIDE GLEICHZEITIG GIBT ES NICHT —
+     * sie transportieren dieselbe Angabe, und beiden zu glauben hiesse, dem Aufrufer die Wahl zu
+     * lassen, welche gilt.
+     *
+     * Ein unbekannter Wert wird abgewiesen statt stillschweigend auf die Vorgabe zurueckgefuehrt;
+     * ein Tippfehler waere sonst eine Konfiguration, die zu wirken scheint und nicht wirkt.
+     *
+     * @var string  x-forwarded | forwarded
+     */
+    public $APP_TRUSTED_HEADERS = 'x-forwarded';
+
+    /**
      * @var string Force SSL-Connection
      */
     public $APP_FORCE_SSL = false;

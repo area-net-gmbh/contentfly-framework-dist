@@ -15,8 +15,19 @@ use Symfony\Component\HttpFoundation\Request;
 
 class AuthController extends BaseController
 {
-    const MIN_LOGIN_INTERVAL = 60;
-    const CHECK_LOGIN_INTERVAL = false;
+    /*
+     * CHECK_LOGIN_INTERVAL UND MIN_LOGIN_INTERVAL SIND ENTFALLEN (013-001-0003).
+     *
+     * Hier standen zwei Konstanten und weiter unten ein Zweig, der nie lief:
+     * `CHECK_LOGIN_INTERVAL` war fest `false`. Selbst eingeschaltet waere es ein
+     * 60-Sekunden-Abstand pro Benutzer gewesen, gemessen am zuletzt ausgestellten Token —
+     * gegen das Raten ueber viele Konten hinweg wirkungslos, und gegen das Raten vieler
+     * Passwoerter zu EINEM Konto nur dann, wenn zwischendurch ein Token entstand. Ein
+     * Angreifer, der nie richtig raet, stellt nie einen Token aus.
+     *
+     * An die Stelle tritt `Areanet\PIM\Classes\Security\Anmeldebremse`: pro Kennung UND pro
+     * IP, mit ansteigender Verzoegerung, und ohne Schalter, der sie ausknipst.
+     */
 
     /**
      * @apiVersion 1.3.0
@@ -49,33 +60,74 @@ class AuthController extends BaseController
      *      }
      *   }
      * @apiError 401 Ungültiger Benutzername | Der Benutzer ist gesperrt | Benutzername und/oder Passwort fehlerhaft
+     * @apiError 429 Zu viele Anmeldeversuche - die Bremse greift pro Kennung und pro IP (013-001-0003)
      */
     public function loginAction(Request $request)
     {
+        $kennung = ($request->request->all()['alias'] ?? null);
+        $ip      = $request->getClientIp();
+
+        /** @var \Areanet\PIM\Classes\Security\Anmeldebremse $bremse */
+        $bremse = $this->app['loginbremse'];
+
+        /*
+         * ERST BREMSEN, DANN PRUEFEN (013-001-0003).
+         *
+         * Die Reihenfolge ist der Punkt: Wer ueber der Grenze ist, kommt gar nicht erst bis zur
+         * Datenbankabfrage und zum Passwortvergleich. Stuende die Bremse hinter der Pruefung,
+         * kostete jeder abgewiesene Versuch weiterhin einen Argon2id-Durchlauf — die Sperre
+         * waere dann selbst der Hebel fuer eine Ueberlastung.
+         *
+         * DIE ANTWORT SAGT NICHTS UEBER DIE KENNUNG. Sie faellt fuer einen bekannten und einen
+         * erfundenen Benutzernamen gleich aus; andernfalls waere die Bremse ein Orakel dafuer,
+         * welche Konten es gibt. `Retry-After` nennt nur, wie lange zu warten ist — das steht
+         * dem legitimen Benutzer zu, der sich dreimal vertippt hat.
+         */
+        if (($wartezeit = $bremse->wartezeit($kennung, $ip)) !== null) {
+            return new JsonResponse(
+                array('message' => 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.'),
+                429,
+                array('Retry-After' => $wartezeit)
+            );
+        }
+
+        /*
+         * JEDER FEHLSCHLAG GEHT DURCH DIESE EINE STELLE.
+         *
+         * Vorher standen fuenf `return new JsonResponse(..., 401)` nebeneinander. Wer der Reihe
+         * nach jedem einzelnen ein `$bremse->fehlversuch(...)` voranstellt, vergisst
+         * irgendwann eines — und ein einziger ungezaehlter Zweig ist der Weg, an der Bremse
+         * vorbeizuraten.
+         */
+        $abweisen = function ($meldung) use ($bremse, $kennung, $ip) {
+            $bremse->fehlversuch($kennung, $ip);
+
+            return new JsonResponse(array('message' => $meldung), 401);
+        };
 
         $loginProviderClass = ($request->request->all()['loginManager'] ?? null);
         if(($loginProvider = $this->getLoginProvider($request, $loginProviderClass))){
             try {
                 $user = $loginProvider->auth();
                 if(!($user instanceof User)){
-                    return new JsonResponse(array('message' => 'Ungültiger Benutzer vom LoginManager'), 401);
+                    return $abweisen('Ungültiger Benutzer vom LoginManager');
                 }
             }catch(\Exception $e){
-                return new JsonResponse(array('message' => $e->getMessage()), 401);
+                return $abweisen($e->getMessage());
             }
         }else{
 
-            $user = $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => ($request->request->all()['alias'] ?? null)));
+            $user = $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => $kennung));
             if(!$user){
-                return new JsonResponse(array('message' => 'Ungültiger Benutzername.'), 401);
+                return $abweisen('Ungültiger Benutzername.');
             }
 
             if(!$user->getIsActive()){
-                return new JsonResponse(array('message' => 'Der Benutzer ist gesperrt.'), 401);
+                return $abweisen('Der Benutzer ist gesperrt.');
             }
 
             if($user->getLoginManager()){
-                return new JsonResponse(array('message' => 'Der Benutzer ist nur über LoginManager authorisierbar.'), 401);
+                return $abweisen('Der Benutzer ist nur über LoginManager authorisierbar.');
             }
 
             /*
@@ -86,7 +138,7 @@ class AuthController extends BaseController
              * ein Schalter, der Vollzugriff gewaehrt, ist auch ausgeschaltet eine Hintertuer.
              */
             if(!$user->isPass(($request->request->all()['pass'] ?? null))){
-                return new JsonResponse(array('message' => 'Benutzername und/oder Passwort fehlerhaft.'), 401);
+                return $abweisen('Benutzername und/oder Passwort fehlerhaft.');
             }
         }
 
@@ -109,17 +161,13 @@ class AuthController extends BaseController
             $this->em->flush();
         }
 
-        if(self::CHECK_LOGIN_INTERVAL) {
-            $lastToken = $this->em->getRepository('Areanet\PIM\Entity\Token')->findOneBy(array('user' => $user), array('created' => 'DESC'));
-            if ($lastToken) {
-                $created = $lastToken->getCreated()->getTimestamp();
-                $now = (new \DateTime())->getTimestamp();
-                $diff = $now - $created;
-                if ($diff < self::MIN_LOGIN_INTERVAL) {
-                    return new JsonResponse(array('message' => 'Login Intervall Error', 'remaining' => self::MIN_LOGIN_INTERVAL - $diff), 401);
-                }
-            }
-        }
+        /*
+         * DIE GELUNGENE ANMELDUNG LOESCHT DEN ZAEHLER DIESER KENNUNG (013-001-0003).
+         *
+         * Nur den der Kennung, nicht den der IP: Sonst genuegte einem Angreifer ein einziges
+         * gueltiges Konto — sein eigenes —, um sich nach jedem Block wieder freizuschalten.
+         */
+        $bremse->entsperren($kennung);
 
         $token = new Token();
         $token->setUser($user);
