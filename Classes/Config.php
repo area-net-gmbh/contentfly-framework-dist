@@ -231,10 +231,21 @@ class Config{
      */
     public $APP_MAX_AGE             = 0;
 
-    /**
-     * @var string Masterpasswort für die Authentifizierung
+    /*
+     * APP_MASTER_PASSWORD IST ERSATZLOS ENTFALLEN (013-001-0002).
+     *
+     * Ein hier gesetzter Wert akzeptierte den Login fuer JEDEN Benutzer — eine
+     * Konfigurationszeile mit Vollzugriff auf jedes Konto.
+     *
+     * Nicht abschaltbar gemacht, sondern entfernt. Ein Schalter, der Vollzugriff gewaehrt, ist
+     * auch ausgeschaltet eine Hintertuer: Er kann versehentlich gesetzt werden, er steht in
+     * Konfigurationsbeispielen, und er laedt dazu ein, ihn "nur kurz" zu benutzen.
+     *
+     * DASS DAS PROBLEM BEKANNT WAR, IST AKTENKUNDIG: Das Kundenprojekt, aus dem dieses
+     * Framework herausgeschnitten wurde, setzte den Wert beim Bootstrap ausdruecklich auf null
+     * (siehe an_project/docs/technical.md). Man hat sich davor geschuetzt, statt ihn zu
+     * entfernen.
      */
-    public $APP_MASTER_PASSWORD     = null;
 
 
     /**

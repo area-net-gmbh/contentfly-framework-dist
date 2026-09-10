@@ -78,16 +78,15 @@ class AuthController extends BaseController
                 return new JsonResponse(array('message' => 'Der Benutzer ist nur über LoginManager authorisierbar.'), 401);
             }
 
-            $globalPass = Adapter::getConfig()->APP_MASTER_PASSWORD;
-
-            if($globalPass){
-                if(!$user->isPass(($request->request->all()['pass'] ?? null)) && $globalPass != ($request->request->all()['pass'] ?? null)){
-                    return new JsonResponse(array('message' => 'Benutzername und/oder Passwort fehlerhaft.'), 401);
-                }
-            }else{
-                if(!$user->isPass(($request->request->all()['pass'] ?? null))){
-                    return new JsonResponse(array('message' => 'Benutzername und/oder Passwort fehlerhaft.'), 401);
-                }
+            /*
+             * EIN ZWEIG, KEINE FALLUNTERSCHEIDUNG (013-001-0002).
+             *
+             * Hier stand eine zweite Bedingung: Ist APP_MASTER_PASSWORD gesetzt, genuegte
+             * dieser eine Wert fuer JEDEN Benutzer. Die Konstante ist ersatzlos entfallen —
+             * ein Schalter, der Vollzugriff gewaehrt, ist auch ausgeschaltet eine Hintertuer.
+             */
+            if(!$user->isPass(($request->request->all()['pass'] ?? null))){
+                return new JsonResponse(array('message' => 'Benutzername und/oder Passwort fehlerhaft.'), 401);
             }
         }
 
