@@ -1,5 +1,6 @@
 <?php
 namespace Areanet\PIM\Classes\Types;
+use Areanet\PIM\Classes\Security\Feldverschluesselung;
 use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Type;
@@ -39,22 +40,15 @@ class TextareaType extends Type
             return $object->$getter();
         }
 
-        if(empty(Adapter::getConfig()->SECURITY_CIPHER_KEY)){
-            throw new \Exception('Für die Verschlüsselung muss ein Wert für SECURITY_CIPHER_KEY gesetzt sein.');
-        }
-
         $encryptedValue = $object->$getter();
 
         if(empty($encryptedValue)){
             return '';
         }
 
-        $encryptedValue = base64_decode($encryptedValue);
-        $iv             = substr($encryptedValue, 0, openssl_cipher_iv_length(Adapter::getConfig()->SECURITY_CIPHER_METHOD));
-        $encryptedValue = substr($encryptedValue, openssl_cipher_iv_length(Adapter::getConfig()->SECURITY_CIPHER_METHOD));
-
-        return openssl_decrypt($encryptedValue, Adapter::getConfig()->SECURITY_CIPHER_METHOD, Adapter::getConfig()->SECURITY_CIPHER_KEY, 0, $iv);
-
+        // Seit 010-004-0001 an einer Stelle: Classes/Security/Feldverschluesselung.
+        // Die Ausnahme bei fehlendem SECURITY_CIPHER_KEY wirft jetzt sie.
+        return (new Feldverschluesselung())->entschluesseln($encryptedValue);
     }
 
     public function toDatabase(Api $api, Base $object, $property, $value, $entityName, $schema, $user, $data = null, $lang = null): void
@@ -72,16 +66,7 @@ class TextareaType extends Type
             return;
         }
 
-        if(empty(Adapter::getConfig()->SECURITY_CIPHER_KEY)){
-            throw new \Exception('Für die Verschlüsselung muss ein Wert für SECURITY_CIPHER_KEY gesetzt sein.');
-        }
-
-        $iv = openssl_random_pseudo_bytes(openssl_cipher_iv_length(Adapter::getConfig()->SECURITY_CIPHER_METHOD));
-
-        $encryptedValue = openssl_encrypt($value, Adapter::getConfig()->SECURITY_CIPHER_METHOD, Adapter::getConfig()->SECURITY_CIPHER_KEY, 0, $iv);
-        $encryptedValue = base64_encode($iv.$encryptedValue);
-
-        $object->$setter($encryptedValue);
+        $object->$setter((new Feldverschluesselung())->verschluesseln($value));
 
     }
 }
