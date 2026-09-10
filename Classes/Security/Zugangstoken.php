@@ -3,6 +3,7 @@ namespace Areanet\PIM\Classes\Security;
 
 use Areanet\PIM\Classes\Config\Adapter;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
@@ -75,7 +76,9 @@ final class Zugangstoken
         );
 
         return array(
-            'token' => JWT::encode($claims, $geheimnis, self::VERFAHREN),
+            // Der vierte Parameter setzt `kid` im Header — die Handhabe fuer den
+            // Schluesselwechsel (013-003-0004).
+            'token' => JWT::encode($claims, $geheimnis, self::VERFAHREN, self::kennung()),
             'jti'   => $jti,
             'exp'   => $exp,
         );
@@ -111,6 +114,59 @@ final class Zugangstoken
         }
 
         return (string) Adapter::getConfig()->SECURITY_JWT_SECRET;
+    }
+
+    /** Die Kennung des aktuellen Schluessels — sie steht als `kid` im Token-Header. */
+    public static function kennung(): string
+    {
+        $wert = (string) Adapter::getConfig()->SECURITY_JWT_KEY_ID;
+
+        return $wert !== '' ? $wert : 'k1';
+    }
+
+    /**
+     * Alle Schluessel, gegen die geprueft wird — nach Kennung.
+     *
+     * DER AKTUELLE UND, WENN GESETZT, DER VORHERIGE. Das ist der ganze Schluesselwechsel:
+     * Signiert wird mit dem aktuellen, angenommen werden beide. Wer den Wechsel macht, schiebt
+     * den bisherigen Wert nach `SECURITY_JWT_SECRET_PREVIOUS` und legt einen neuen an — niemand
+     * muss sich neu anmelden, und nach Ablauf des laengsten Access-JWT kann der alte weg.
+     *
+     * ZWEI GLEICHE KENNUNGEN WERDEN ABGEWIESEN. Sonst ueberschriebe die eine die andere im
+     * Array, und die Anwendung akzeptierte stillschweigend nur einen der beiden Schluessel —
+     * mitten in einem Wechsel der schlechteste Zeitpunkt fuer eine stille Ueberraschung.
+     *
+     * @return array<string, Key>
+     */
+    public static function pruefschluessel(): array
+    {
+        $schluessel = array(self::kennung() => new Key(self::geheimnis(), self::VERFAHREN));
+
+        $vorher        = Adapter::getConfig()->SECURITY_JWT_SECRET_PREVIOUS;
+        $vorherKennung = Adapter::getConfig()->SECURITY_JWT_KEY_ID_PREVIOUS;
+
+        if (!is_string($vorher) || $vorher === '') {
+            return $schluessel;
+        }
+
+        if (!is_string($vorherKennung) || $vorherKennung === '') {
+            throw new \RuntimeException(
+                'SECURITY_JWT_SECRET_PREVIOUS ist gesetzt, SECURITY_JWT_KEY_ID_PREVIOUS nicht. '
+                .'Ein Schluessel ohne Kennung laesst sich keinem Token zuordnen.'
+            );
+        }
+
+        if ($vorherKennung === self::kennung()) {
+            throw new \RuntimeException(
+                'SECURITY_JWT_KEY_ID und SECURITY_JWT_KEY_ID_PREVIOUS sind gleich ("'
+                .$vorherKennung.'"). Waehrend eines Schluesselwechsels muessen sie sich '
+                .'unterscheiden, sonst gilt nur einer der beiden Schluessel.'
+            );
+        }
+
+        $schluessel[$vorherKennung] = new Key($vorher, self::VERFAHREN);
+
+        return $schluessel;
     }
 
     /** Die Lebensdauer in Sekunden, aus der Konfiguration. */

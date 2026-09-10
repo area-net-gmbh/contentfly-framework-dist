@@ -413,6 +413,45 @@ class Config{
      */
     public $SECURITY_JWT_TTL       = 900;
 
+    /**
+     * Die Kennung des aktuellen Signaturschluessels — sie steht als `kid` im Token-Header.
+     *
+     * NEU MIT 013-003-0004. Ohne Kennung liesse sich ein Schluessel nur wechseln, indem man alle
+     * laufenden Sitzungen beendet — und ein Schluessel, dessen Wechsel wehtut, wird nicht
+     * gewechselt. Damit waere ein Leak dauerhaft.
+     *
+     * Der Wert ist ein Name, kein Geheimnis: Er steht im Klartext in jedem Token. `k1`, `k2`,
+     * ein Datum — was immer beim naechsten Wechsel erkennbar macht, welcher Schluessel gemeint
+     * ist.
+     *
+     * @var string
+     */
+    public $SECURITY_JWT_KEY_ID    = 'k1';
+
+    /**
+     * Der vorherige Signaturschluessel, waehrend einer Uebergangszeit.
+     *
+     * SO LAEUFT EIN WECHSEL AB: Den bisherigen Wert hierher, einen neuen nach
+     * `SECURITY_JWT_SECRET`, beide Kennungen setzen. Signiert wird ab sofort mit dem neuen,
+     * angenommen werden beide — niemand muss sich neu anmelden. Wenn das laengste zu dieser Zeit
+     * ausgestellte Access-JWT abgelaufen ist (`SECURITY_JWT_TTL`), koennen die beiden
+     * `*_PREVIOUS`-Felder wieder leer.
+     *
+     * @var string|null
+     */
+    public $SECURITY_JWT_SECRET_PREVIOUS = null;
+
+    /**
+     * Die Kennung des vorherigen Schluessels.
+     *
+     * Muss sich von `SECURITY_JWT_KEY_ID` unterscheiden — sonst zeigten zwei Kennungen auf
+     * denselben Namen, und eine der beiden Faessungen verschwaende stillschweigend. Die Anwendung
+     * weist das ab, statt es geschehen zu lassen.
+     *
+     * @var string|null
+     */
+    public $SECURITY_JWT_KEY_ID_PREVIOUS = null;
+
 
     /**
      * Unter welchem Pfad die Anwendung im Web erreichbar ist.

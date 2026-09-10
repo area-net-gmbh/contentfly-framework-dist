@@ -7,7 +7,6 @@ use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Firebase\JWT\JWT;
-use Firebase\JWT\Key;
 use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
 use Symfony\Component\Security\Http\AccessToken\AccessTokenHandlerInterface;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
@@ -138,8 +137,6 @@ final class Tokenhandler implements AccessTokenHandlerInterface
      */
     private function ausJwt(string $token): UserBadge
     {
-        $geheimnis = Adapter::getConfig()->SECURITY_JWT_SECRET;
-
         /*
          * OHNE GEHEIMNIS WIRD ABGEWIESEN, nicht uebersprungen.
          *
@@ -147,12 +144,32 @@ final class Tokenhandler implements AccessTokenHandlerInterface
          * Abweisung sieht aus wie jede andere — dass hier ein Geheimnis fehlt, ist eine Sache
          * des Betreibers und keine, die der Aufrufer erfahren muss.
          */
-        if (!is_string($geheimnis) || $geheimnis === '') {
+        if (!Zugangstoken::eingerichtet()) {
             $this->abweisen();
         }
 
+        /*
+         * DIE SCHLUESSEL WERDEN AUSSERHALB DES try GEHOLT (013-003-0004).
+         *
+         * `pruefschluessel()` wirft nur bei einer FEHLKONFIGURATION — zwei gleiche Kennungen,
+         * oder ein vorheriger Schluessel ohne Kennung. Das ist kein ungueltiges Token, und es
+         * darf nicht wie eines aussehen: Faenge man es hier mit ab, antwortete die Anwendung auf
+         * jeden Request mit „ungueltiger Token", und der Betreiber suchte den Fehler bei seinen
+         * Clients. So schlaegt sie laut durch, mit einer Meldung, die die Felder nennt.
+         */
+        $schluessel = Zugangstoken::pruefschluessel();
+
         try {
-            $claims = JWT::decode($token, new Key($geheimnis, Zugangstoken::VERFAHREN));
+            /*
+             * Ein Array statt eines einzelnen Keys: `JWT::decode()` waehlt dann nach dem `kid`
+             * im Header. EIN TOKEN OHNE `kid` WIRD DAMIT ABGEWIESEN, und das ist die
+             * Entscheidung: Ohne Kennung muesste die Anwendung raten, welcher Schluessel gemeint
+             * ist — und „alle der Reihe nach probieren" hebt den Sinn des Wechsels auf, weil ein
+             * abgeloester Schluessel dann weiter Tokens beglaubigt, die nichts ueber sich sagen.
+             * Ausgestellt wurde ein Token ohne `kid` nie: Die Ausstellung entstand mit
+             * 013-003-0001, die Kennung mit 013-003-0004, und dazwischen lag kein Release.
+             */
+            $claims = JWT::decode($token, $schluessel);
         } catch (\Throwable) {
             $this->abweisen();
         }
