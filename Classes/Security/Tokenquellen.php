@@ -11,7 +11,7 @@ use Symfony\Component\Security\Http\AccessToken\QueryAccessTokenExtractor;
  * Woher ein Token kommen darf — und in welcher Reihenfolge (013-002-0002).
  *
  * FUENF QUELLEN, VIER DAVON GEERBT. RFC 6750 kennt nur die erste; die anderen vier sind das,
- * was `BaseControllerProvider::checkToken()` seit jeher liest. Ohne sie bricht jeder bestehende
+ * was `BaseControllerProvider::checkToken()` bis `013-002-0004` gelesen hat. Ohne sie bricht jeder bestehende
  * Ionic-Client beim Update — Bestandsprojekte schicken `appcms-token`, nicht
  * `Authorization: Bearer`. Wie lange sie mitlaufen, entscheidet Epic `007`.
  *

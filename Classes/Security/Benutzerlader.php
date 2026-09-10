@@ -20,9 +20,9 @@ use Symfony\Component\Security\Core\User\UserProviderInterface;
  * Wuerde hier eine eigene Ausnahme fuer „gesperrt" fliegen, waere die Antwort ein Orakel dafuer,
  * welche Konten es gibt und welche gerade abgeschaltet sind.
  *
- * NOCH NICHT VERDRAHTET. `BaseControllerProvider::checkToken()` bleibt bis `013-002-0004` die
- * einzige Autoritaet; dieser Lader steht daneben und wird fuer sich geprueft. Erst umschalten,
- * wenn beide Haelften stehen — dasselbe Muster wie in Epic `010`.
+ * VERDRAHTET SEIT 013-002-0004. Er stand zwei Tasks lang neben `checkToken()` und wurde fuer
+ * sich geprueft; erst als beide Haelften standen, wurde umgeschaltet — dasselbe Muster wie in
+ * Epic `010`. `checkToken()` gibt es seither nicht mehr.
  */
 final class Benutzerlader implements UserProviderInterface
 {

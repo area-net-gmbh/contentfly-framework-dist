@@ -25,7 +25,7 @@ class FileControllerProvider extends BaseControllerProvider
         $controllers = new Routensammlung();
 
         $checkAuth = function (Request $request, Application $app) {
-            if (!$this->checkToken($request, $app)) {
+            if (!$this->anmelden($request, $app)) {
                 throw new AccessDeniedHttpException('Access Denied');
             }
         };

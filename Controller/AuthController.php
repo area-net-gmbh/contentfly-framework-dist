@@ -210,8 +210,21 @@ class AuthController extends BaseController
      */
     public function logoutAction()
     {
-        $this->em->remove($this->app['auth.token']);
-        $this->em->flush();
+        /*
+         * NICHT JEDE ANMELDUNG HAT EINE ZEILE (013-002-0004).
+         *
+         * `$app['auth.token']` traegt die Zeile aus `pim_token` — im JWT-Zweig gibt es keine,
+         * und das ist der ganze Gewinn jenes Zweigs. Ausgestellt werden JWT erst mit `013-003`;
+         * die Pruefung steht trotzdem schon hier, weil die Moeglichkeit mit dieser Story
+         * entsteht und nicht mit jener.
+         *
+         * Was Abmelden bei einem zustandslosen Token bedeutet — Refresh-Token entziehen,
+         * Restfenster ueber eine Sperrliste —, entscheidet `013-003`.
+         */
+        if ($this->app['auth.token']) {
+            $this->em->remove($this->app['auth.token']);
+            $this->em->flush();
+        }
 
         unset($this->app['auth.token']);
         unset($this->app['auth.user']);

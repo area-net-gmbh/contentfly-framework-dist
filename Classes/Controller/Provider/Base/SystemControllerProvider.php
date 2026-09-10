@@ -29,7 +29,7 @@ class SystemControllerProvider extends BaseControllerProvider
 
         $checkAuth = function (Request $request, Application $app) {
             try {
-                if (!$this->checkToken($request, $app)) {
+                if (!$this->anmelden($request, $app)) {
                     throw new AccessDeniedHttpException('Zugriff verweigert', null, 401);
                 }
                 if (!$app['auth.user']->getIsAdmin()) {

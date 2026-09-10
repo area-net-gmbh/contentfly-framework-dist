@@ -27,7 +27,7 @@ class ApiControllerProvider extends BaseControllerProvider
         $controllers = new Routensammlung();
 
         $checkAuth = function (Request $request, Application $app) {
-            if (!$this->checkToken($request, $app)) {
+            if (!$this->anmelden($request, $app)) {
                 throw new ContentflyException(Messages::contentfly_general_access_denied, null, Messages::contentfly_status_invalid_token);
             }
         };

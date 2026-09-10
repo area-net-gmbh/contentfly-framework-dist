@@ -33,7 +33,8 @@ use Symfony\Component\Security\Http\Authenticator\AccessTokenAuthenticator;
  * manipuliertes Token muenden alle in `null`. Wer hier nach Ursachen unterscheidet, sagt dem
  * Aufrufer, welche Tokenart erwartet wird und welche Konten es gibt.
  *
- * NOCH NICHT VERDRAHTET — siehe `Benutzerlader`.
+ * VERDRAHTET SEIT 013-002-0004: `BaseControllerProvider::anmelden()` ruft ihn, und
+ * `checkToken()` gibt es nicht mehr.
  */
 final class Anmeldetreiber
 {

@@ -4,6 +4,7 @@ namespace Areanet\PIM\Classes\Controller\Provider;
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 use Areanet\PIM\Classes\Kernel\ControllerProviderInterface;
+use Areanet\PIM\Entity\User;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -11,9 +12,21 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
 {
 
     const LOGIN_PATH           = '/login';
-    const TOKEN_HEADER_KEY_ALT = 'X-XSRF-TOKEN';
-    const TOKEN_HEADER_KEY     = 'appcms-token';
-    const TOKEN_REQUEST_KEY    = '_token';
+
+    /*
+     * DIE DREI TOKEN-KONSTANTEN SIND ENTFALLEN (013-002-0004).
+     *
+     * TOKEN_HEADER_KEY ('appcms-token'), TOKEN_HEADER_KEY_ALT ('X-XSRF-TOKEN') und
+     * TOKEN_REQUEST_KEY ('_token') standen hier, weil `checkToken()` sie las. Die Methode gibt
+     * es nicht mehr; die Werte stehen jetzt in `Areanet\PIM\Classes\Security\Tokenquellen`,
+     * zusammen mit dem Code, der sie benutzt.
+     *
+     * Sie hier stehen zu lassen waere schlimmer als sie zu entfernen: Drei oeffentliche
+     * Konstanten, die nichts mehr steuern, sehen beim naechsten Lesen aus wie die Stelle, an
+     * der man die Tokenquellen aendert. Die Bruchstelle steht in
+     * an_project/docs/breaking-changes.md.
+     */
+
     protected $basePath = '';
 
     public function __construct($basePath)
@@ -128,78 +141,36 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
         return !in_array($path, [$this->basePath . self::LOGIN_PATH]);
     }
 
-    protected function checkToken(Request $request, Application $app){
+    /**
+     * Meldet den Request an — ueber Symfonys `access_token`-Authenticator (013-002-0004).
+     *
+     * `checkToken()` IST ENTFALLEN. Die Methode las den Token aus vier Quellen, schlug ihn in
+     * `pim_token` nach, prueste Benutzer und Timeout und schrieb `modified` zurueck — alles in
+     * einem Rumpf. Dasselbe steht jetzt auf drei Klassen verteilt, jede fuer sich pruefbar:
+     *
+     *   Tokenquellen     woher ein Token kommen darf, in der Reihenfolge von frueher
+     *   Tokenhandler     die Verzweigung: JWT oder `pim_token`
+     *   Anmeldetreiber   faehrt den Authenticator und faengt jeden Fehlschlag gleich ab
+     *
+     * WAS BLEIBT, IST DIE SCHNITTSTELLE NACH AUSSEN: ein `bool`, und im Erfolgsfall stehen
+     * `$app['auth.user']` und `$app['auth.token']` wie bisher. Das Contentfly-eigene
+     * Berechtigungsmodell liest sie an Dutzenden Stellen; es durch Symfony-Rollen zu ersetzen
+     * ist ausdruecklich nicht Teil dieser Story.
+     *
+     * `$app['auth.token']` KANN JETZT NULL SEIN. Im JWT-Zweig gibt es keine Zeile in
+     * `pim_token` — das ist der ganze Gewinn dieses Zweigs. Gelesen wird der Schluessel nur
+     * beim Abmelden, und der Fall ist dort behandelt.
+     */
+    protected function anmelden(Request $request, Application $app): bool
+    {
+        $benutzer = $app['anmeldetreiber']->benutzer($request);
 
-        $tokenString = $request->headers->get(self::TOKEN_HEADER_KEY, null);
-        if(empty($tokenString)){
-            /*
-             * DIE EINZIGE STELLE, AN DER MEHR ALS EINE QUELLE IN FRAGE KOMMT (009-003-0001).
-             *
-             * Hier stand `$request->get(self::TOKEN_REQUEST_KEY)`. Die Methode sucht der Reihe
-             * nach in `attributes`, `query` und `request` — und fuer den Token als
-             * `_token`-Parameter sind zwei davon plausibel: Ein Aufruf kann ihn im Query-String
-             * mitbringen (ein Link, den jemand anklickt) oder im Rumpf (ein POST). Die
-             * Attribute kommen nicht in Frage: Keine Route definiert einen Platzhalter
-             * `_token`.
-             *
-             * Beide bleiben, in derselben Reihenfolge wie vorher. Das ist der Anmeldeweg — hier
-             * eine Quelle wegzulassen hiesse, eine Aufrufform stillschweigend abzuschalten und
-             * es erst zu merken, wenn ein Bestandsprojekt sich nicht mehr anmelden kann.
-             */
-            $tokenParameter = $request->query->get(self::TOKEN_REQUEST_KEY)
-                ?? $request->request->get(self::TOKEN_REQUEST_KEY);
-
-            $tokenString = $request->headers->get(self::TOKEN_HEADER_KEY_ALT, $tokenParameter);
-        }
-        $headers = $request->headers->all();
-
-        if(empty($tokenString)){
+        if (!$benutzer instanceof User) {
             return false;
         }
 
-        /*
-         * NACHGESCHLAGEN WIRD DER HASH (013-001-0004).
-         *
-         * In der Spalte steht seit diesem Task nur noch ein SHA-256; der vorgezeigte Token wird
-         * dafuer gehasht. Fuer die Abfrage aendert sich nichts — der Hash ist deterministisch,
-         * die Spalte bleibt durchsuchbar und unique. Es bleibt bei EINEM Zugriff, kein Scan.
-         */
-        $token = $app['orm.em']->getRepository('Areanet\PIM\Entity\Token')->findOneBy(
-            array('token' => \Areanet\PIM\Entity\Token::hashen($tokenString))
-        );
-
-        if(!$token){
-            return false;
-        }
-
-        if(!$token->getUser() || !$token->getUser()->getIsActive()){
-            return false;
-        }
-
-        $tokenTimeout = Adapter::getConfig()->APP_TOKEN_TIMEOUT;
-
-        if(($group = $token->getUser()->getGroup())){
-            $tokenTimeout =  $group->getTokenTimeout() * 60;
-        }
-
-        if(Adapter::getConfig()->APP_CHECK_TOKEN_TIMEOUT && !$token->getReferrer() && $tokenTimeout) {
-            
-            $modified   = $token->getModified()->getTimestamp();
-            $now        = new \DateTime();
-            $diff       = $now->getTimestamp() - $modified;
-
-            if ($diff > $tokenTimeout) {
-                $app['orm.em']->remove($token);
-                $app['orm.em']->flush();
-                return false;
-            }else{
-                $token->setModified($now);
-                $app['orm.em']->flush();
-            }
-        }
-
-        $app['auth.user']  = $token->getUser();
-        $app['auth.token'] = $token;
+        $app['auth.user']  = $benutzer;
+        $app['auth.token'] = $app['tokenhandler']->letzterToken();
 
         return true;
     }

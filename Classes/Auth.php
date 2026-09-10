@@ -14,8 +14,9 @@ use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
  * API-Aufrufe desselben Nutzers serialisierte.
  *
  * `login()` und `logout()` hatten ohnehin keinen Aufrufer: Der `AuthController` bringt seine
- * eigene Anmeldung mit und stellt Tokens aus. Wer den angemeldeten Benutzer setzt, ist
- * seither `BaseControllerProvider::checkToken()`.
+ * eigene Anmeldung mit und stellt Tokens aus. Wer den angemeldeten Benutzer setzt, ist seit
+ * `013-002-0004` `BaseControllerProvider::anmelden()` — davor `checkToken()`, das mit jenem
+ * Task entfallen ist.
  */
 class Auth
 {

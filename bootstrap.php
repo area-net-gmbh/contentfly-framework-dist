@@ -48,6 +48,10 @@ use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Areanet\PIM\Classes\Security\Anmeldebremse;
+use Areanet\PIM\Classes\Security\Anmeldetreiber;
+use Areanet\PIM\Classes\Security\Benutzerlader;
+use Areanet\PIM\Classes\Security\Tokenhandler;
+use Areanet\PIM\Classes\Security\Tokenquellen;
 use Doctrine\DBAL\DriverManager;
 use Areanet\PIM\Classes\Kernel\ConsoleEvents;
 use Areanet\PIM\Classes\Kernel\Application;
@@ -372,6 +376,30 @@ if($app['is_installed']) {
 
     $config = $app['orm.em']->getConfiguration();
     $config->setQuoteStrategy(new ContentflyQuoteStrategy());
+
+    /*
+     * DIE ANMELDUNG (013-002-0004).
+     *
+     * Hier wird der Schalter umgelegt: `BaseControllerProvider::checkToken()` ist entfallen,
+     * an seine Stelle tritt Symfonys `access_token`-Authenticator, gefahren vom
+     * `Anmeldetreiber`.
+     *
+     * DER HANDLER STEHT ALS EIGENER SCHLUESSEL, nicht anonym im Treiber: Der Aufrufer braucht
+     * nach der Anmeldung `letzterToken()` fuer `$app['auth.token']`. Der Container merkt sich
+     * beide Ergebnisse, es gibt also je Request genau eine Instanz — worauf die
+     * Zustandsfuehrung im Handler beruht.
+     */
+    $app['tokenhandler'] = function ($app) {
+        return new Tokenhandler($app['orm.em']);
+    };
+
+    $app['anmeldetreiber'] = function ($app) {
+        return new Anmeldetreiber(
+            $app['tokenhandler'],
+            Tokenquellen::kette(),
+            new Benutzerlader($app['orm.em'])
+        );
+    };
 
     $app['typeManager'] = function ($app) {
         return new TypeManager($app);
