@@ -3,6 +3,7 @@ namespace Areanet\PIM\Classes\Security;
 
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Entity\Token;
+use Areanet\PIM\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -199,24 +200,15 @@ final class Tokenhandler implements AccessTokenHandlerInterface
             $this->abweisen();
         }
 
-        $timeout = Adapter::getConfig()->APP_TOKEN_TIMEOUT;
+        if (self::abgelaufen($zeile, $benutzer)) {
+            $this->em->remove($zeile);
+            $this->em->flush();
 
-        if (($gruppe = $benutzer->getGroup())) {
-            $timeout = $gruppe->getTokenTimeout() * 60;
+            $this->abweisen();
         }
 
-        if (Adapter::getConfig()->APP_CHECK_TOKEN_TIMEOUT && !$zeile->getReferrer() && $timeout) {
-            $jetzt      = new \DateTime();
-            $verstrichen = $jetzt->getTimestamp() - $zeile->getModified()->getTimestamp();
-
-            if ($verstrichen > $timeout) {
-                $this->em->remove($zeile);
-                $this->em->flush();
-
-                $this->abweisen();
-            }
-
-            $zeile->setModified($jetzt);
+        if (self::timeoutGilt($zeile)) {
+            $zeile->setModified(new \DateTime());
             $this->em->flush();
         }
 
@@ -225,6 +217,56 @@ final class Tokenhandler implements AccessTokenHandlerInterface
         // MIT eigenem Lader: Der Benutzer liegt schon vor. Ihn ueber den Benutzerlader noch
         // einmal zu holen waere eine zweite Abfrage fuer dieselbe Zeile.
         return new UserBadge($benutzer->getUserIdentifier(), static fn () => $benutzer);
+    }
+
+    // ── Ablauf, an einer Stelle ────────────────────────────────────────────────────────
+
+    /**
+     * Ob fuer diese Zeile ueberhaupt ein Timeout gilt.
+     *
+     * Ein Token mit `referrer` ist ein API-Token und verfaellt nicht; und der Betreiber kann
+     * die Pruefung ganz abschalten. Beides steht seit jeher so da.
+     */
+    public static function timeoutGilt(Token $zeile): bool
+    {
+        return (bool) Adapter::getConfig()->APP_CHECK_TOKEN_TIMEOUT && !$zeile->getReferrer();
+    }
+
+    /**
+     * Die Lebensdauer einer Token-Zeile in Sekunden.
+     *
+     * Die Gruppe des Benutzers schlaegt die Vorgabe — und sie rechnet in MINUTEN. Das ist ein
+     * Erbe und keine Schoenheit, aber es ist das Verhalten von frueher.
+     */
+    public static function timeoutFuer(User $benutzer): int
+    {
+        if (($gruppe = $benutzer->getGroup())) {
+            return (int) $gruppe->getTokenTimeout() * 60;
+        }
+
+        return (int) Adapter::getConfig()->APP_TOKEN_TIMEOUT;
+    }
+
+    /**
+     * Ob diese Zeile abgelaufen ist.
+     *
+     * HERAUSGEZOGEN MIT 013-003-0002: Der Refresh-Weg braucht dieselbe Rechnung. Zwei Kopien
+     * derselben Ablauflogik laufen auseinander, und die eine, die es dann falsch macht, laesst
+     * jemanden laenger herein als gedacht.
+     */
+    public static function abgelaufen(Token $zeile, User $benutzer): bool
+    {
+        if (!self::timeoutGilt($zeile)) {
+            return false;
+        }
+
+        $timeout = self::timeoutFuer($benutzer);
+
+        if (!$timeout) {
+            return false;
+        }
+
+        return (time() - $zeile->getModified()->getTimestamp()) > $timeout;
     }
 
     private function abweisen(): never

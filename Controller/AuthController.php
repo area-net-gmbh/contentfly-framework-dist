@@ -5,6 +5,7 @@ use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Controller\BaseController;
 use Areanet\PIM\Classes\LoginProvider;
 use Areanet\PIM\Classes\Manager\LoginManager;
+use Areanet\PIM\Classes\Security\Tokenhandler;
 use Areanet\PIM\Classes\Security\Zugangstoken;
 use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
@@ -242,6 +243,131 @@ class AuthController extends BaseController
 
         return new JsonResponse($response);
 
+    }
+
+    /**
+     * @apiVersion 1.5.0
+     * @api {post} /auth/refresh refresh
+     * @apiName Refresh
+     * @apiGroup User
+     * @apiDescription Tauscht ein Refresh-Token gegen ein frisches Access-JWT (013-003-0002).
+     *
+     * @apiParam {String} refreshToken Das Refresh-Token aus der Anmeldung
+     * @apiSuccessExample Success-Response:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "message": "Refresh successful",
+     *       "token": "eyJ...",
+     *       "refreshToken": "…",
+     *       "expiresIn": 900
+     *     }
+     * @apiError 401 Ungültiges Refresh-Token
+     * @apiError 429 Zu viele Versuche
+     */
+    public function refreshAction(Request $request)
+    {
+        $ip     = $request->getClientIp();
+        $bremse = $this->app['loginbremse'];
+
+        /*
+         * DIE BREMSE GILT AUCH HIER (013-003-0002).
+         *
+         * Ein Endpunkt, der Zugangstokens ausgibt, ist dasselbe Ziel wie der Login. Ihn
+         * ungebremst zu lassen hiesse, die Bremse an der Vordertuer anzubringen und die
+         * Seitentuer offen zu lassen.
+         *
+         * GEBREMST WIRD NUR UEBER DIE ADRESSE, nicht ueber eine Kennung: Der Request bringt
+         * keine mit. Das ist auch die richtige Achse — ein Refresh-Token laesst sich nicht ueber
+         * einen Benutzernamen erraten, sondern nur durch Durchprobieren von einer Stelle aus.
+         */
+        if (($wartezeit = $bremse->wartezeit(null, $ip)) !== null) {
+            return new JsonResponse(
+                array('message' => 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.'),
+                429,
+                array('Retry-After' => $wartezeit)
+            );
+        }
+
+        /*
+         * JEDER FEHLSCHLAG SIEHT GLEICH AUS.
+         *
+         * Unbekannt, abgelaufen, schon verbraucht, gesperrter Benutzer, oder ein Access-JWT an
+         * der falschen Tuer — der Aufrufer erfaehrt nur, dass es nicht gereicht hat. Wer hier
+         * unterscheidet, sagt einem Angreifer, welcher seiner Versuche naeher dran war.
+         */
+        $abweisen = function () use ($bremse, $ip) {
+            $bremse->fehlversuch(null, $ip);
+
+            return new JsonResponse(array('message' => 'Ungültiges Refresh-Token.'), 401);
+        };
+
+        $vorgezeigt = ($request->request->all()['refreshToken'] ?? null);
+
+        if (!is_string($vorgezeigt) || $vorgezeigt === '') {
+            return $abweisen();
+        }
+
+        $zeile = $this->em->getRepository('Areanet\PIM\Entity\Token')->findOneBy(
+            array('token' => Token::hashen($vorgezeigt))
+        );
+
+        // Kein Treffer — oder ein Treffer, der kein Refresh-Token ist. Ein Zugangstoken taugt
+        // hier nicht: Sonst waere die Trennung aus 013-003-0001 in eine Richtung wieder auf.
+        if (!$zeile instanceof Token || !$zeile->istRefreshToken()) {
+            return $abweisen();
+        }
+
+        $benutzer = $zeile->getUser();
+
+        if (!$benutzer || !$benutzer->getIsActive()) {
+            return $abweisen();
+        }
+
+        if (Tokenhandler::abgelaufen($zeile, $benutzer)) {
+            $this->em->remove($zeile);
+            $this->em->flush();
+
+            return $abweisen();
+        }
+
+        if (!Zugangstoken::eingerichtet()) {
+            return new JsonResponse(
+                array('message' => 'JWT sind auf dieser Installation nicht eingerichtet: SECURITY_JWT_SECRET fehlt.'),
+                500
+            );
+        }
+
+        /*
+         * ROTATION: DAS VORGEZEIGTE TOKEN WIRD ERSETZT.
+         *
+         * Ein Refresh-Token, das mehrfach gilt, ist ein langlebiges Geheimnis: Wer es abgreift,
+         * holt sich damit beliebig lange frische Zugangstokens, und niemand sieht es. Wird es
+         * bei jedem Gebrauch getauscht, faellt ein zweiter Gebrauch desselben Tokens auf — er
+         * wird abgewiesen, weil die Zeile nicht mehr existiert.
+         *
+         * Die alte Zeile wird geloescht und eine neue angelegt, statt den Wert an Ort und
+         * Stelle zu tauschen: Ein Token IST seine Zeile, und `created` soll sagen, wann dieses
+         * Token entstand.
+         */
+        $this->em->remove($zeile);
+
+        $neu = new Token();
+        $neu->setUser($benutzer);
+        $neu->setPurpose(Token::ZWECK_REFRESH);
+
+        $this->em->persist($neu);
+        $this->em->flush();
+
+        $this->app['auth.user'] = $benutzer;
+
+        $zugang = Zugangstoken::ausstellen($benutzer);
+
+        return new JsonResponse(array(
+            'message'      => 'Refresh successful',
+            'token'        => $zugang['token'],
+            'refreshToken' => $neu->getKlartext(),
+            'expiresIn'    => $zugang['exp'] - time(),
+        ));
     }
 
     /**

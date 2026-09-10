@@ -32,6 +32,17 @@ class AuthControllerProvider extends BaseControllerProvider
         };
 
         $controllers->post('/login',  "auth.controller:loginAction");
+
+        /*
+         * `/refresh` OHNE $checkAuth (013-003-0002).
+         *
+         * Ein Refresh-Token ist kein Zugangstoken — der Tokenhandler weist es ausdruecklich ab.
+         * Haenge man die Anmeldung davor, waere der Endpunkt nur mit einem gueltigen Access-JWT
+         * erreichbar, also genau dann nicht, wenn man ihn braucht: nach dessen Ablauf.
+         *
+         * Er prueft dafuer selbst, und er unterliegt der Anmeldebremse.
+         */
+        $controllers->post('/refresh', "auth.controller:refreshAction");
         $controllers->get('/logout', "auth.controller:logoutAction")->before($checkAuth);
 
         return $controllers->sammlung();
