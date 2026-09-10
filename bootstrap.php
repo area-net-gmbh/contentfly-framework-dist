@@ -42,6 +42,7 @@ use Areanet\PIM\Classes\Manager\TypeManager;
 use Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy;
 use Areanet\PIM\Command\InstallCommand;
 use Areanet\PIM\Command\SetupCommand;
+use Areanet\PIM\Command\ReencryptCommand;
 use Areanet\PIM\Command\TokenCleanupCommand;
 use Areanet\PIM\Classes\ORM\EntityManagerFactory;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
@@ -412,6 +413,7 @@ $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app)
         $console->addCommand(new InstallCommand());
         $console->addCommand(new SetupCommand());
         $console->addCommand(new TokenCleanupCommand());
+        $console->addCommand(new ReencryptCommand());
     });
     return $dispatcher;
 });
