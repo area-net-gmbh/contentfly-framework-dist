@@ -19,8 +19,35 @@ class Token
     #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     protected $user;
 
+    /**
+     * DER HASH DES TOKENS, NICHT DER TOKEN (013-001-0004).
+     *
+     * Vorher standen hier 128 Hex aus 64 Zufallsbytes im Klartext. Ein Lesezugriff auf die
+     * Datenbank — ein Backup, eine SQL-Injection, ein Dump im Ticketsystem — uebergab damit
+     * SAEMTLICHE laufenden Sitzungen, sofort verwendbar. Jetzt steht hier ein SHA-256, und
+     * beim Pruefen wird der vorgezeigte Token gehasht und der Hash nachgeschlagen.
+     *
+     * EIN SCHNELLER HASH, UND ZWAR BEGRUENDET. Ein Token ist kein Passwort: 64 zufaellige
+     * Bytes lassen sich nicht raten, es gibt also nichts, wogegen ein Arbeitsfaktor schuetzen
+     * wuerde — er verteuerte nur jeden authentifizierten Request. Kein Salt, weil das
+     * Nachschlagen sonst nicht ginge; ohne Salt ist der Hash deterministisch und die Spalte
+     * bleibt durchsuchbar und unique.
+     *
+     * DIE LAENGE BLEIBT 128, obwohl ein SHA-256 als Hex nur 64 Zeichen braucht. Die Spalte auf
+     * 64 zu kuerzen haette einen Bestand aus 128 Zeichen beim ALTER abgeschnitten — auf einer
+     * UNIQUE-Spalte ein Fehlschlag mitten in der Migration. Und Platz zu haben heisst, ein
+     * spaeterer Wechsel des Verfahrens braucht keine Schemaaenderung.
+     */
     #[ORM\Column(type: 'string', length: 128, unique: true)]
     protected $token;
+
+    /**
+     * Der Klartext — NICHT gemappt und nur in dem Request vorhanden, in dem der Token entstand.
+     *
+     * Er wird dem Client genau einmal ausgeliefert, bei der Anmeldung. Danach existiert er
+     * ausschliesslich beim Client; auch der Betreiber kann ihn nicht mehr nachschlagen.
+     */
+    private $klartext = null;
 
     #[ORM\Column(type: 'string', length: 128, nullable: true)]
     protected $referrer;
@@ -41,7 +68,13 @@ class Token
     {
         $this->created  = new \DateTime();
         $this->modified = new \DateTime();
-        $this->token    = bin2hex(openssl_random_pseudo_bytes(64));
+
+        /*
+         * `random_bytes()` statt `openssl_random_pseudo_bytes()`: Die zweite meldet ueber einen
+         * Ausgabeparameter, ob das Ergebnis kryptographisch stark ist — niemand hat ihn je
+         * gelesen. `random_bytes()` liefert entweder starke Bytes oder wirft.
+         */
+        $this->setToken(bin2hex(random_bytes(64)));
     }
 
     /**
@@ -77,6 +110,12 @@ class Token
     }
 
     /**
+     * Liefert den gespeicherten HASH — nicht den Token.
+     *
+     * Der Klartext steht nur in `getKlartext()` und nur in dem Request, in dem er entstand.
+     * Wer hier den Token erwartet, bekommt einen Wert, mit dem sich niemand anmelden kann; das
+     * ist der Sinn der Sache.
+     *
      * @return mixed
      */
     public function getToken()
@@ -85,11 +124,37 @@ class Token
     }
 
     /**
+     * Nimmt den KLARTEXT entgegen und legt seinen Hash ab.
+     *
+     * Die Signatur ist absichtlich geblieben: `SystemController::addToken()` und der Code von
+     * Bestandsprojekten uebergeben hier einen selbstgewaehlten Token-String, und der soll
+     * gehasht werden, ohne dass jede Aufrufstelle daran denken muss.
+     *
      * @param mixed $token
      */
     public function setToken($token): void
     {
-        $this->token = $token;
+        $this->klartext = ($token === null) ? null : (string) $token;
+        $this->token    = ($token === null) ? null : self::hashen((string) $token);
+    }
+
+    /**
+     * Der Klartext — oder null, wenn dieser Token aus der Datenbank kommt.
+     */
+    public function getKlartext(): ?string
+    {
+        return $this->klartext;
+    }
+
+    /**
+     * Das Verfahren, an einer Stelle.
+     *
+     * Es steht als Methode und nicht als Aufruf an fuenf Orten da, damit ein spaeterer Wechsel
+     * nicht die Frage aufwirft, ob man alle erwischt hat.
+     */
+    public static function hashen(string $klartext): string
+    {
+        return hash('sha256', $klartext);
     }
 
     /**

@@ -157,7 +157,16 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
             return false;
         }
 
-        $token = $app['orm.em']->getRepository('Areanet\PIM\Entity\Token')->findOneBy(array('token' => $tokenString));
+        /*
+         * NACHGESCHLAGEN WIRD DER HASH (013-001-0004).
+         *
+         * In der Spalte steht seit diesem Task nur noch ein SHA-256; der vorgezeigte Token wird
+         * dafuer gehasht. Fuer die Abfrage aendert sich nichts — der Hash ist deterministisch,
+         * die Spalte bleibt durchsuchbar und unique. Es bleibt bei EINEM Zugriff, kein Scan.
+         */
+        $token = $app['orm.em']->getRepository('Areanet\PIM\Entity\Token')->findOneBy(
+            array('token' => \Areanet\PIM\Entity\Token::hashen($tokenString))
+        );
 
         if(!$token){
             return false;

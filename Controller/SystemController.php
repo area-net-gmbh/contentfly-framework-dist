@@ -160,6 +160,14 @@ class SystemController extends BaseController
         $log->setModelName('PIM\\Token');
         $log->setUser($this->app['auth.user']);
         $log->setMode(Log::DELETED);
+        /*
+         * DAS LABEL IST DER HASH, NICHT DER TOKEN (013-001-0004).
+         *
+         * Hier stand der Token im Klartext — und `pim_log` ist ein Protokoll, das laenger lebt
+         * als die Sitzung, die es beschreibt. Ein Dump des Logs uebergab damit dieselben
+         * Sitzungen wie ein Dump der Tokentabelle. `getToken()` liefert seit diesem Task den
+         * Hash; als Kennzeichen im Protokoll taugt er genauso, verwenden kann ihn niemand.
+         */
         $log->setModelLabel($token->getToken());
 
         $this->em->remove($token);
@@ -171,7 +179,10 @@ class SystemController extends BaseController
 
     protected function generateToken(Request $request)
     {
-        return bin2hex(openssl_random_pseudo_bytes(64));
+        // `random_bytes()` statt `openssl_random_pseudo_bytes()` (013-001-0004): Die zweite
+        // meldet ueber einen Ausgabeparameter, ob das Ergebnis kryptographisch stark ist —
+        // niemand hat ihn je gelesen. `random_bytes()` liefert starke Bytes oder wirft.
+        return bin2hex(random_bytes(64));
     }
 
     protected function listTokens(Request $request)
@@ -187,6 +198,15 @@ class SystemController extends BaseController
                 'active'    => $token->getUser()->getIsActive()
             );
 
+            /*
+             * `token` ist seit 013-001-0004 der HASH.
+             *
+             * Der Token selbst laesst sich nicht mehr nachschlagen — auch nicht vom Betreiber.
+             * Das Feld bleibt trotzdem stehen: Es benennt die Zeile eindeutig, und wer einen
+             * Token in der Hand haelt, kann ihn selbst hashen und so herausfinden, welcher
+             * Eintrag dazugehoert. Ein Client, der den Wert versehentlich als Token vorzeigt,
+             * bekommt eine 401 — er faellt zu, nicht auf.
+             */
             $data[] = array('id' => $token->getId(), 'token' => $token->getToken(), 'referrer' => $token->getReferrer(), 'user' => $userData);
         }
 
@@ -227,6 +247,7 @@ class SystemController extends BaseController
         $log->setModelName('PIM\\Token');
         $log->setUser($this->app['auth.user']);
         $log->setMode(Log::INSERTED);
+        // Der Hash, nicht der Token — siehe deleteToken() (013-001-0004).
         $log->setModelLabel($token->getToken());
         $this->em->persist($log);
         $this->em->flush();
@@ -237,6 +258,8 @@ class SystemController extends BaseController
             'active' => $token->getUser()->getIsActive()
         );
 
-        return array('id' => $token->getId(), 'token' => $token->getToken(), 'referrer' => $token->getReferrer(), 'user' => $userData);
+        // Hier der KLARTEXT: Es ist der Wert, den der Aufrufer selbst mitgebracht hat, und der
+        // einzige Zeitpunkt, an dem er zurueckgegeben werden kann.
+        return array('id' => $token->getId(), 'token' => $token->getKlartext(), 'referrer' => $token->getReferrer(), 'user' => $userData);
     }
 }

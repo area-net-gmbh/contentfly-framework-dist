@@ -179,7 +179,10 @@ class AuthController extends BaseController
 
         $response = array(
             'message' => 'Login successful',
-            'token' => $token->getToken(),
+            // getKlartext(), nicht getToken(): In der Spalte steht seit 013-001-0004 nur der
+            // Hash. Dies ist die einzige Stelle und der einzige Zeitpunkt, an dem der Token
+            // selbst das System verlaesst — danach existiert er nur noch beim Client.
+            'token' => $token->getKlartext(),
             'user' => $user->toValueObject($this->app, 'PIM\User', false)
         );
 
