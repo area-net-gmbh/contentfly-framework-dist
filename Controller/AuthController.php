@@ -156,20 +156,20 @@ class AuthController extends BaseController
             }
 
             /*
-             * NOCH KEINE PROVISIONIERUNG (013-004-0001).
+             * PROVISIONIERUNG IM FRAMEWORK (013-004-0002).
              *
-             * Gefunden wird ein Benutzer, der es schon gibt. Anlegen, Passwort sperren und die
-             * Fremdkennung in einer eigenen Spalte fuehren ist `013-004-0002` — bis dahin
-             * bleibt `createManagedUser()` unangetastet, und dieser Weg meldet nur an, was
-             * bereits eingerichtet ist.
+             * Wer zum ersten Mal ueber ein Fremdsystem kommt, bekommt hier ein Konto — mit
+             * GESPERRTEM Passwort, nicht mit seinem Benutzernamen als Passwort (Befund A-6).
+             * Wer schon eines hat, wird ueber Provider UND Kennung wiedergefunden.
+             *
+             * Der Provider hat damit mit der Datenbank nichts mehr zu tun. Vorher rief er
+             * `createManagedUser()` selbst — jedes Projekt fuer sich, mit jeweils eigenen
+             * Fehlern.
              */
-            $user = $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(
-                array('alias' => $fremd->kennung)
+            $user = $this->app['benutzerbereitstellung']->findenOderAnlegen(
+                strtolower(trim((string) $anbieterName)),
+                $fremd
             );
-
-            if (!$user instanceof User) {
-                return $abweisen('Ungültiger Benutzername.');
-            }
 
             if (!$user->getIsActive()) {
                 return $abweisen('Der Benutzer ist gesperrt.');

@@ -20,6 +20,14 @@ use Symfony\Component\Security\Core\User\UserInterface;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'pim_user')]
+/*
+ * EIN FREMDSYSTEM, EINE KENNUNG, EIN KONTO (013-004-0002).
+ *
+ * Zwei Provider, die denselben Benutzernamen liefern, ergeben zwei Konten — und derselbe
+ * Provider mit derselben Kennung findet immer dasselbe wieder. Genau das leistete frueher der
+ * MD5-Praefix im Alias, nur unleserlich.
+ */
+#[ORM\UniqueConstraint(name: 'uniq_user_fremdkennung', columns: ['loginManager', 'externalId'])]
 #[PIM\Config(labelProperty: 'alias')]
 class User extends Base implements UserInterface
 {
@@ -55,8 +63,34 @@ class User extends Base implements UserInterface
     #[ORM\Column(type: 'string', length: 100)]
     protected $salt;
 
+    /**
+     * Der NAME des Anmeldeproviders, ueber den dieser Benutzer kommt (013-004-0002).
+     *
+     * Bis dahin stand hier der Klassenname aus `get_class($this)`. Seit `013-004-0001` waehlt
+     * kein Klassenname mehr etwas aus; was hier steht, ist der Name aus dem
+     * `Anbieterverzeichnis` — `ldap`, `saml`, was ein Projekt eingetragen hat.
+     *
+     * Ist er gesetzt, ist der Benutzer NUR ueber diesen Weg anmeldbar. Das war schon vorher so
+     * und bleibt — es ist jetzt aber die zweite Sicherung und nicht mehr die einzige: Sein
+     * Passwort ist gesperrt.
+     */
     #[ORM\Column(type: 'string', length: 100, nullable: true)]
     protected $loginManager;
+
+    /**
+     * Die Kennung dieses Benutzers IM FREMDSYSTEM (013-004-0002).
+     *
+     * SIE STEHT LESBAR DA, und das ist der Punkt. Vorher verfremdete
+     * `createManagedUser()` den Alias zu `md5($klasse).'-'.$alias`: Wer in `pim_user` nachsah,
+     * fand `3f2a…-mmustermann` und wusste nicht, wer das ist. Der Praefix loeste ein echtes
+     * Problem — zwei Fremdsysteme, die denselben Benutzernamen liefern, duerfen nicht dasselbe
+     * Konto bekommen —, aber er loeste es, indem er die Antwort unleserlich machte.
+     *
+     * Die Eindeutigkeit gilt jetzt ueber `loginManager` UND `externalId` zusammen; der Alias
+     * traegt beide sichtbar als `<provider>:<kennung>`.
+     */
+    #[ORM\Column(type: 'string', length: 190, nullable: true)]
+    protected $externalId;
 
     protected $tempData;
 
@@ -149,6 +183,19 @@ class User extends Base implements UserInterface
      */
     public function isPass($pass)
     {
+        /*
+         * EIN GESPERRTES PASSWORT PASST AUF NICHTS (013-004-0002).
+         *
+         * Ausdruecklich geprueft und nicht dem Zufall ueberlassen: `PASSWORT_GESPERRT` ist kein
+         * gueltiger Hash, weshalb schon die beiden Zweige darunter jede Eingabe abweisen
+         * wuerden. Sich darauf zu verlassen hiesse, eine Sicherheitszusicherung aus einer
+         * Nebenwirkung zu beziehen — und die naechste Aenderung an der Hashform nimmt sie
+         * mit, ohne dass jemand es bemerkt.
+         */
+        if ($this->istPasswortGesperrt()) {
+            return false;
+        }
+
         if ($this->istAltformat()) {
             return hash_equals((string) $this->pass, hash('sha256', $pass.$this->salt));
         }
@@ -190,6 +237,49 @@ class User extends Base implements UserInterface
     }
 
     /**
+     * Der Wert, der ein Passwort sperrt.
+     *
+     * Ein Stern, wie in `/etc/shadow` seit jeher: kein gueltiger Hash, keiner Eingabe
+     * zuzuordnen, und man sieht der Zeile an, dass es Absicht war. Ein Zufallswert taete
+     * dasselbe, aber niemand koennte ihn von einem echten Hash unterscheiden.
+     */
+    public const PASSWORT_GESPERRT = '*';
+
+    /**
+     * Sperrt das Passwort dieses Benutzers (013-004-0002).
+     *
+     * BEFUND A-6 IST DAS, WOGEGEN ES GEHT: `createManagedUser()` setzte
+     * `setPass($alias)` — das Passwort war der Benutzername. Entschaerft war das allein durch
+     * den Riegel „nur ueber LoginManager authorisierbar"; jeder Pfad, der ihn umging, war eine
+     * triviale Kontouebernahme. Eine Sicherung, die aus einem einzigen `if` besteht, ist keine.
+     *
+     * Ein ueber ein Fremdsystem angelegter Benutzer hat jetzt KEIN Passwort — nicht ein
+     * zufaelliges, sondern gar keines.
+     */
+    public function passwortSperren(): void
+    {
+        $this->pass = self::PASSWORT_GESPERRT;
+    }
+
+    public function istPasswortGesperrt(): bool
+    {
+        return $this->pass === self::PASSWORT_GESPERRT;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getExternalId()
+    {
+        return $this->externalId;
+    }
+
+    public function setExternalId(?string $externalId): void
+    {
+        $this->externalId = $externalId;
+    }
+
+    /**
      * Muss der Hash erneuert werden — altes Format oder veraltete Parameter?
      *
      * PHP darf Vorgabe-Algorithmus und -Parameter zwischen Versionen aendern; `password_hash()`
@@ -198,6 +288,11 @@ class User extends Base implements UserInterface
      */
     public function brauchtNeuenHash(): bool
     {
+        // Ein gesperrtes Passwort wird nicht umgeschluesselt — es soll ja keines werden.
+        if ($this->istPasswortGesperrt()) {
+            return false;
+        }
+
         return $this->istAltformat() || password_needs_rehash((string) $this->pass, self::verfahren());
     }
 
