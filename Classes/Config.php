@@ -84,9 +84,32 @@ class Config{
     public $APP_ENABLE_SCHEMA_CACHE = true;
 
     /**
-     * @var string  Cache-Driver filesystem,apc,memcached
+     * Metadaten- und Abfrage-Cache von Doctrine.
+     *
+     * Erlaubt sind `filesystem` (Vorgabe), `apcu` und `memcached`. Der Cache ist nur aktiv,
+     * wenn `APP_DEBUG` aus ist und die Anwendung nicht auf der Konsole laeuft.
+     *
+     * `apc` ist mit `010-002-0002` entfallen und wird ausdruecklich abgewiesen statt
+     * stillschweigend auf die Vorgabe zurueckzufallen: Die APC-Erweiterung gibt es fuer
+     * PHP 7 und 8 nicht mehr — der Zweig konnte auf keiner unterstuetzten Version laufen.
+     * Der Nachfolger heisst `apcu`; er stand hier nie in der Liste, obwohl der Bootstrap ihn
+     * seit jeher behandelte.
+     *
+     * @var string  filesystem | apcu | memcached
      */
     public $APP_CACHE_DRIVER = 'filesystem';
+
+    /**
+     * Server fuer `APP_CACHE_DRIVER = 'memcached'`, als DSN.
+     *
+     * NEU MIT 010-002-0002, und zwar aus einem Befund: Vorher baute der Bootstrap ein blankes
+     * `new Memcached()` — einen Client **ohne einen einzigen Server**. Ein solcher Client
+     * speichert nichts; der Zweig war also selbst dort wirkungslos, wo die Erweiterung
+     * vorhanden war.
+     *
+     * @var string
+     */
+    public $APP_CACHE_MEMCACHED_DSN = 'memcached://localhost:11211';
 
     /**
      * @var integer Token Timeout in ms

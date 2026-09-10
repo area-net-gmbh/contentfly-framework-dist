@@ -44,9 +44,8 @@ use Areanet\PIM\Command\InstallCommand;
 use Areanet\PIM\Command\SetupCommand;
 use Areanet\PIM\Command\TokenCleanupCommand;
 use Areanet\PIM\Classes\ORM\EntityManagerFactory;
-use Doctrine\Common\Cache\ApcCache;
-use Doctrine\Common\Cache\MemcachedCache;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
+use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\Events;
@@ -281,21 +280,56 @@ if($app['is_installed']) {
              * 010-002-0002.
              */
             case 'apc':
-                $config->setQueryCacheImpl($cacheImpl = new ApcCache());
-                $cacheImpl->setNamespace('query');
-                $config->setMetadataCacheImpl($cacheImpl = new ApcCache());
-                $cacheImpl->setNamespace('metadata');
-                break;
+                // ENTFALLEN MIT 010-002-0002 — und ausdruecklich abgewiesen, nicht
+                // stillschweigend auf die Vorgabe zurueckgefallen.
+                //
+                // Der Zweig benutzte `Doctrine\Common\Cache\ApcCache`, und die ruft
+                // `apc_fetch()`. Die APC-Erweiterung gibt es fuer PHP 7 und 8 nicht mehr;
+                // gemessen ist `function_exists('apc_fetch')` false. Er konnte auf keiner
+                // unterstuetzten Version laufen — eine Falle, keine Einstellung.
+                //
+                // Ein stiller Rueckfall auf `filesystem` waere bequemer und falsch: Der
+                // Betreiber haette weiter geglaubt, sein Cache liege im geteilten Speicher.
+                throw new \RuntimeException(
+                    'APP_CACHE_DRIVER = "apc" gibt es nicht mehr. Die APC-Erweiterung ist mit '
+                    .'PHP 7 entfallen; der Nachfolger heisst "apcu". Siehe '
+                    .'an_project/docs/breaking-changes.md.'
+                );
             case 'apcu':
+                // Die Pruefung ist der Unterschied zwischen einer Meldung und einem Fatal
+                // beim ersten Zugriff.
+                if (!ApcuAdapter::isSupported()) {
+                    throw new \RuntimeException(
+                        'APP_CACHE_DRIVER = "apcu" verlangt die Erweiterung apcu; sie ist in '
+                        .'diesem PHP nicht geladen.'
+                    );
+                }
+
                 $config->setQueryCache(new ApcuAdapter('query'));
                 $config->setMetadataCache(new ApcuAdapter('metadata'));
                 break;
             case 'memcached':
-                $cache = new MemcachedCache();
-                $cache->setMemcached(new Memcached());
+                if (!MemcachedAdapter::isSupported()) {
+                    throw new \RuntimeException(
+                        'APP_CACHE_DRIVER = "memcached" verlangt die Erweiterung memcached; sie '
+                        .'ist in diesem PHP nicht geladen.'
+                    );
+                }
 
-                $config->setQueryCacheImpl($cache);
-                $config->setMetadataCacheImpl($cache);
+                // EIN SERVER STEHT JETZT IN DER KONFIGURATION (010-002-0002).
+                //
+                // Vorher: `new Memcached()` ohne einen einzigen `addServer()`. Ein solcher
+                // Client speichert nichts — der Zweig war selbst mit vorhandener Erweiterung
+                // wirkungslos, und zwar lautlos.
+                //
+                // Und er teilte sich EINE Instanz fuer beide Caches, waehrend die anderen
+                // Zweige trennen. Hier trennen jetzt die Namensraeume, wie bei apcu.
+                $verbindung = MemcachedAdapter::createConnection(
+                    Adapter::getConfig()->APP_CACHE_MEMCACHED_DSN
+                );
+
+                $config->setQueryCache(new MemcachedAdapter($verbindung, 'query'));
+                $config->setMetadataCache(new MemcachedAdapter($verbindung, 'metadata'));
                 break;
             case 'filesystem':
             default:
