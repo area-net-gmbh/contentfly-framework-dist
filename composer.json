@@ -25,7 +25,8 @@
         "symfony/security-http": "^7.4"
     },
     "suggest": {
-        "symfony/ldap": "Fuer Classes\\Security\\LdapProvider — Anmeldung gegen LDAP oder Active Directory. Bewusst NICHT in require: Das Paket verlangt die Systemerweiterung ext-ldap, und die dann jeder Installation abzuverlangen, die gar kein Verzeichnis benutzt, waere die falsche Richtung (013-005-0004)."
+        "symfony/ldap": "Fuer Classes\\Security\\LdapProvider — Anmeldung gegen LDAP oder Active Directory. Bewusst NICHT in require: Das Paket verlangt die Systemerweiterung ext-ldap, und die dann jeder Installation abzuverlangen, die gar kein Verzeichnis benutzt, waere die falsche Richtung (013-005-0004).",
+        "rector/rector": "Fuer die Migrationsregel Migration\\EntfalleneAttributfelderRector — sie stellt das Entity-Verzeichnis eines Bestandsprojekts von Annotationen auf Attribute um (Story 007-002). Bewusst NICHT in require: Die Klasse wird ausschliesslich von einer rector.php geladen und nie zur Laufzeit; ein Produktivlauf braucht sie nicht."
     },
     "autoload": {
         "psr-4": {
