@@ -17,6 +17,12 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
  *   `$app['auth.user']` und die Factory-Registrierung `$app['dienst'] = function ($app) {…}`.
  *   Das ist die Oberfläche, an der auch Projekte hängen: `custom/app.php` registriert seine
  *   Dienste genau so. Sie zu erhalten ist der Zweck des `ArrayAccess`-Bridge aus `009-002`.
+ *
+ *   **Seit `007-003` ist sie dauerhaft zugesichert, mit fester Schluesselliste.** Welche
+ *   Schluessel das sind, was nur bei installierter Anwendung existiert und was interne
+ *   Verdrahtung bleibt, steht in `an_project/docs/dev-guide.md`; die Entscheidung samt
+ *   verworfener Alternativen in `an_project/docs/architecture.md` unter *Key decisions*.
+ *   Hier steht es bewusst nicht noch einmal — zwei Listen liefen auseinander.
  * - **`HttpKernelInterface`** — `handle()`. Kein Silex-Aufruf, sondern Symfonys eigener; der
  *   `ApiController` schickt damit zwei interne Sub-Requests (`replaceAction()`). Er bleibt
  *   über den Wechsel hinweg unverändert und wird deshalb geerbt statt neu erfunden.
