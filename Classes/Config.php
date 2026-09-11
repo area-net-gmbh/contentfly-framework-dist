@@ -484,6 +484,63 @@ class Config{
      */
     public $SECURITY_PROVIDER_GRUPPEN = array();
 
+    /*
+     * ── LDAP / Active Directory (013-005-0001) ────────────────────────────────────────
+     *
+     * Nur noetig fuer ein Projekt, das `Classes\Security\LdapProvider` in `custom/app.php`
+     * eintraegt. Ohne Eintrag ist nichts davon in Gebrauch.
+     *
+     * DER WEG IST SUCHEN, DANN BINDEN — und nicht der direkte Bind mit einem aus der Kennung
+     * zusammengesetzten DN. Der funktioniert nur, solange alle Benutzer flach in einer OU
+     * liegen; im Active Directory tun sie das nicht, und angemeldet wird dort mit
+     * `sAMAccountName`, der im DN gar nicht vorkommt. Der Preis ist ein Dienstkonto — oder
+     * eine anonyme Suche, wo das Verzeichnis sie erlaubt.
+     */
+
+    /** @var string Host des Verzeichnisses, z.B. 'ldap.example.invalid' */
+    public $SECURITY_LDAP_HOST = null;
+
+    /** @var integer */
+    public $SECURITY_LDAP_PORT = 389;
+
+    /** @var string none | ssl | tls */
+    public $SECURITY_LDAP_ENCRYPTION = 'none';
+
+    /** @var string Basis der Suche, z.B. 'OU=Benutzer,DC=example,DC=invalid' */
+    public $SECURITY_LDAP_BASE_DN = null;
+
+    /**
+     * Das Dienstkonto fuer die Suche — oder leer fuer eine anonyme Suche.
+     *
+     * Kein Standardwert und kein Wert im Repo: Beides gehoert in die Umgebung.
+     *
+     * @var string|null
+     */
+    public $SECURITY_LDAP_SEARCH_DN = null;
+
+    /** @var string|null */
+    public $SECURITY_LDAP_SEARCH_PASSWORD = null;
+
+    /**
+     * Der Suchfilter. `{kennung}` wird durch die maskierte Eingabe ersetzt.
+     *
+     * Vorgabe ist der Active-Directory-Fall. Fuer ein OpenLDAP ist es meist `(uid={kennung})`.
+     *
+     * @var string
+     */
+    public $SECURITY_LDAP_FILTER = '(sAMAccountName={kennung})';
+
+    /**
+     * Woher die Gruppen kommen.
+     *
+     * `memberOf` steht am Benutzereintrag und ist der uebliche Weg im Active Directory. Was
+     * dort steht, geht UNVERAENDERT in die `Fremdkennung`; abgebildet wird es von
+     * `SECURITY_PROVIDER_GRUPPEN` (013-004-0003) und nicht hier.
+     *
+     * @var string
+     */
+    public $SECURITY_LDAP_GRUPPEN_ATTRIBUT = 'memberOf';
+
 
     /**
      * Unter welchem Pfad die Anwendung im Web erreichbar ist.
