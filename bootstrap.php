@@ -41,6 +41,7 @@ use Areanet\PIM\Classes\Manager\TypeManager;
 use Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy;
 use Areanet\PIM\Command\InstallCommand;
 use Areanet\PIM\Command\SetupCommand;
+use Areanet\PIM\Command\ProviderAbgleichCommand;
 use Areanet\PIM\Command\ReencryptCommand;
 use Areanet\PIM\Command\TokenCleanupCommand;
 use Areanet\PIM\Classes\ORM\EntityManagerFactory;
@@ -496,6 +497,7 @@ $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app)
         $console->addCommand(new SetupCommand());
         $console->addCommand(new TokenCleanupCommand());
         $console->addCommand(new ReencryptCommand());
+        $console->addCommand(new ProviderAbgleichCommand());
     });
     return $dispatcher;
 });

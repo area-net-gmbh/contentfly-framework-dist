@@ -41,7 +41,7 @@ use Symfony\Component\Ldap\LdapInterface;
  * alles `null`. Der Aufrufer erfaehrt nur, dass es nicht gereicht hat; ob das Verzeichnis
  * antwortet, geht ihn nichts an.
  */
-final class LdapProvider implements Anmeldeprovider
+final class LdapProvider implements Anmeldeprovider, Bestandspruefung
 {
     /**
      * @param array{base_dn: string, filter: string, gruppen_attribut: string,
@@ -151,6 +151,29 @@ final class LdapProvider implements Anmeldeprovider
         $eintrag = $treffer[0];
 
         return $eintrag instanceof Entry ? $eintrag : null;
+    }
+
+    /**
+     * Kennt das Verzeichnis diese Kennung noch? (013-005-0002)
+     *
+     * Ohne Passwort — es geht nicht um eine Anmeldung, sondern um den Bestand. Gebunden wird
+     * nur mit dem Dienstkonto, gesucht wird mit demselben Filter wie bei der Anmeldung.
+     *
+     * `null` HEISST „WEISS ICH GERADE NICHT". Jede Ausnahme endet hier, und der Abgleich fasst
+     * dann niemanden an. Ein nicht erreichbares Verzeichnis darf nicht wie ein geloeschter
+     * Benutzer aussehen — sonst sperrt ein Netzwerkfehler die ganze Belegschaft aus.
+     */
+    public function kenntKennung(string $kennung): ?bool
+    {
+        if (trim($kennung) === '') {
+            return false;
+        }
+
+        try {
+            return $this->suchen($kennung) instanceof Entry;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
