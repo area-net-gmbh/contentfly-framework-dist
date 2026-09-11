@@ -61,6 +61,26 @@ final class LdapProvider implements Anmeldeprovider, Bestandspruefung
      */
     public static function ausKonfiguration(): self
     {
+        /*
+         * `symfony/ldap` STEHT NICHT IN `require` (013-005-0004).
+         *
+         * Das Paket verlangt die Systemerweiterung `ext-ldap`. Stuende es in `require`, muesste
+         * JEDE Contentfly-Installation sie mitbringen — auch die, die nie ein Verzeichnis
+         * anfasst —, denn `composer install` prueft die Plattformanforderungen aller Pakete.
+         * Gefunden beim Gate-Lauf auf PHP 8.4: `composer install` scheiterte im CI-Image mit
+         * „requires ext-ldap", und der Job starb still.
+         *
+         * Es steht deshalb in `require-dev` (das Framework testet den Provider) und in
+         * `suggest`. Ein Projekt, das ihn benutzt, nimmt es selbst auf.
+         */
+        if (!class_exists(Ldap::class)) {
+            throw new \RuntimeException(
+                'LdapProvider braucht symfony/ldap. Das Paket steht bewusst nicht im '
+                .'Root-Manifest, weil es die Systemerweiterung ext-ldap verlangt: '
+                .'`composer require symfony/ldap` im Projekt, und ext-ldap ins PHP-Image.'
+            );
+        }
+
         $config = Adapter::getConfig();
 
         return new self(
