@@ -35,7 +35,7 @@ if (!\Areanet\PIM\Classes\Kernel\Pfade::istGesetzt()) {
 $paketverzeichnis     = \Areanet\PIM\Classes\Kernel\Pfade::paket();
 $projektKonfiguration = \Areanet\PIM\Classes\Kernel\Pfade::custom();
 
-require_once $paketverzeichnis.'/lib/contentfly/version.php';
+require_once $paketverzeichnis.'/version.php';
 /*
  * HIER STANDEN ZWEI AUTOLOADER (bis 007-001-0003).
  *

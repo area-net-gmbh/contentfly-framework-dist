@@ -121,22 +121,28 @@ final class Pfade
     }
 
     /**
-     * Das Verzeichnis des Frameworks selbst.
+     * Das Verzeichnis des Frameworks selbst — die Wurzel des Pakets `areanet/contentfly`.
      *
      * Aus `__DIR__` abgeleitet, und das ist hier richtig: Diese Datei liegt in
-     * `<paket>/lib/contentfly/Classes/Kernel/`, also vier Ebenen unter der Paketwurzel. Eine
-     * Datei darf ihr eigenes Paket finden — sie darf nur nicht daraus schliessen, wo das
-     * Projekt liegt.
+     * `<paket>/Classes/Kernel/`, also zwei Ebenen unter der Paketwurzel. Eine Datei darf ihr
+     * eigenes Paket finden — sie darf nur nicht daraus schliessen, wo das Projekt liegt.
+     *
+     * **Die Tiefe hat sich mit `007-001-0004` geaendert, und der Bezugspunkt mit ihr.** Vorher
+     * waren es vier Ebenen und das Ergebnis war die Wurzel des Repos, weil `lib/contentfly/`
+     * darin lag. Jetzt ist `lib/contentfly/` selbst das Paket: Es traegt sein eigenes
+     * `composer.json`, und Composer legt es nach `vendor/areanet/contentfly/`. Zwei Ebenen
+     * aufwaerts sind von dort aus dasselbe wie vorher vier von hier — der Unterschied ist, dass
+     * es jetzt nicht mehr davon abhaengt, wie tief das Paket im Projekt liegt.
      */
     public static function paket(): string
     {
-        return dirname(__DIR__, 4);
+        return dirname(__DIR__, 2);
     }
 
     /** Die Entity-Verzeichnisse, aus denen Doctrine sein Mapping liest. */
     public static function entitiesDesFrameworks(): string
     {
-        return self::paket() . '/lib/contentfly/Entity';
+        return self::paket() . '/Entity';
     }
 
     public static function entitiesDesProjekts(): string

@@ -6,7 +6,6 @@ use Areanet\PIM\Classes\Helper;
 use Areanet\PIM\Classes\Permission;
 use Areanet\PIM\Classes\Type;
 use Areanet\PIM\Entity\Base;
-use Custom\Entity\TestMeta;
 
 
 class OnejoinType extends Type

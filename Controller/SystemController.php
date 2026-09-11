@@ -8,7 +8,6 @@ use Areanet\PIM\Entity\Log;
 use Areanet\PIM\Entity\ThumbnailSetting;
 use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
-use Custom\Entity\Ansprechpartner;
 use Doctrine\ORM\Tools\Console\Command\SchemaTool\UpdateCommand;
 use Doctrine\ORM\Tools\Console\Helper\EntityManagerHelper;
 use Doctrine\ORM\Tools\SchemaTool;

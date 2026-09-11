@@ -40,7 +40,7 @@ final class Start
     {
         self::vorbereiten($projekt);
 
-        require Pfade::paket() . '/lib/contentfly/bootstrap-web.php';
+        require Pfade::paket() . '/bootstrap-web.php';
     }
 
     /**
@@ -58,7 +58,7 @@ final class Start
         self::vorbereiten($projekt);
 
         /** @var ApplicationInterface $app */
-        require Pfade::paket() . '/lib/contentfly/bootstrap.php';
+        require Pfade::paket() . '/bootstrap.php';
 
         return $app;
     }
