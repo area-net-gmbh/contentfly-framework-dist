@@ -12,54 +12,51 @@
  * dann nicht, aber es GIBT ihn, und die Folgemeldung handelt von einer fehlenden Datei statt
  * von einer falschen Wurzel.
  *
- * `index.php`, `bin/console.php` und `bin/cli-config.php` setzen `CONTENTFLY_PROJEKT`, bevor
- * sie diese Datei einbinden. Fehlt die Konstante, endet der Start hier — mit einer Meldung
- * ueber genau das.
+ * Seit 007-001-0003 bindet kein Einstiegspunkt diese Datei mehr direkt ein. Sie kommt ueber
+ * `Classes\Kernel\Start`, das die Vorbedingungen prueft und das Projektverzeichnis gesetzt
+ * hat. Steht es nicht, endet der Start hier — mit einer Meldung ueber genau das.
  */
-if (!defined('CONTENTFLY_PROJEKT')) {
-    fwrite(STDERR, "Contentfly: CONTENTFLY_PROJEKT ist nicht definiert.\n");
-    fwrite(STDERR, "Der Einstiegspunkt muss das Projektverzeichnis benennen, bevor er\n");
-    fwrite(STDERR, "lib/contentfly/bootstrap.php einbindet:\n\n");
-    fwrite(STDERR, "    define('CONTENTFLY_PROJEKT', __DIR__);\n\n");
-    fwrite(STDERR, "Frueher wurde es aus der Lage des Frameworks gerechnet; das ging still\n");
-    fwrite(STDERR, "schief, sobald das Framework woanders lag (007-001-0002).\n");
-    exit(1);
+if (!\Areanet\PIM\Classes\Kernel\Pfade::istGesetzt()) {
+    throw new \RuntimeException(
+        "Contentfly kann nicht starten.\n\n"
+        ."lib/contentfly/bootstrap.php ist kein Einstiegspunkt mehr (007-001-0003). Der\n"
+        ."Einstiegspunkt laedt den Autoloader und ruft dann:\n\n"
+        ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::web(\$projektverzeichnis);\n"
+        ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::konsole(\$projektverzeichnis);\n\n"
+        ."Start prueft die Vorbedingungen und bindet diese Datei ein."
+    );
 }
-
-require_once CONTENTFLY_PROJEKT.'/vendor/autoload.php';
-
-\Areanet\PIM\Classes\Kernel\Pfade::setzen(CONTENTFLY_PROJEKT);
 
 /*
  * Voll qualifiziert und in zwei lokale Werte gelegt: Der `use`-Block dieser Datei steht weiter
  * unten, hinter den ersten `require`s — er kann hier oben also noch nicht gelesen werden, ohne
  * dass es jeder Leser (und PHPStan) erst nachschlagen muss.
  */
-$paketverzeichnis   = \Areanet\PIM\Classes\Kernel\Pfade::paket();
+$paketverzeichnis     = \Areanet\PIM\Classes\Kernel\Pfade::paket();
 $projektKonfiguration = \Areanet\PIM\Classes\Kernel\Pfade::custom();
 
 require_once $paketverzeichnis.'/lib/contentfly/version.php';
 /*
- * ZWEI AUTOLOADER, UND DIE REIHENFOLGE IST DIE ENTSCHEIDUNG.
+ * HIER STANDEN ZWEI AUTOLOADER (bis 007-001-0003).
  *
- * Root zuerst, custom/ ergaenzend. Registrieren beide dasselbe PSR-4-Praefix, bedient es der
- * ZUERST geladene Baum — also immer der Root, unabhaengig davon, welche Version aktueller ist.
- * Das ist ab 006-004-0001 eine Zusicherung, nicht mehr eine Nebenwirkung: Framework schlaegt
- * Projekt. Wer die beiden Bloecke tauscht, kehrt sie um.
+ * Der Root-Baum zuerst, `custom/vendor/` ergaenzend — mit der Zusicherung aus `006-004-0001`,
+ * dass bei einem gemeinsamen PSR-4-Praefix der Root gewinnt. Sie war noetig, solange Framework
+ * und Projekt zwei getrennte Composer-Baeume im selben Prozess waren.
  *
- * Begruendung und die verworfene Alternative (ein einziger Autoloader) stehen in
- * an_project/docs/architecture.md unter "Key decisions", 2026-09-09.
+ * Mit dem Bibliothekspaket faellt die Grundlage weg: Das Framework ist eine Abhaengigkeit IM
+ * Baum des Projekts. Es gibt keine zwei Baeume mehr, zwischen denen eine Rangfolge zu regeln
+ * waere — und Composer verweigert unvereinbare Constraints beim Aufloesen, statt zwei Staende
+ * nebeneinander in den Prozess zu laden. Der Fall, an dem das jahrelang scheiterte (psr/log in
+ * 1.1.3 und 3.0.2 gleichzeitig), kann nicht mehr entstehen.
  *
- * DIE ZUSICHERUNG HAENGT AN EINER BEDINGUNG: dass sich die beiden Baeume nicht ueberschneiden.
- * Frueher taten sie es — psr/log lag in 1.1.3 und 3.0.2 gleichzeitig im Prozess, dazu zwei
- * symfony/polyfill-* in unvereinbaren Staenden und ein handkopiertes PHPMailer\PHPMailer\, das
- * in keiner installed.json stand. Jahrelang, ohne dass es jemandem auffiel. Geprueft wird die
- * Bedingung deshalb in tests/Unit/AutoloaderUeberschneidungTest.php.
+ * Der Autoloader selbst wird nicht mehr hier geladen, sondern vom Einstiegspunkt — siehe
+ * `Classes\Kernel\Start`. Ein liegengebliebenes `custom/vendor/` weist Start ab, statt es
+ * stillschweigend zu uebergehen.
+ *
+ * Entscheidung und verworfene Alternativen: an_project/docs/architecture.md, Key decisions,
+ * 2026-09-11. `tests/Unit/AutoloaderUeberschneidungTest.php` ist umgedreht und prueft jetzt,
+ * dass es bei einem Baum bleibt.
  */
-if (file_exists($projektKonfiguration.'/vendor/autoload.php')) {
-    require_once $projektKonfiguration.'/vendor/autoload.php';
-}
-
 require_once $projektKonfiguration.'/config.php';
 require_once $projektKonfiguration.'/version.php';
 
