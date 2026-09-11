@@ -541,6 +541,44 @@ class Config{
      */
     public $SECURITY_LDAP_GRUPPEN_ATTRIBUT = 'memberOf';
 
+    /*
+     * ── OIDC (013-005-0003) ───────────────────────────────────────────────────────────
+     *
+     * Nur noetig fuer ein Projekt, das `Classes\Security\OidcProvider` eintraegt.
+     *
+     * GEWAEHLT IST DER USERINFO-WEG, nicht die lokale Pruefung gegen ein JWKS. Gemessen am
+     * 2026-09-11: drei leichte Pakete gegen fuenf mit `web-token/jwt-library` und
+     * `spomky-labs/pki-framework` darin, und ein Widerruf wirkt sofort statt erst mit dem
+     * Ablauf. Der Preis ist eine HTTP-Anfrage je Anmeldung und die Abhaengigkeit vom Provider —
+     * die aber NUR die Anmeldung betrifft: Contentfly stellt danach ein eigenes Token aus
+     * (013-003), der OIDC-Token wird genau einmal geprueft.
+     */
+
+    /** @var string|null Der Userinfo-Endpunkt des Providers, vollstaendige URL */
+    public $SECURITY_OIDC_USERINFO_ENDPOINT = null;
+
+    /**
+     * Welches Feld der Userinfo-Antwort die Kennung traegt.
+     *
+     * `sub` ist der Standard aus OpenID Connect und das einzige Feld, das ein Provider
+     * garantiert liefert. `email` oder `preferred_username` sind bequemer und **aenderbar** —
+     * wer darauf abbildet, bekommt ein neues Konto, sobald jemand heiratet.
+     *
+     * @var string
+     */
+    public $SECURITY_OIDC_KENNUNG_CLAIM = 'sub';
+
+    /**
+     * Welches Feld die Gruppen traegt. Leer heisst: keine Gruppen.
+     *
+     * Der Name ist nicht standardisiert — `groups`, `roles`, `realm_access.roles` je nach
+     * Provider. Was dort steht, geht unveraendert in die `Fremdkennung`; abgebildet wird es von
+     * `SECURITY_PROVIDER_GRUPPEN` (013-004-0003).
+     *
+     * @var string
+     */
+    public $SECURITY_OIDC_GRUPPEN_CLAIM = 'groups';
+
 
     /**
      * Unter welchem Pfad die Anwendung im Web erreichbar ist.
