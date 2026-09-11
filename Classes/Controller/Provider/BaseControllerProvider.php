@@ -11,7 +11,22 @@ use Symfony\Component\HttpFoundation\Response;
 abstract class BaseControllerProvider implements ControllerProviderInterface
 {
 
-    const LOGIN_PATH           = '/login';
+    /*
+     * LOGIN_PATH UND isAuthRequiredForPath() SIND ENTFALLEN (000-000-0026).
+     *
+     * Die Methode gab zurueck, ob ein Pfad eine Anmeldung braucht — und niemand rief sie.
+     * Nicht seit `013-002-0004`, sondern nie: Auch `checkToken()` hat sie nicht benutzt.
+     * Nachgemessen ueber `lib/`, `custom/`, `plugins/`, `tests/` und `bin/`: ausser ihrer
+     * eigenen Definition kein einziger Treffer.
+     *
+     * Sie zu entfernen ist mehr als Aufraeumen. Beim Lesen sah sie aus wie die Stelle, an der
+     * man steuert, welche Pfade offen sind — und das tut sie nicht. Diese Entscheidung faellt
+     * je Route: ueber `isSecure` im `RouteManager`, beziehungsweise ueber den
+     * `$checkAuth`-Hook der Provider. Eine Methode, die einen Schalter vortaeuscht, den es
+     * woanders gibt, ist gefaehrlicher als gar keine.
+     *
+     * Die Bruchstelle steht in an_project/docs/breaking-changes.md.
+     */
 
     /*
      * DIE DREI TOKEN-KONSTANTEN SIND ENTFALLEN (013-002-0004).
@@ -134,11 +149,6 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                 $app['dispatcher']->dispatch($event, 'pim.controller.after');
             }
         });
-    }
-
-    protected function isAuthRequiredForPath($path)
-    {
-        return !in_array($path, [$this->basePath . self::LOGIN_PATH]);
     }
 
     /**
