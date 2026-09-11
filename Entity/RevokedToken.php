@@ -62,26 +62,21 @@ class RevokedToken
     #[ORM\Column(type: 'datetime')]
     protected $created;
 
-    /**
-     * SIE STEHT HIER, WEIL DAS SCHEMA SIE VERLANGT — nicht, weil diese Zeile sich je aendert.
+    /*
+     * HIER STAND EIN `modified`, DAS NICHTS TAT (bis 000-000-0028).
      *
-     * `Classes/Events/LoadMetadata` haengt an JEDE Entity, die kein Tree ist, einen
-     * `modified_index` auf die Spalte `modified`. Fehlt sie, scheitert schon die Installation:
-     * „There is no column with name "modified" on table "pim_revoked_token"" — eine Meldung,
-     * die den Grund nicht nennt und beim ersten Mal Zeit kostet.
+     * `Classes/Events/LoadMetadata` haengte an JEDE Entity einen Index auf diese Spalte, und
+     * ohne sie scheiterte die Installation — mit einer Meldung, die den Grund nicht nannte.
+     * Diese Zeile erfuellte also eine Anforderung, die niemand aufgeschrieben hatte, und
+     * beschrieb nichts an der Sache: Eine Sperrliste wird angelegt und verfaellt; sie aendert
+     * sich nie.
      *
-     * Der Listener trifft eine Annahme ueber alle Entities, die nirgends festgehalten ist. Sie
-     * zu aendern waere ein eigener Task; hier wird sie erfuellt.
-     *
-     * @var \DateTime
+     * Der Listener ueberspringt jetzt Entities ohne `modified`, und damit faellt die Spalte.
      */
-    #[ORM\Column(type: 'datetime')]
-    protected $modified;
 
     public function __construct()
     {
-        $this->created  = new \DateTime();
-        $this->modified = new \DateTime();
+        $this->created = new \DateTime();
     }
 
     public function getId()
@@ -114,8 +109,4 @@ class RevokedToken
         return $this->created;
     }
 
-    public function getModified(): ?\DateTime
-    {
-        return $this->modified;
-    }
 }
