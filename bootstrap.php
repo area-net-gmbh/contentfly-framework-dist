@@ -1,7 +1,44 @@
 <?php
-const ROOT_DIR = __DIR__ . '/../..';
+/*
+ * DAS PROJEKTVERZEICHNIS KOMMT VOM EINSTIEGSPUNKT (007-001-0002).
+ *
+ * Hier stand:
+ *
+ *     const ROOT_DIR = __DIR__ . '/../..';
+ *
+ * Das Framework rechnete sich das Projektverzeichnis aus SEINER EIGENEN LAGE aus — richtig,
+ * solange es unter `lib/contentfly/` im Projekt liegt, falsch in dem Moment, in dem es als
+ * Paket unter `vendor/` liegt. Und falsch auf die stille Art: Der gerechnete Pfad existiert
+ * dann nicht, aber es GIBT ihn, und die Folgemeldung handelt von einer fehlenden Datei statt
+ * von einer falschen Wurzel.
+ *
+ * `index.php`, `bin/console.php` und `bin/cli-config.php` setzen `CONTENTFLY_PROJEKT`, bevor
+ * sie diese Datei einbinden. Fehlt die Konstante, endet der Start hier — mit einer Meldung
+ * ueber genau das.
+ */
+if (!defined('CONTENTFLY_PROJEKT')) {
+    fwrite(STDERR, "Contentfly: CONTENTFLY_PROJEKT ist nicht definiert.\n");
+    fwrite(STDERR, "Der Einstiegspunkt muss das Projektverzeichnis benennen, bevor er\n");
+    fwrite(STDERR, "lib/contentfly/bootstrap.php einbindet:\n\n");
+    fwrite(STDERR, "    define('CONTENTFLY_PROJEKT', __DIR__);\n\n");
+    fwrite(STDERR, "Frueher wurde es aus der Lage des Frameworks gerechnet; das ging still\n");
+    fwrite(STDERR, "schief, sobald das Framework woanders lag (007-001-0002).\n");
+    exit(1);
+}
 
-require_once ROOT_DIR.'/lib/contentfly/version.php';
+require_once CONTENTFLY_PROJEKT.'/vendor/autoload.php';
+
+\Areanet\PIM\Classes\Kernel\Pfade::setzen(CONTENTFLY_PROJEKT);
+
+/*
+ * Voll qualifiziert und in zwei lokale Werte gelegt: Der `use`-Block dieser Datei steht weiter
+ * unten, hinter den ersten `require`s — er kann hier oben also noch nicht gelesen werden, ohne
+ * dass es jeder Leser (und PHPStan) erst nachschlagen muss.
+ */
+$paketverzeichnis   = \Areanet\PIM\Classes\Kernel\Pfade::paket();
+$projektKonfiguration = \Areanet\PIM\Classes\Kernel\Pfade::custom();
+
+require_once $paketverzeichnis.'/lib/contentfly/version.php';
 /*
  * ZWEI AUTOLOADER, UND DIE REIHENFOLGE IST DIE ENTSCHEIDUNG.
  *
@@ -19,13 +56,12 @@ require_once ROOT_DIR.'/lib/contentfly/version.php';
  * in keiner installed.json stand. Jahrelang, ohne dass es jemandem auffiel. Geprueft wird die
  * Bedingung deshalb in tests/Unit/AutoloaderUeberschneidungTest.php.
  */
-require_once ROOT_DIR.'/vendor/autoload.php';
-if(file_exists(ROOT_DIR.'/custom/vendor/autoload.php')){
-    require_once ROOT_DIR.'/custom/vendor/autoload.php';
+if (file_exists($projektKonfiguration.'/vendor/autoload.php')) {
+    require_once $projektKonfiguration.'/vendor/autoload.php';
 }
 
-require_once ROOT_DIR.'/custom/config.php';
-require_once ROOT_DIR.'/custom/version.php';
+require_once $projektKonfiguration.'/config.php';
+require_once $projektKonfiguration.'/version.php';
 
 define('HOST', $_SERVER["SERVER_NAME"] ?? 'default');
 
@@ -33,6 +69,7 @@ use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Auth;
 use Areanet\PIM\Classes\Mailer;
 use Areanet\PIM\Classes\Config\Adapter;
+use Areanet\PIM\Classes\Kernel\Pfade;
 use Areanet\PIM\Classes\Helper;
 use Areanet\PIM\Classes\Manager\ConsoleManager;
 use Areanet\PIM\Classes\Manager\PluginManager;
@@ -232,7 +269,7 @@ if($app['is_installed']) {
  * Als faule Factory, wie vorher: bin/console.php holt sie ab, der Web-Einstieg nie.
  */
 $app['console'] = function ($app) {
-    return new Console($app, 'PIM', APP_VERSION, ROOT_DIR);
+    return new Console($app, 'PIM', APP_VERSION, Pfade::projekt());
 };
 
 $app['helper'] = function () {
@@ -346,7 +383,7 @@ $app['anmeldeanbieter'] = function () {
 };
 
 $app['loginbremse'] = function () use ($cachePoolBauen) {
-    return new Anmeldebremse($cachePoolBauen('loginbremse', ROOT_DIR . '/data/cache/loginbremse'));
+    return new Anmeldebremse($cachePoolBauen('loginbremse', Pfade::daten() . '/cache/loginbremse'));
 };
 
 if($app['is_installed']) {
@@ -372,8 +409,8 @@ if($app['is_installed']) {
         }
 
         return array(
-            $cachePoolBauen('query',    ROOT_DIR . '/data/cache/query'),
-            $cachePoolBauen('metadata', ROOT_DIR . '/data/cache/metadata')
+            $cachePoolBauen('query',    Pfade::daten() . '/cache/query'),
+            $cachePoolBauen('metadata', Pfade::daten() . '/cache/metadata')
         );
     };
 
@@ -383,10 +420,10 @@ if($app['is_installed']) {
         return EntityManagerFactory::erzeugen(
             $app['dbs']['pim'],
             array(
-                array('namespace' => 'Areanet\PIM\Entity', 'path' => ROOT_DIR . '/lib/contentfly/Entity'),
-                array('namespace' => 'Custom\Entity',       'path' => ROOT_DIR . '/custom/Entity'),
+                array('namespace' => 'Areanet\PIM\Entity', 'path' => Pfade::entitiesDesFrameworks()),
+                array('namespace' => 'Custom\Entity',       'path' => Pfade::entitiesDesProjekts()),
             ),
-            ROOT_DIR . '/data/cache/doctrine',
+            Pfade::daten() . '/cache/doctrine',
             (bool) Adapter::getConfig()->APP_AUTOGENERATE_PROXIES,
             array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet'),
             $abfrageCache,
@@ -556,6 +593,6 @@ if(Adapter::getConfig()->APP_FORCE_SSL && !defined('APPCMS_CONSOLE')){
     header("Strict-Transport-Security:max-age=63072000");
 }
 
-require_once ROOT_DIR.'/custom/app.php';
+require_once Pfade::custom().'/app.php';
 
 $app['routeManager']->bindRoutes();

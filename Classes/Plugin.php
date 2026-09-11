@@ -2,6 +2,7 @@
 namespace Areanet\PIM\Classes;
 
 use Areanet\PIM\Classes\Type\PluginType;
+use Areanet\PIM\Classes\Kernel\Pfade;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 use Doctrine\ORM\Mapping\Driver\AttributeDriver;
 
@@ -54,7 +55,7 @@ abstract class Plugin
 
         $entities = array();
 
-        $entityFolder = ROOT_DIR.'/plugins/'.$this->key.'/Entity';
+        $entityFolder = Pfade::plugins().'/'.$this->key.'/Entity';
 
         foreach (new \DirectoryIterator($entityFolder) as $fileInfo) {
             if($fileInfo->isDot() || $fileInfo->getExtension() != 'php') continue;
@@ -91,8 +92,8 @@ abstract class Plugin
      * Initialisieren der Composer-Funktion im Plugin
      */
     private function initComposer(): void{
-        if(file_exists(ROOT_DIR.'/plugins/'.$this->key.'/vendor/autoload.php')){
-            require_once ROOT_DIR.'/plugins/'.$this->key.'/vendor/autoload.php';
+        if(file_exists(Pfade::plugins().'/'.$this->key.'/vendor/autoload.php')){
+            require_once Pfade::plugins().'/'.$this->key.'/vendor/autoload.php';
         }
     }
 
@@ -120,10 +121,10 @@ abstract class Plugin
      */
     private function initORM(): void{
         $ormConfig  = $this->app['orm.em']->getConfiguration();
-        if(!is_dir(ROOT_DIR.'/plugins/'.$this->key.'/Entity')){
-            mkdir(ROOT_DIR.'/plugins/'.$this->key.'/Entity');
+        if(!is_dir(Pfade::plugins().'/'.$this->key.'/Entity')){
+            mkdir(Pfade::plugins().'/'.$this->key.'/Entity');
         }
-        $driver     = new AttributeDriver(array(ROOT_DIR.'/plugins/'.$this->getKey().'/Entity'));
+        $driver     = new AttributeDriver(array(Pfade::plugins().'/'.$this->getKey().'/Entity'));
         $ormConfig->getMetadataDriverImpl()->addDriver($driver, $this->getNamespace().'\\Entity');
     }
 

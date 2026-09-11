@@ -20,6 +20,7 @@ use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Areanet\PIM\Classes\Kernel\Pfade;
 
 class SystemController extends BaseController
 {
@@ -116,8 +117,8 @@ class SystemController extends BaseController
      */
     protected function flushSchemaCache(Request $request)
     {
-        if(file_exists(ROOT_DIR.'/data/cache/schema.cache')){
-            unlink(ROOT_DIR.'/data/cache/schema.cache');
+        if(file_exists(Pfade::daten().'/cache/schema.cache')){
+            unlink(Pfade::daten().'/cache/schema.cache');
         }
 
         $konfiguration = $this->app['orm.em']->getConfiguration();

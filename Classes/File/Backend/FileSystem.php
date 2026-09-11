@@ -2,6 +2,7 @@
 namespace Areanet\PIM\Classes\File\Backend;
 
 use Areanet\PIM\Entity\File;
+use Areanet\PIM\Classes\Kernel\Pfade;
 use Areanet\PIM\Classes\File\BackendInterface;
 use Areanet\PIM\Entity\ThumbnailSetting;
 
@@ -10,13 +11,13 @@ class FileSystem implements BackendInterface
     public function getPath(File $file)
     {
 
-        if(!is_dir(ROOT_DIR.'/data/files/'.$file->getId())) mkdir(ROOT_DIR.'/data/files/'.$file->getId());
-        return ROOT_DIR.'/data/files/'.$file->getId();
+        if(!is_dir(Pfade::daten().'/files/'.$file->getId())) mkdir(Pfade::daten().'/files/'.$file->getId());
+        return Pfade::daten().'/files/'.$file->getId();
     }
 
     public function getWebPath(File $file)
     {
-        if(!is_dir(ROOT_DIR.'/data/files/'.$file->getId())) mkdir(ROOT_DIR.'/data/files/'.$file->getId());
+        if(!is_dir(Pfade::daten().'/files/'.$file->getId())) mkdir(Pfade::daten().'/files/'.$file->getId());
         return '/data/files/'.$file->getId();
     }
 
@@ -50,9 +51,9 @@ class FileSystem implements BackendInterface
 
         }
 
-        if(!is_dir(ROOT_DIR.'/data/files/'.$file->getId())) mkdir(ROOT_DIR.'/data/files/'.$file->getId());
+        if(!is_dir(Pfade::daten().'/files/'.$file->getId())) mkdir(Pfade::daten().'/files/'.$file->getId());
 
-        return ROOT_DIR.'/data/files/'.$file->getId().'/'.$variant.$sizeUri.$fileName;
+        return Pfade::daten().'/files/'.$file->getId().'/'.$variant.$sizeUri.$fileName;
     }
 
     public function getWebUri(File $file, $size = null, $variant = null)
