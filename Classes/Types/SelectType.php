@@ -63,7 +63,7 @@ class SelectType extends Type
         $setter = 'set'.ucfirst($property);
         $config = $schema[ucfirst($entityName)]['properties'][$property];
 
-        $this->wertPruefen($entityName, $property, $value, $config);
+        $this->validateValue($entityName, $property, $value, $config);
 
         if($config['dbtype'] == 'integer'){
             $object->$setter(intval($value));
@@ -74,22 +74,22 @@ class SelectType extends Type
     }
 
     /**
-     * Prueft den Schreibwert gegen die Optionen der Annotation (000-000-0017).
+     * Checks the write value against the options of the annotation (000-000-0017).
      *
-     * BIS DAHIN VALIDIERTE @PIM\Select NICHTS. Die Optionen standen im Schema, aber niemand
-     * verglich einen Schreibwert damit: `state: "gibtsnicht"` wurde angenommen und landete
-     * unveraendert in der Spalte. Der einzige Konsument der Liste war die geloeschte
-     * Oberflaeche — was blieb, war eine Zusicherung im Schema, die nichts zusicherte.
+     * UNTIL THEN @PIM\Select VALIDATED NOTHING. The options were in the schema, but nobody
+     * compared a write value against them: `state: "gibtsnicht"` was accepted and ended up
+     * unchanged in the column. The only consumer of the list was the deleted user interface —
+     * what remained was a guarantee in the schema that guaranteed nothing.
      *
-     * DAS IST EINE VERHALTENSAENDERUNG fuer Bestandsprojekte und als solche in
-     * an_project/docs/breaking-changes.md vermerkt: Ein Projekt, dessen Daten heute Werte
-     * ausserhalb der Liste enthalten, bekommt beim naechsten Schreiben einen Fehler.
+     * THIS IS A BEHAVIOUR CHANGE for existing projects and is recorded as such in
+     * an_project/docs/breaking-changes.md: a project whose data today contains values
+     * outside the list gets an error on the next write.
      *
-     * NULL UND LEER GEHEN DURCH. Ob ein Feld leer sein darf, entscheidet `nullable` am
-     * Spaltentyp, nicht die Optionsliste — sonst haette diese Pruefung nebenbei jedes
-     * Select-Feld zum Pflichtfeld gemacht.
+     * NULL AND EMPTY PASS THROUGH. Whether a field may be empty is decided by `nullable` on the
+     * column type, not by the option list — otherwise this check would incidentally have made
+     * every select field a required field.
      */
-    private function wertPruefen($entityName, $property, $value, array $config): void
+    private function validateValue($entityName, $property, $value, array $config): void
     {
         if ($value === null || $value === '') {
             return;
@@ -99,20 +99,20 @@ class SelectType extends Type
             return;
         }
 
-        $erlaubt = array_column($config['options'], 'id');
+        $allowed = array_column($config['options'], 'id');
 
-        if (in_array((string) $value, array_map('strval', $erlaubt), true)) {
+        if (in_array((string) $value, array_map('strval', $allowed), true)) {
             return;
         }
 
         throw new ContentflyException(
             Messages::contentfly_general_invalid_params,
             sprintf(
-                '%s::%s — "%s" ist keine der erlaubten Optionen (%s)',
+                '%s::%s — "%s" is not one of the allowed options (%s)',
                 ucfirst($entityName),
                 $property,
                 is_scalar($value) ? (string) $value : gettype($value),
-                implode(', ', $erlaubt)
+                implode(', ', $allowed)
             )
         );
     }

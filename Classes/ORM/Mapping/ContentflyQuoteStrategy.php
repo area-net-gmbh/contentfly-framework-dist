@@ -9,39 +9,39 @@ use Doctrine\ORM\Mapping\JoinColumnMapping;
 use Doctrine\ORM\Mapping\ManyToManyOwningSideMapping;
 
 /**
- * Quotiert jeden Bezeichner ausser `id` und `lang` — die eigene Regel des Frameworks.
+ * Quotes every identifier except `id` and `lang` — the framework's own rule.
  *
- * ERBT SEIT 009-005-0002 VON `DefaultQuoteStrategy`, statt `QuoteStrategy` selbst zu
- * implementieren. Der Grund ist `getColumnAlias()`: Die eigene Fassung rief
- * `AbstractPlatform::getSQLResultCasing()`, und die Methode gibt es in DBAL 3 nicht mehr —
- * jede DQL-Abfrage starb daran, also praktisch die ganze Anwendung.
+ * SINCE 009-005-0002 IT INHERITS FROM `DefaultQuoteStrategy` instead of implementing
+ * `QuoteStrategy` itself. The reason is `getColumnAlias()`: our own version called
+ * `AbstractPlatform::getSQLResultCasing()`, and that method no longer exists in DBAL 3 —
+ * every DQL query died on it, i.e. practically the whole application.
  *
- * Doctrines Fassung tut fuer MySQL dasselbe (`spalte_zaehler`), kuerzt zusaetzlich auf die
- * maximale Bezeichnerlaenge der Plattform und entfernt Sonderzeichen. Sie zu erben statt sie
- * abzuschreiben heisst, dass der naechste Doctrine-Sprung sie mitbringt; abgeschrieben waere
- * sie beim uebernaechsten wieder falsch.
+ * Doctrine's version does the same for MySQL (`column_counter`), additionally truncates to the
+ * platform's maximum identifier length and removes special characters. Inheriting it instead
+ * of copying it means that the next Doctrine jump brings it along; copied, it would be wrong
+ * again by the jump after that.
  *
- * Alle uebrigen Methoden bleiben ueberschrieben: Doctrine quotiert nur, was in den Metadaten
- * als `quoted` markiert ist, dieses Framework quotiert grundsaetzlich. Das ist der Zweck der
- * Klasse und aendert sich hier nicht.
+ * All other methods remain overridden: Doctrine only quotes what is marked as `quoted` in the
+ * metadata, this framework quotes as a matter of principle. That is the purpose of the class
+ * and does not change here.
  *
- * MIT 010-003-0002 SIND ALLE SIGNATUREN TYPISIERT. ORM 3 deklariert `DefaultQuoteStrategy`
- * durchgehend mit Parameter- und Rueckgabetypen; eine Ableitung, die das nicht trifft, wird
- * beim LADEN abgelehnt. Diese Klasse war damit der zweite von zwei Blockern des Sprungs —
- * ein Fatal, bevor irgendein Test lief.
+ * WITH 010-003-0002 ALL SIGNATURES ARE TYPED. ORM 3 declares `DefaultQuoteStrategy` with
+ * parameter and return types throughout; a subclass that does not match them is rejected
+ * at LOAD time. This class was thus the second of two blockers of the jump — a fatal error
+ * before any test ran.
  *
- * Zwei Parameter sind dabei von `array` zu Objekten geworden (`JoinColumnMapping`,
- * `ManyToManyOwningSideMapping`), und im Rumpf werden aus Array-Zugriffen Objektzugriffe.
- * Gemessen betrifft dieser Wandel im ganzen eigenen Code nur diese Klasse.
+ * In the process, two parameters changed from `array` to objects (`JoinColumnMapping`,
+ * `ManyToManyOwningSideMapping`), and in the method bodies array accesses become object
+ * accesses. Measured, this change affects only this class in all of our own code.
  */
 class ContentflyQuoteStrategy extends DefaultQuoteStrategy
 {
     /**
-     * Quotiert einen Bezeichner — ausser `id` und `lang`.
+     * Quotes an identifier — except `id` and `lang`.
      *
-     * `instanceof` statt `getName()` (009-005-0002): AbstractPlatform::getName() ist in
-     * DBAL 3 deprecated und faellt in DBAL 4 weg. AbstractMySQLPlatform deckt MySQL,
-     * MariaDB und die versionierten Abkoemmlinge ab — getName() lieferte fuer alle 'mysql'.
+     * `instanceof` instead of `getName()` (009-005-0002): AbstractPlatform::getName() is
+     * deprecated in DBAL 3 and is removed in DBAL 4. AbstractMySQLPlatform covers MySQL,
+     * MariaDB and the versioned descendants — getName() returned 'mysql' for all of them.
      */
     private function quote(string $token, AbstractPlatform $platform): string
     {
@@ -54,7 +54,7 @@ class ContentflyQuoteStrategy extends DefaultQuoteStrategy
 
     public function getColumnName(string $fieldName, ClassMetadata $class, AbstractPlatform $platform): string
     {
-        // ORM 3 macht aus den Mapping-Arrays Objekte: `['columnName']` wird `->columnName`.
+        // ORM 3 turns the mapping arrays into objects: `['columnName']` becomes `->columnName`.
         return $this->quote($class->fieldMappings[$fieldName]->columnName, $platform);
     }
 
@@ -90,11 +90,11 @@ class ContentflyQuoteStrategy extends DefaultQuoteStrategy
     }
 
     /**
-     * Die Feldnamen, unquotiert.
+     * The field names, unquoted.
      *
-     * Bleibt ueberschrieben. Doctrines Fassung liefert quotierte Spaltennamen; diese hier die
-     * blossen Feldnamen — die Abweichung ist aelter als 009-005 und wird auch beim ORM-3-Sprung
-     * nicht angefasst, weil sie mit ihm nichts zu tun hat.
+     * Remains overridden. Doctrine's version returns quoted column names; this one returns the
+     * bare field names — the deviation is older than 009-005 and is not touched during the
+     * ORM 3 jump either, because it has nothing to do with it.
      *
      * @return array<int,string>
      */

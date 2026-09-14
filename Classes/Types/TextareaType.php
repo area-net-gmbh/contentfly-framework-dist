@@ -46,8 +46,8 @@ class TextareaType extends Type
             return '';
         }
 
-        // Seit 010-004-0001 an einer Stelle: Classes/Security/FieldEncryption.
-        // Die Ausnahme bei fehlendem SECURITY_CIPHER_KEY wirft jetzt sie.
+        // Since 010-004-0001 in one place: Classes/Security/FieldEncryption.
+        // It now throws the exception when SECURITY_CIPHER_KEY is missing.
         return (new FieldEncryption())->decrypt($encryptedValue);
     }
 

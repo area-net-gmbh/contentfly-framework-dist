@@ -4,19 +4,19 @@ namespace Areanet\PIM\Classes\Annotations;
 use Attribute;
 
 /**
- * Waehlt den `PermissionsType` fuer eine Eigenschaft aus — `Entity\Group::$permissions`.
+ * Selects the `PermissionsType` for a property — `Entity\Group::$permissions`.
  *
- * Ohne Felder: Sie ist ein reiner Schalter.
+ * No fields: it is a pure switch.
  *
- * Sie ist **Annotation und Attribut zugleich** (`010-001-0001`). Doctrines eigene
- * Mapping-Klassen sind in 2.20 genau das, und der Grund ist derselbe: Solange die Entities
- * noch Docblocks tragen, liest sie der `AnnotationReader`; sobald sie umgestellt sind
- * (`010-001-0003`), liest sie die Reflection. Der Umbau laesst sich dadurch in Schritte
- * zerlegen, die einzeln gruen sind.
+ * It is **annotation and attribute at the same time** (`010-001-0001`). Doctrine's own
+ * mapping classes are exactly that in 2.20, and the reason is the same: as long as the entities
+ * still carry docblocks, the `AnnotationReader` reads it; as soon as they have been converted
+ * (`010-001-0003`), reflection reads it. This lets the conversion be split into steps that are
+ * green one by one.
  *
- * Ohne Felder braucht sie keinen Konstruktor und deshalb auch kein
- * `@NamedArgumentConstructor` — der Vermerk waere wirkungslos, weil der `DocParser` ihn
- * an `has_constructor` knuepft.
+ * Having no fields, it needs no constructor and therefore no `@NamedArgumentConstructor`
+ * either — the marker would have no effect, because the `DocParser` ties it to
+ * `has_constructor`.
  *
  * @Annotation
  */

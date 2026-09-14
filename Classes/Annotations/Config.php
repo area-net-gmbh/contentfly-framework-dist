@@ -4,28 +4,28 @@ namespace Areanet\PIM\Classes\Annotations;
 use Attribute;
 
 /**
- * Datenrelevante Konfiguration einer Entity oder einer ihrer Eigenschaften.
+ * Data-relevant configuration of an entity or of one of its properties.
  *
- * Von den urspruenglich 24 Feldern beschrieben die meisten Eingabemasken der
- * PIM-Oberflaeche. Mit ihr sind sie entfallen — ersatzlos, ohne Duldungsphase. Uebrig
- * bleibt, was das Verhalten der API steuert: Verschluesselung, Sync, Filter, Sortierung
- * und das Datenmodell selbst. Die Liste der gestrichenen Felder und der Weg fuer
- * Bestandsprojekte stehen in `an_project/docs/pim-annotationen-migration.md`.
+ * Of the originally 24 fields, most described input forms of the PIM interface. They were
+ * dropped along with it — without replacement, without a grace period. What remains is what
+ * controls the behaviour of the API: encryption, sync, filters, sorting and the data model
+ * itself. The list of removed fields and the path for existing projects are in
+ * `an_project/docs/pim-annotationen-migration.md`.
  *
- * Sie ist **Annotation und Attribut zugleich** (`010-001-0001`). Doctrines eigene
- * Mapping-Klassen sind in 2.20 genau das, und der Grund ist derselbe: Solange die Entities
- * noch Docblocks tragen, liest sie der `AnnotationReader`; sobald sie umgestellt sind
- * (`010-001-0003`), liest sie die Reflection. Der Umbau laesst sich dadurch in Schritte
- * zerlegen, die einzeln gruen sind.
+ * It is **annotation and attribute at the same time** (`010-001-0001`). Doctrine's own
+ * mapping classes are exactly that in 2.20, and the reason is the same: as long as the entities
+ * still carry docblocks, the `AnnotationReader` reads it; as soon as they have been converted
+ * (`010-001-0003`), reflection reads it. This lets the conversion be split into steps that are
+ * green one by one.
  *
- * `@NamedArgumentConstructor` ist dafuer noetig: Ohne den Vermerk uebergibt der `DocParser`
- * dem Konstruktor **ein Array** statt benannter Argumente, und die Klasse waere als
- * Annotation nicht mehr lesbar.
+ * `@NamedArgumentConstructor` is required for this: without the marker, the `DocParser` passes
+ * the constructor **an array** instead of named arguments, and the class would no longer be
+ * readable as an annotation.
  *
- * **Beide Ziele**, und das ist gemessen: `@PIM\Config` steht an Klassen (`Group`, `Nav`,
- * `Tag`, `File` — `labelProperty`, `sortBy`, `excludeFromSync`) und an Eigenschaften
- * (`unique`, `isFilterable`). Sie ist mit 25 von 36 Verwendungen die haeufigste `@PIM`-
- * Annotation im Baum.
+ * **Both targets**, and that is measured: `@PIM\Config` is placed on classes (`Group`, `Nav`,
+ * `Tag`, `File` — `labelProperty`, `sortBy`, `excludeFromSync`) and on properties
+ * (`unique`, `isFilterable`). With 25 of 36 usages it is the most frequent `@PIM`
+ * annotation in the tree.
  *
  * @Annotation
  * @NamedArgumentConstructor
@@ -34,14 +34,14 @@ use Attribute;
 final class Config
 {
     /**
-     * Nimmt die Entity aus der Sync-API heraus — `Classes/Api.php`.
+     * Removes the entity from the sync API — `Classes/Api.php`.
      *
      * @var boolean
      */
     public $excludeFromSync = false;
 
     /**
-     * Verschluesselt den Wert in der Datenbank — `StringType`, `TextareaType`.
+     * Encrypts the value in the database — `StringType`, `TextareaType`.
      *
      * @var boolean
      */
@@ -53,7 +53,7 @@ final class Config
     public $unique = false;
 
     /**
-     * Gibt die Eigenschaft fuer die Filter der API frei — `Classes/Type.php`.
+     * Enables the property for the API's filters — `Classes/Type.php`.
      *
      * @var boolean
      */
@@ -65,15 +65,15 @@ final class Config
     public $i18n_universal = false;
 
     /**
-     * Eigenschaft, deren Wert eine Entity bezeichnet. Landet als `modelLabel` im
-     * Log und bestimmt, welches Feld verjointer Objekte die API mitliefert.
+     * Property whose value designates an entity. Ends up as `modelLabel` in the
+     * log and determines which field of joined objects the API includes.
      *
      * @var string
      */
     public $labelProperty = '';
 
     /**
-     * Aktuell nur `tree` — steuert die Baumabfragen in `Classes/Api.php`.
+     * Currently only `tree` — controls the tree queries in `Classes/Api.php`.
      *
      * @var string
      */
@@ -95,12 +95,12 @@ final class Config
     public $sortRestrictTo = null;
 
     /**
-     * Nimmt die Werte als benannte Argumente entgegen.
+     * Accepts the values as named arguments.
      *
-     * Die Vorgaben sind dieselben wie an den Feldern — wer ein Argument weglaesst, bekommt
-     * genau den Wert, den die Annotation ihm bisher gab. Bewusst **ohne** Typangaben: Unter
-     * Annotationen war jedes Feld untypisiert, und ein hier ergaenzter Typ waere eine neue
-     * Einschraenkung fuer Bestandsprojekte, nicht bloss eine Praezisierung.
+     * The defaults are the same as on the fields — anyone who omits an argument gets exactly
+     * the value the annotation gave them before. Deliberately **without** type declarations:
+     * under annotations every field was untyped, and a type added here would be a new
+     * restriction for existing projects, not merely a clarification.
      */
     public function __construct($excludeFromSync = false, $encoded = false, $unique = false, $isFilterable = false, $i18n_universal = false, $labelProperty = '', $type = '', $sortBy = null, $sortOrder = null, $sortRestrictTo = null)
     {

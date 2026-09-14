@@ -4,22 +4,22 @@ namespace Areanet\PIM\Classes\Annotations;
 use Attribute;
 
 /**
- * Markiert eine `OneToMany`-Beziehung als n:m ueber eine Zwischen-Entity.
+ * Marks a `OneToMany` relation as n:m via an intermediate entity.
  *
- * Im Framework selbst **nicht verwendet** — gemessen mit `010-001-0001`. Gelesen wird sie
- * trotzdem an drei Stellen (`MultifileType`, `MultijoinType`, `JoinBidirectionalType`), und
- * zwar als Unterscheidungsmerkmal: Ohne sie gilt eine `OneToMany` als gewoehnliche
- * bidirektionale Beziehung. Sie gehoert also Projekten, nicht dem Framework.
+ * **Not used** in the framework itself — measured with `010-001-0001`. It is nevertheless read
+ * in three places (`MultifileType`, `MultijoinType`, `JoinBidirectionalType`), namely as a
+ * distinguishing feature: without it, a `OneToMany` counts as an ordinary bidirectional
+ * relation. So it belongs to projects, not to the framework.
  *
- * Sie ist **Annotation und Attribut zugleich** (`010-001-0001`). Doctrines eigene
- * Mapping-Klassen sind in 2.20 genau das, und der Grund ist derselbe: Solange die Entities
- * noch Docblocks tragen, liest sie der `AnnotationReader`; sobald sie umgestellt sind
- * (`010-001-0003`), liest sie die Reflection. Der Umbau laesst sich dadurch in Schritte
- * zerlegen, die einzeln gruen sind.
+ * It is **annotation and attribute at the same time** (`010-001-0001`). Doctrine's own
+ * mapping classes are exactly that in 2.20, and the reason is the same: as long as the entities
+ * still carry docblocks, the `AnnotationReader` reads it; as soon as they have been converted
+ * (`010-001-0003`), reflection reads it. This lets the conversion be split into steps that are
+ * green one by one.
  *
- * `@NamedArgumentConstructor` ist dafuer noetig: Ohne den Vermerk uebergibt der `DocParser`
- * dem Konstruktor **ein Array** statt benannter Argumente, und die Klasse waere als
- * Annotation nicht mehr lesbar.
+ * `@NamedArgumentConstructor` is required for this: without the marker, the `DocParser` passes
+ * the constructor **an array** instead of named arguments, and the class would no longer be
+ * readable as an annotation.
  *
  * @Annotation
  * @NamedArgumentConstructor
@@ -38,12 +38,12 @@ final class ManyToMany
     public $mappedBy = '';
 
     /**
-     * Nimmt die Werte als benannte Argumente entgegen.
+     * Accepts the values as named arguments.
      *
-     * Die Vorgaben sind dieselben wie an den Feldern — wer ein Argument weglaesst, bekommt
-     * genau den Wert, den die Annotation ihm bisher gab. Bewusst **ohne** Typangaben: Unter
-     * Annotationen war jedes Feld untypisiert, und ein hier ergaenzter Typ waere eine neue
-     * Einschraenkung fuer Bestandsprojekte, nicht bloss eine Praezisierung.
+     * The defaults are the same as on the fields — anyone who omits an argument gets exactly
+     * the value the annotation gave them before. Deliberately **without** type declarations:
+     * under annotations every field was untyped, and a type added here would be a new
+     * restriction for existing projects, not merely a clarification.
      */
     public function __construct($targetEntity = '', $mappedBy = '')
     {

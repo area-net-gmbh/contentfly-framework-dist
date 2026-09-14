@@ -11,20 +11,20 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Installiert Contentfly von der Kommandozeile.
+ * Installs Contentfly from the command line.
  *
- * Ersetzt den bisherigen `InstallController` samt Twig-Maske. Der Gewinn liegt nicht darin,
- * dieselben Schritte anders zu verpacken, sondern darin, dass sie **skript- und CI-fähig**
- * werden: Jede Eingabe kommt über eine Option oder eine Umgebungsvariable, kein Schritt
- * erzwingt eine Rückfrage.
+ * Replaces the former `InstallController` together with its Twig form. The gain does not lie in
+ * packaging the same steps differently, but in making them **scriptable and CI-capable**:
+ * every input comes from an option or an environment variable, and no step forces an
+ * interactive prompt.
  *
- * Die Schritte sind in `an_project/work/.../012-002-0001-installer-schritte-erfassen.md`
- * hergeleitet. Der letzte davon — Admin-Benutzer und Thumbnail-Größen — liegt bereits in
- * `$app['helper']->install()` und wird von hier aufgerufen, nicht nachgebaut.
+ * The steps are derived in `an_project/work/.../012-002-0001-installer-schritte-erfassen.md`.
+ * The last of them — admin user and thumbnail sizes — already lives in
+ * `$app['helper']->install()` and is called from here, not rebuilt.
  */
 class InstallCommand extends Command
 {
-    /** Platzhalter in custom/config.php, die die Installation ersetzt. */
+    /** Placeholder in custom/config.php that the installation replaces. */
     private const PLACEHOLDER_HOST = '$SET_DB_HOST';
 
     protected function configure(): void
@@ -49,9 +49,9 @@ class InstallCommand extends Command
     {
         $app = $this->application();
 
-        // Schritt 0 — Guard. Ein installiertes System wird nicht erneut installiert:
-        // Schritt 5 würde die Zugangsdaten in config.php überschreiben und Schritt 10
-        // das Admin-Passwort zurücksetzen.
+        // Step 0 — guard. An installed system is not installed again:
+        // step 5 would overwrite the credentials in config.php and step 10 would
+        // reset the admin password.
         if (Adapter::getConfig()->DB_HOST !== self::PLACEHOLDER_HOST) {
             $output->writeln('<error>Contentfly ist bereits installiert (custom/config.php trägt einen DB-Host).</error>');
             $output->writeln('Zum Neuaufsetzen die Platzhalter in custom/config.php wiederherstellen.');
@@ -113,7 +113,7 @@ class InstallCommand extends Command
         return 0;
     }
 
-    /** Option, sonst Umgebungsvariable, sonst null. */
+    /** Option, otherwise environment variable, otherwise null. */
     private function value(InputInterface $input, string $option, string $env)
     {
         $value = $input->getOption($option);
@@ -127,14 +127,15 @@ class InstallCommand extends Command
     }
 
     /**
-     * Schritte 1–4: Eingaben, chmod, Schreibrechte, Datenbankverbindung.
+     * Steps 1–4: inputs, chmod, write permissions, database connection.
      *
-     * Sammelt **alle** Fehler statt beim ersten abzubrechen — wer eine Installation
-     * skriptet, will nicht fünfmal hintereinander an einer neuen Kleinigkeit scheitern.
+     * Collects **all** errors instead of aborting at the first one — whoever scripts an
+     * installation does not want to fail five times in a row on yet another small thing.
      *
-     * @param bool $mayChmod Ob die Rechte gesetzt werden dürfen. Unter --dry-run nicht:
-     *                       ein Lauf, der „nichts geschrieben" meldet, darf auch keine
-     *                       Dateirechte verändern. Ohne chmod wird nur geprüft, was ist.
+     * @param bool $mayChmod Whether the permissions may be set. Not under --dry-run:
+     *                       a run that reports "nothing written" must not change any
+     *                       file permissions either. Without chmod, only the current state
+     *                       is checked.
      */
     private function check(array $db, bool $mayChmod = true): array
     {
@@ -174,7 +175,7 @@ class InstallCommand extends Command
             try {
                 new \PDO('mysql:host='.$db['host'].';port='.$db['port'].';dbname='.$db['name'], $db['user'], $db['pass']);
             } catch (\Exception $e) {
-                // Die Datenbank selbst wird nicht angelegt — sie muss existieren.
+                // The database itself is not created — it must already exist.
                 $errors['database'] = $e->getMessage();
             }
         }
@@ -182,7 +183,7 @@ class InstallCommand extends Command
         return $errors;
     }
 
-    /** Schritt 5: Platzhalter in custom/config.php durch die echten Werte ersetzen. */
+    /** Step 5: replace the placeholders in custom/config.php with the real values. */
     private function writeConfig(array $db): void
     {
         $path = Paths::custom().'/config.php';
@@ -201,11 +202,12 @@ class InstallCommand extends Command
     }
 
     /**
-     * Schritte 6–8: ID-Strategie als Konstanten, Doctrine mit den neuen Zugangsdaten,
-     * TypeManager samt System-Typen.
+     * Steps 6–8: ID strategy as constants, Doctrine with the new credentials,
+     * TypeManager including the system types.
      *
-     * Nötig, weil `bootstrap.php` bei `is_installed == false` weder DBAL noch ORM
-     * registriert — beim Start dieses Commands war die Konfiguration ja noch leer.
+     * Necessary because `bootstrap.php` registers neither DBAL nor ORM when
+     * `is_installed == false` — after all, the configuration was still empty when this command
+     * started.
      */
     private function bootDoctrine($app, array $db)
     {
@@ -218,11 +220,11 @@ class InstallCommand extends Command
         }
 
         /*
-         * Die Verbindung, selbst gebaut (009-002-0002) — wie im regulaeren Bootstrap.
+         * The connection, built by hand (009-002-0002) — as in the regular bootstrap.
          *
-         * Hier stand `$app->register(new DoctrineServiceProvider(), …)`. Der Provider ist mit
-         * Silex entfallen; was er anlegte, waren `$app['dbs']` und `$app['db']`, und beide
-         * werden weiter unten und in bin/console.php gelesen.
+         * This used to be `$app->register(new DoctrineServiceProvider(), …)`. The provider went
+         * away with Silex; what it created were `$app['dbs']` and `$app['db']`, and both are
+         * read further down and in bin/console.php.
          */
         $app['dbs'] = function () use ($db) {
             return array('pim' => DriverManager::getConnection(array(
@@ -243,11 +245,11 @@ class InstallCommand extends Command
             return reset($verbindungen);
         };
 
-        // Dieselbe Konstruktion wie im regulaeren Bootstrap — siehe 006-002-0005.
-        // Weicht sie ab, installiert der Installer gegen ein anderes Schema, als die
-        // Anwendung spaeter benutzt.
+        // The same construction as in the regular bootstrap — see 006-002-0005.
+        // If it diverges, the installer installs against a different schema than the one
+        // the application uses later.
         $app['orm.em'] = function ($app) {
-            return \Areanet\PIM\Classes\ORM\EntityManagerFactory::erzeugen(
+            return \Areanet\PIM\Classes\ORM\EntityManagerFactory::create(
                 $app['dbs']['pim'],
                 array(
                     array('namespace' => 'Areanet\PIM\Entity', 'path' => Paths::frameworkEntities()),
@@ -267,10 +269,10 @@ class InstallCommand extends Command
             $app['typeManager']->registerType(new $systemType($app));
         }
 
-        // Dieselbe Quote-Strategie wie im regulären Bootstrap. Ohne sie bleiben
-        // Spaltennamen ungequotet — und `groups` in pim_user ist seit MySQL 8.0.2 ein
-        // reserviertes Wort, das INSERT scheitert an einem Syntaxfehler. Auf MySQL 5.7
-        // fiel das nie auf; der InstallController hatte dieselbe Lücke.
+        // The same quote strategy as in the regular bootstrap. Without it, column names
+        // stay unquoted — and `groups` in pim_user has been a reserved word since
+        // MySQL 8.0.2, so the INSERT fails with a syntax error. On MySQL 5.7 this was
+        // never noticed; the InstallController had the same gap.
         $app['orm.em']->getConfiguration()->setQuoteStrategy(
             new \Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy()
         );
@@ -279,11 +281,11 @@ class InstallCommand extends Command
     }
 
     /**
-     * Setzt das Admin-Passwort, wenn eines übergeben wurde.
+     * Sets the admin password if one was passed.
      *
-     * `helper->install()` legt den Admin mit `admin`/`admin` an. Über eine Weboberfläche mit
-     * anschließendem Login war das vertretbar; eine skriptbare Installation soll ein echtes
-     * Passwort setzen können, ohne dass jemand es nachträglich von Hand ändert.
+     * `helper->install()` creates the admin with `admin`/`admin`. Through a web interface with
+     * a subsequent login that was acceptable; a scriptable installation should be able to set a
+     * real password without anyone having to change it by hand afterwards.
      */
     private function setAdminPassword(InputInterface $input, $em): void
     {
@@ -299,7 +301,7 @@ class InstallCommand extends Command
         }
     }
 
-    /** Eigener Name: Command::isEnabled() ist in Symfony bereits public belegt. */
+    /** Own name: Command::isEnabled() is already taken as a public method in Symfony. */
     private function isFunctionEnabled($func): bool
     {
         return is_callable($func) && false === stripos(ini_get('disable_functions'), $func);

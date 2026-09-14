@@ -183,7 +183,7 @@ class MultijoinType extends Type
                     $mappedFrom = $schema[ucfirst($entityName)]['properties'][$property]['mappedFrom'];
 
                     if(!Permission::isWritable($user, $acceptFrom)){
-                        throw new AccessDeniedHttpException("Zugriff auf $acceptFrom verweigert.");
+                        throw new AccessDeniedHttpException("Access to $acceptFrom denied.");
                     }
 
                     $object->$setter($emptyCollection);
@@ -223,7 +223,7 @@ class MultijoinType extends Type
                 $mappedFrom = $schema[ucfirst($entityName)]['properties'][$property]['mappedFrom'];
 
                 if(!Permission::isWritable($user, $acceptFrom)){
-                    throw new AccessDeniedHttpException("Zugriff auf $acceptFrom verweigert.");
+                    throw new AccessDeniedHttpException("Access to $acceptFrom denied.");
                 }
 
                 $object->$setter(new ArrayCollection());

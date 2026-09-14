@@ -404,7 +404,7 @@ if($app['is_installed']) {
     $app['orm.em'] = function ($app) use ($selectCaches) {
         [$queryCache, $metadataCache] = $selectCaches();
 
-        return EntityManagerFactory::erzeugen(
+        return EntityManagerFactory::create(
             $app['dbs']['pim'],
             array(
                 array('namespace' => 'Areanet\PIM\Entity', 'path' => Paths::frameworkEntities()),
@@ -554,7 +554,7 @@ $app['database'] = function ($app){
  * created, and `orm:validate-schema` reported on every installation that schema and mapping did
  * not match.
  *
- * It is now registered in `EntityManagerFactory::erzeugen()` — where every EntityManager passes,
+ * It is now registered in `EntityManagerFactory::create()` — where every EntityManager passes,
  * the installer's included.
  */
 

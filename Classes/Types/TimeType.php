@@ -9,8 +9,9 @@ use Areanet\PIM\Entity\Base;
 class TimeType extends Type
 {
     /**
-     * Ausgabeformat der Zeitwerte. Lag vorher in der UI-Annotation `@PIM\Time`; die ist
-     * entfallen, das Format bleibt — `fromDatabase()` liefert die API-Antwort damit aus.
+     * Output format of the time values. Previously lived in the UI annotation `@PIM\Time`;
+     * that annotation is gone, the format stays — `fromDatabase()` delivers the API response
+     * with it.
      */
     const DEFAULT_FORMAT = 'H:i';
 

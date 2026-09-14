@@ -11,91 +11,91 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\Persistence\Mapping\Driver\MappingDriverChain;
 
 /**
- * Baut den `EntityManager` — als Ersatz für `dflydev/doctrine-orm-service-provider`.
+ * Builds the `EntityManager` — as a replacement for `dflydev/doctrine-orm-service-provider`.
  *
- * ## Warum es diese Klasse gibt
- * `dflydev/doctrine-orm-service-provider` v2.0.1 ist die **letzte** Version (2018) und benutzt
- * `Doctrine\Common\Persistence\Mapping\Driver\MappingDriverChain`. Diesen Namensraum hat
- * `doctrine/persistence` 2.0 nach `Doctrine\Persistence\` verschoben — und `doctrine/orm` ab
- * 2.14 verlangt `persistence ^2.4 || ^3`. Der Provider und ein PHP-8-taugliches ORM schliessen
- * sich damit aus (`006-002-0005`).
+ * ## Why this class exists
+ * `dflydev/doctrine-orm-service-provider` v2.0.1 is the **last** version (2018) and uses
+ * `Doctrine\Common\Persistence\Mapping\Driver\MappingDriverChain`. `doctrine/persistence` 2.0
+ * moved this namespace to `Doctrine\Persistence\` — and `doctrine/orm` from 2.14 on requires
+ * `persistence ^2.4 || ^3`. The provider and a PHP-8-capable ORM are therefore mutually
+ * exclusive (`006-002-0005`).
  *
- * Composer sieht das nicht: `dflydev` deklariert keine Constraints auf `doctrine/persistence`,
- * also löst der Lock sauber auf und die Anwendung bricht erst beim ersten `$app['orm.em']`.
+ * Composer does not see this: `dflydev` declares no constraints on `doctrine/persistence`,
+ * so the lock resolves cleanly and the application only breaks at the first `$app['orm.em']`.
  *
- * ## Diese Klasse ist eine Übergangslösung
- * **Epic `009` wirft sie weg**, zusammen mit Silex und Pimple: Ein Symfony-Kernel baut den
- * EntityManager über das DoctrineBundle. Sie ist bewusst schlank gehalten und bildet nur ab,
- * was das Framework heute wirklich benutzt — nicht, was der Provider konnte:
+ * ## This class is a stopgap
+ * **Epic `009` throws it away**, together with Silex and Pimple: a Symfony kernel builds the
+ * EntityManager via the DoctrineBundle. It is deliberately kept lean and only covers what the
+ * framework really uses today — not what the provider was able to do:
  *
- * | dflydev | hier |
+ * | dflydev | here |
  * |---|---|
- * | beliebig viele Verbindungen | **eine** |
- * | sechs Cache-Treiber | keiner — `bootstrap.php` setzt sie danach selbst |
- * | fünf Mapping-Formate | nur `annotation` |
- * | 466 Zeilen | dies |
+ * | any number of connections | **one** |
+ * | six cache drivers | none — `bootstrap.php` sets them itself afterwards |
+ * | five mapping formats | only `annotation` |
+ * | 466 lines | this |
  *
- * Wer hier etwas ergänzen möchte, das Epic `009` ohnehin abräumt, sollte es lassen.
+ * Anyone who wants to add something here that Epic `009` clears away anyway should refrain.
  *
- * ## Was sich **nicht** ändern darf
- * Der Container-Schlüssel bleibt `$app['orm.em']`; 26 Dateien greifen darauf zu, und die
- * Testsuite prüft das Verhalten dahinter. `$app['orm.ems']` und `$app['orm.em.config']` waren
- * ebenfalls Teil der Oberfläche des Providers, werden aber nirgends benutzt (geprüft über
- * `lib/`, `custom/` und `tests/`) — sie sind deshalb nicht nachgebaut.
+ * ## What must **not** change
+ * The container key remains `$app['orm.em']`; 26 files access it, and the test suite checks
+ * the behaviour behind it. `$app['orm.ems']` and `$app['orm.em.config']` were also part of the
+ * provider's surface, but are used nowhere (checked across `lib/`, `custom/` and `tests/`) —
+ * they have therefore not been rebuilt.
  */
 final class EntityManagerFactory
 {
     /**
-     * Erzeugt den EntityManager für die übergebene Verbindung.
+     * Creates the EntityManager for the given connection.
      *
-     * @param Connection            $connection   die DBAL-Verbindung, heute `$app['dbs']['pim']`
-     * @param array<int,array{namespace:string,path:string}> $mappings Namensraum → Verzeichnis
-     * @param string                $proxyDir     Verzeichnis für die generierten Proxies
+     * @param Connection            $connection   the DBAL connection, today `$app['dbs']['pim']`
+     * @param array<int,array{namespace:string,path:string}> $mappings namespace → directory
+     * @param string                $proxyDir     directory for the generated proxies
      * @param bool                  $autoGenerateProxies
-     * @param array<string,string>  $numericFunctions  eigene DQL-Funktionen
-     * @param CacheItemPoolInterface|null $abfrageCache  PSR-6-Pool oder null fuer keinen Cache
-     * @param CacheItemPoolInterface|null $metadatenCache dito
+     * @param array<string,string>  $numericFunctions  custom DQL functions
+     * @param CacheItemPoolInterface|null $queryCache  PSR-6 pool, or null for no cache
+     * @param CacheItemPoolInterface|null $metadataCache ditto
      */
-    public static function erzeugen(
+    public static function create(
         Connection $connection,
         array $mappings,
         string $proxyDir,
         bool $autoGenerateProxies,
         array $numericFunctions = array(),
-        ?CacheItemPoolInterface $abfrageCache = null,
-        ?CacheItemPoolInterface $metadatenCache = null
+        ?CacheItemPoolInterface $queryCache = null,
+        ?CacheItemPoolInterface $metadataCache = null
     ): EntityManager {
         $config = new Configuration();
 
-        // Eine Chain statt eines Treibers mit zwei Pfaden: So bleibt die Zuordnung
-        // Namensraum → Verzeichnis ausdrücklich, statt sie Doctrine über die Dateinamen
-        // erraten zu lassen. Genau das tat dflydev auch.
+        // A chain instead of one driver with two paths: this keeps the mapping
+        // namespace → directory explicit, instead of letting Doctrine guess it from the file
+        // names. That is exactly what dflydev did as well.
         //
-        // `Doctrine\Persistence\…\MappingDriverChain` gibt es in persistence 1.3 UND 2/3 —
-        // deshalb läuft diese Klasse gegen den alten wie den neuen Baum. Der alte Namensraum
-        // `Doctrine\Common\Persistence\…` existiert in 2.0 nicht mehr; genau daran ist
-        // dflydev gescheitert.
+        // `Doctrine\Persistence\…\MappingDriverChain` exists in persistence 1.3 AND 2/3 —
+        // which is why this class runs against the old tree as well as the new one. The old
+        // namespace `Doctrine\Common\Persistence\…` no longer exists in 2.0; that is exactly
+        // what dflydev failed on.
         $chain = new MappingDriverChain();
 
         foreach ($mappings as $mapping) {
-            // ATTRIBUTE STATT ANNOTATIONEN, FUER ALLE NAMENSRAEUME (010-001-0003).
+            // ATTRIBUTES INSTEAD OF ANNOTATIONS, FOR ALL NAMESPACES (010-001-0003).
             //
-            // Hier stand `$config->newDefaultAnnotationDriver($pfad, false)`.
+            // This used to be `$config->newDefaultAnnotationDriver($path, false)`.
             //
-            // ES GEHT NUR GEMEINSAM, und das ist gemessen: Doctrine liest einen Namensraum mit
-            // genau EINEM Treiber, also schien ein Schnitt je Namensraum moeglich —
-            // `Areanet\PIM\Entity` zuerst, `Custom\Entity` danach. Er traegt nicht.
-            // `Custom\Entity\Core\Example` erbt von `Areanet\PIM\Entity\Base`, und bei einer
-            // MappedSuperclass setzt Doctrine an den geerbten Feldern KEIN `inherited`
-            // (`ClassMetadataFactory::addMappingInheritanceInformation()`). Der Treiber der
-            // Unterklasse liest sie deshalb NEU — ein Annotation-Treiber findet an einer
-            // umgestellten Oberklasse nichts mehr und meldet
+            // IT ONLY WORKS ALL TOGETHER, and that is measured: Doctrine reads a namespace with
+            // exactly ONE driver, so a cut per namespace seemed possible —
+            // `Areanet\PIM\Entity` first, `Custom\Entity` afterwards. It does not hold.
+            // `Custom\Entity\Core\Example` inherits from `Areanet\PIM\Entity\Base`, and for a
+            // MappedSuperclass Doctrine sets NO `inherited` on the inherited fields
+            // (`ClassMetadataFactory::addMappingInheritanceInformation()`). The subclass's driver
+            // therefore reads them AFRESH — an annotation driver finds nothing on a converted
+            // superclass any more and reports
             //
             //     No identifier/primary key specified for Entity "Custom\Entity\Core\Example"
             //     sub class of "Areanet\PIM\Entity\Base".
             //
-            // Ein Wahlschalter je Mapping stand hier deshalb kurz und ist wieder entfallen: Er
-            // haette eine Freiheit angeboten, die es nicht gibt.
+            // A per-mapping selector switch therefore stood here briefly and has been removed
+            // again: it would have offered a freedom that does not exist.
             $chain->addDriver(new AttributeDriver(array($mapping['path'])), $mapping['namespace']);
         }
 
@@ -105,66 +105,67 @@ final class EntityManagerFactory
         $config->setProxyNamespace('DoctrineProxy');
         $config->setAutoGenerateProxyClasses($autoGenerateProxies);
 
-        foreach ($numericFunctions as $name => $klasse) {
-            $config->addCustomNumericFunction($name, $klasse);
+        foreach ($numericFunctions as $name => $class) {
+            $config->addCustomNumericFunction($name, $class);
         }
 
         /*
-         * DIE CACHES GEHOEREN HIERHER, NICHT IN DEN BOOTSTRAP (010-002-0005).
+         * THE CACHES BELONG HERE, NOT IN THE BOOTSTRAP (010-002-0005).
          *
-         * Bis hierher setzte bootstrap.php sie auf der Konfiguration, NACHDEM diese Methode
-         * den EntityManager gebaut hatte. Fuer den Abfrage-Cache ging das gut: Doctrine liest
-         * `getQueryCache()` bei jeder Abfrage. Der Metadaten-Cache dagegen wird GENAU EINMAL
-         * gelesen — in `EntityManager::__construct()`, ueber `configureMetadataCache()`. Was
-         * danach kommt, sieht die ClassMetadataFactory nie.
+         * Until now bootstrap.php set them on the configuration AFTER this method had built
+         * the EntityManager. For the query cache that worked fine: Doctrine reads
+         * `getQueryCache()` on every query. The metadata cache, by contrast, is read EXACTLY
+         * ONCE — in `EntityManager::__construct()`, via `configureMetadataCache()`. Whatever
+         * comes afterwards is never seen by the ClassMetadataFactory.
          *
-         * Gemessen, ohne Datenbank: Cache vor dem EntityManager gesetzt -> 2 Cache-Dateien
-         * nach einer Metadaten-Abfrage; danach gesetzt -> 0. Und im Testlauf gegen den echten
-         * Server blieb `data/cache/metadata` leer, mit doctrine/cache genauso wie mit PSR-6 —
-         * der Metadaten-Cache hat also nie gegriffen.
+         * Measured, without a database: cache set before the EntityManager -> 2 cache files
+         * after a metadata query; set afterwards -> 0. And in the test run against the real
+         * server, `data/cache/metadata` stayed empty, with doctrine/cache just as with PSR-6 —
+         * so the metadata cache never took effect.
          *
-         * `null` heisst: kein Cache. Der Aufrufer entscheidet das, nicht diese Methode — im
-         * Debug-Modus und auf der Konsole soll keiner laufen, sonst arbeitet ein Entwickler
-         * gegen veraltete Metadaten.
+         * `null` means: no cache. The caller decides that, not this method — in debug mode and
+         * on the console none should be active, otherwise a developer works against stale
+         * metadata.
          */
-        if ($abfrageCache !== null) {
-            $config->setQueryCache($abfrageCache);
+        if ($queryCache !== null) {
+            $config->setQueryCache($queryCache);
         }
 
-        if ($metadatenCache !== null) {
-            $config->setMetadataCache($metadatenCache);
+        if ($metadataCache !== null) {
+            $config->setMetadataCache($metadataCache);
         }
 
-        // `new EntityManager(...)` STATT `EntityManager::create(...)` (010-003-0001).
+        // `new EntityManager(...)` INSTEAD OF `EntityManager::create(...)` (010-003-0001).
         //
-        // Die statische Fabrik ist in ORM 3 entfernt; in 2.20 ist sie deprecated und der
-        // Konstruktor bereits public. Deshalb steht die Umstellung HIER, vor dem
-        // Versionssprung: Sie laesst sich gegen ein unveraendertes ORM messen.
+        // The static factory is removed in ORM 3; in 2.20 it is deprecated and the
+        // constructor is already public. That is why the change is made HERE, before the
+        // version jump: it can be measured against an unchanged ORM.
         //
-        // Sie war der erste von zwei Blockern des Sprungs — an dieser Zeile starb der ganze
-        // Baum, 196 von 268 Tests (Messung im Story-Text).
+        // It was the first of two blockers of the jump — the whole tree died at this line,
+        // 196 of 268 tests (measurement in the story text).
         $em = new EntityManager($connection, $config);
 
         /*
-         * DER modified_index-LISTENER GEHOERT HIERHER (010-005-0002).
+         * THE modified_index LISTENER BELONGS HERE (010-005-0002).
          *
-         * Er haengt jeder Entity einen Index auf `modified` an. Registriert wurde er in
-         * bootstrap.php — INNERHALB von `if($app['is_installed'])`. `appcms:install` laeuft
-         * aber genau dann, wenn is_installed FALSCH ist: Der Listener griff dort nie, der Index
-         * wurde nie angelegt, und `orm:validate-schema` meldete seither bei JEDER Installation,
-         * dass Schema und Mapping nicht deckungsgleich sind.
+         * It attaches an index on `modified` to every entity. It used to be registered in
+         * bootstrap.php — INSIDE `if($app['is_installed'])`. But `appcms:install` runs
+         * precisely when is_installed is FALSE: the listener never took effect there, the index
+         * was never created, and ever since, `orm:validate-schema` reported on EVERY
+         * installation that schema and mapping are not in sync.
          *
-         * DAS IST DIE DRITTE AUFLAGE DESSELBEN FEHLERS IN EPIC 010, und deshalb steht die
-         * Registrierung jetzt hier statt beim Aufrufer:
+         * THIS IS THE THIRD EDITION OF THE SAME BUG IN EPIC 010, and that is why the
+         * registration now lives here instead of with the caller:
          *
-         *   010-002-0005   Der Metadaten-Cache wurde nach dem EntityManager gesetzt und
-         *                  erreichte die ClassMetadataFactory nie.
-         *   010-003-0002   Der Installer wiederholte den Mapping-Block aus bootstrap.php,
-         *                  und die Wiederholung wich ab.
-         *   010-005-0002   Dieser Listener.
+         *   010-002-0005   The metadata cache was set after the EntityManager and
+         *                  never reached the ClassMetadataFactory.
+         *   010-003-0002   The installer repeated the mapping block from bootstrap.php,
+         *                  and the repetition diverged.
+         *   010-005-0002   This listener.
          *
-         * Die Regel dahinter: Was fuer JEDEN EntityManager gelten muss, gehoert in die Factory.
-         * Steht es beim Aufrufer, muss es dort mehrfach stehen — und irgendwo fehlt es dann.
+         * The rule behind it: whatever must apply to EVERY EntityManager belongs in the factory.
+         * If it sits with the caller, it has to be there several times — and then it is missing
+         * somewhere.
          */
         $em->getEventManager()->addEventListener(Events::loadClassMetadata, new LoadMetadata());
 

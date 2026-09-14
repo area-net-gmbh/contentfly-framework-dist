@@ -44,7 +44,7 @@ class ImageMagick implements ProcessingInterface
         $imExecutable   = Adapter::getConfig()->IMAGEMAGICK_EXECUTABLE;
 
         if (!is_executable($imExecutable)) {
-            throw new \Exception("ImageMagick-Funktion $imExecutable nicht auf dem Server ausführbar.");
+            throw new \Exception("ImageMagick function $imExecutable is not executable on the server.");
         }
 
         foreach($this->thumbnailSettings as $thumbnailSetting){

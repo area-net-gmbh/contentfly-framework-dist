@@ -54,7 +54,7 @@ class Image implements ProcessingInterface
         $saveMethodName = "image$type";
 
         if(!function_exists($loadMethodName)){
-            throw new \Exception("GDLib-Funktion $loadMethodName nicht auf dem Server verfügbar.");
+            throw new \Exception("GDLib function $loadMethodName is not available on the server.");
         }
 
         $imgName = $backend->getPath($fileObject).'/'.$fileObject->getName();

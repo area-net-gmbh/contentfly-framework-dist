@@ -4,21 +4,21 @@ namespace Areanet\PIM\Classes\Annotations;
 use Attribute;
 
 /**
- * Feste Werteliste einer Eigenschaft.
+ * Fixed list of values of a property.
  *
- * `options` ist eine kommagetrennte Liste, wahlweise als `wert` oder `wert=Beschriftung`.
- * `SelectType` veroeffentlicht sie im Schema **und** prueft den Schreibwert dagegen
+ * `options` is a comma-separated list, each entry either as `value` or `value=label`.
+ * `SelectType` publishes it in the schema **and** validates the written value against it
  * (`000-000-0017`).
  *
- * Sie ist **Annotation und Attribut zugleich** (`010-001-0001`). Doctrines eigene
- * Mapping-Klassen sind in 2.20 genau das, und der Grund ist derselbe: Solange die Entities
- * noch Docblocks tragen, liest sie der `AnnotationReader`; sobald sie umgestellt sind
- * (`010-001-0003`), liest sie die Reflection. Der Umbau laesst sich dadurch in Schritte
- * zerlegen, die einzeln gruen sind.
+ * It is **annotation and attribute at the same time** (`010-001-0001`). Doctrine's own
+ * mapping classes are exactly that in 2.20, and the reason is the same: as long as the entities
+ * still carry docblocks, the `AnnotationReader` reads it; as soon as they have been converted
+ * (`010-001-0003`), reflection reads it. This lets the conversion be split into steps that are
+ * green one by one.
  *
- * `@NamedArgumentConstructor` ist dafuer noetig: Ohne den Vermerk uebergibt der `DocParser`
- * dem Konstruktor **ein Array** statt benannter Argumente, und die Klasse waere als
- * Annotation nicht mehr lesbar.
+ * `@NamedArgumentConstructor` is required for this: without the marker, the `DocParser` passes
+ * the constructor **an array** instead of named arguments, and the class would no longer be
+ * readable as an annotation.
  *
  * @Annotation
  * @NamedArgumentConstructor
@@ -32,12 +32,12 @@ final class Select
     public $options = null;
 
     /**
-     * Nimmt die Werte als benannte Argumente entgegen.
+     * Accepts the values as named arguments.
      *
-     * Die Vorgaben sind dieselben wie an den Feldern — wer ein Argument weglaesst, bekommt
-     * genau den Wert, den die Annotation ihm bisher gab. Bewusst **ohne** Typangaben: Unter
-     * Annotationen war jedes Feld untypisiert, und ein hier ergaenzter Typ waere eine neue
-     * Einschraenkung fuer Bestandsprojekte, nicht bloss eine Praezisierung.
+     * The defaults are the same as on the fields — anyone who omits an argument gets exactly
+     * the value the annotation gave them before. Deliberately **without** type declarations:
+     * under annotations every field was untyped, and a type added here would be a new
+     * restriction for existing projects, not merely a clarification.
      */
     public function __construct($options = null)
     {
