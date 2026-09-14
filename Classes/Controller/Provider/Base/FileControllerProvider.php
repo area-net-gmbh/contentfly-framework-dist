@@ -4,7 +4,7 @@ namespace Areanet\PIM\Classes\Controller\Provider\Base;
 use Areanet\PIM\Classes\Controller\Provider\BaseControllerProvider;
 use Areanet\PIM\Controller\FileController;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
-use Areanet\PIM\Classes\Kernel\Routing\Routensammlung;
+use Areanet\PIM\Classes\Kernel\Routing\RouteCollector;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -22,7 +22,7 @@ class FileControllerProvider extends BaseControllerProvider
         $this->setUpMiddleware($app);
 
 
-        $controllers = new Routensammlung();
+        $controllers = new RouteCollector();
 
         $checkAuth = function (Request $request, Application $app) {
             if (!$this->anmelden($request, $app)) {
@@ -40,7 +40,7 @@ class FileControllerProvider extends BaseControllerProvider
         $controllers->get('/get/{id}/{size}/{variant}/{alias}', "file.controller:getAction");
         $controllers->get('/get/{id}/s-{size}/{variant}/{alias}', "file.controller:getAction");
 
-        return $controllers->sammlung();
+        return $controllers->collection();
     }
 
 

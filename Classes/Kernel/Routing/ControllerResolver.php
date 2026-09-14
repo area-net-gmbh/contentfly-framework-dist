@@ -5,21 +5,21 @@ use Areanet\PIM\Classes\Kernel\ApplicationInterface;
 use Symfony\Component\HttpKernel\Controller\ControllerResolver as SymfonyControllerResolver;
 
 /**
- * Löst `dienst:methode` gegen den Container auf (009-002-0003).
+ * Resolves `service:method` against the container (009-002-0003).
  *
- * DAS IST, WAS DER `ServiceControllerServiceProvider` VON SILEX GELIEFERT HAT. Alle Routen des
- * Frameworks und der Vorlage benennen ihren Controller so:
+ * THIS IS WHAT SILEX'S `ServiceControllerServiceProvider` USED TO PROVIDE. All routes of the
+ * framework and the template name their controller like this:
  *
  *     $controllers->post('/list', "api.controller:listAction");
  *
- * Links der Container-Schlüssel, rechts die Methode. Der Schlüssel selbst wird vom Provider
- * angelegt — `$app['api.controller'] = function ($app) { return new ApiController($app); }` —,
- * und dass er eine **faule Factory** ist, zählt: Der Controller entsteht erst, wenn eine Route
- * ihn trifft, nicht beim Registrieren der Routen.
+ * On the left the container key, on the right the method. The key itself is created by the
+ * provider — `$app['api.controller'] = function ($app) { return new ApiController($app); }` — and
+ * it matters that it is a **lazy factory**: the controller is only created when a route hits it,
+ * not when the routes are registered.
  *
- * Symfonys eigener Resolver kennt `Klasse::methode` mit zwei Doppelpunkten. Die Form mit einem
- * ist Silex' Erfindung und wird hier abgefangen, bevor er sie zu sehen bekommt; alles andere
- * geht unverändert an ihn weiter.
+ * Symfony's own resolver understands `Class::method` with two colons. The single-colon form is
+ * Silex's invention and is intercepted here before Symfony gets to see it; everything else is
+ * passed on unchanged.
  */
 class ControllerResolver extends SymfonyControllerResolver
 {
@@ -30,19 +30,19 @@ class ControllerResolver extends SymfonyControllerResolver
 
     protected function createController(string $controller): callable
     {
-        // Ein Doppelpunkt, keine zwei: sonst ist es Symfonys eigene Form Klasse::methode.
+        // One colon, not two: otherwise it is Symfony's own form Class::method.
         if (substr_count($controller, ':') === 1) {
-            [$dienst, $methode] = explode(':', $controller, 2);
+            [$service, $method] = explode(':', $controller, 2);
 
-            if (isset($this->app[$dienst])) {
-                return array($this->app[$dienst], $methode);
+            if (isset($this->app[$service])) {
+                return array($this->app[$service], $method);
             }
 
             throw new \InvalidArgumentException(sprintf(
-                'Der Controller "%s" verweist auf den Container-Schluessel "%s", den es nicht '
-                .'gibt. Ein Controller-Provider legt ihn in connect() an.',
+                'The controller "%s" refers to the container key "%s", which does not exist. '
+                .'A controller provider creates it in connect().',
                 $controller,
-                $dienst
+                $service
             ));
         }
 

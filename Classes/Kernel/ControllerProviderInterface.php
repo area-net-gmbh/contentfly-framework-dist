@@ -17,7 +17,7 @@ use Symfony\Component\Routing\RouteCollection;
  * pinned Silex down exactly where it was about to disappear next. Now it is a Symfony
  * `RouteCollection` — exactly what `Application::mount()` accepts.
  *
- * In practice the providers return a `Routing\Routensammlung`, which extends it and adds `get()`,
+ * In practice the providers return a `Routing\RouteCollector`, which extends it and adds `get()`,
  * `post()` and `match()`. The type here stays the more general `RouteCollection` so that a project
  * can build its routes differently as well.
  *

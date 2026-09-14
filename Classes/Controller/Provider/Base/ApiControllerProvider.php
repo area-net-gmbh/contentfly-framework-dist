@@ -7,7 +7,7 @@ use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
-use Areanet\PIM\Classes\Kernel\Routing\Routensammlung;
+use Areanet\PIM\Classes\Kernel\Routing\RouteCollector;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -24,7 +24,7 @@ class ApiControllerProvider extends BaseControllerProvider
 
         $this->setUpMiddleware($app);
 
-        $controllers = new Routensammlung();
+        $controllers = new RouteCollector();
 
         $checkAuth = function (Request $request, Application $app) {
             if (!$this->anmelden($request, $app)) {
@@ -38,7 +38,7 @@ class ApiControllerProvider extends BaseControllerProvider
          * Sie zeigten auf `api.controller:loginAction` und `:logoutAction` — beide Methoden gibt
          * es im ApiController nicht und gab es in diesem Baum nie.
          *
-         * Aufgefallen sind sie nie, weil sie den Router gar nicht erreichten: `Routensammlung`
+         * Aufgefallen sind sie nie, weil sie den Router gar nicht erreichten: `RouteCollector`
          * zaehlt je Provider durch, `/api/login` hiess `login_0` und wurde beim Mounten von
          * `/auth/login` gleichen Namens verdraengt. Der Namensvetter ist mit demselben Task
          * behoben — womit diese beiden Routen erstmals wirksam geworden waeren, und zwar als
@@ -66,7 +66,7 @@ class ApiControllerProvider extends BaseControllerProvider
         $controllers->get('/schema', "api.controller:schemaAction")->before($checkAuth);
         $controllers->get('/config', "api.controller:configAction");
 
-        return $controllers->sammlung();
+        return $controllers->collection();
     }
 
 

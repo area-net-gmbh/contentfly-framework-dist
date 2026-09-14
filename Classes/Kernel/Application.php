@@ -11,9 +11,9 @@ use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
-use Areanet\PIM\Classes\Kernel\Routing\AbsicherungListener;
+use Areanet\PIM\Classes\Kernel\Routing\RouteSecurityListener;
 use Areanet\PIM\Classes\Kernel\Routing\ControllerResolver;
-use Areanet\PIM\Classes\Kernel\Routing\Routeneintrag;
+use Areanet\PIM\Classes\Kernel\Routing\RouteEntry;
 use Symfony\Component\HttpKernel\EventListener\RouterListener;
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -131,7 +131,7 @@ class Application extends Container implements ApplicationInterface
         /*
          * THE NAME PREFIX IS NOT COSMETIC (013-001-0005).
          *
-         * `Routensammlung` numbers its routes **per provider**: the first route of
+         * `RouteCollector` numbers its routes **per provider**: the first route of
          * ApiControllerProvider is called `login_0`, and so is the first route of
          * AuthControllerProvider. `RouteCollection::addCollection()` overwrites by name — the
          * collection mounted later silently displaces the one mounted earlier.
@@ -166,14 +166,14 @@ class Application extends Container implements ApplicationInterface
      * the tree not built by a controller provider, and so this stays the only method of its kind:
      * whoever wants an ordinary route uses the `RouteManager`.
      */
-    public function options(string $path, callable $callback): Routeneintrag
+    public function options(string $path, callable $callback): RouteEntry
     {
         $route = new Route('/'.ltrim($path, '/'), array('_controller' => $callback));
         $route->setMethods(array('OPTIONS'));
 
         $this->routes->add('options_'.count($this->routes), $route);
 
-        return new Routeneintrag($route);
+        return new RouteEntry($route);
     }
 
     // ── Hooks ──────────────────────────────────────────────────────────────────────────
@@ -326,7 +326,7 @@ class Application extends Container implements ApplicationInterface
          */
         $this['dispatcher']->addListener(
             \Symfony\Component\HttpKernel\KernelEvents::CONTROLLER,
-            new AbsicherungListener($this)
+            new RouteSecurityListener($this)
         );
     }
 
