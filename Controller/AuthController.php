@@ -4,7 +4,7 @@ use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Controller\BaseController;
 use Areanet\PIM\Classes\LoginProvider;
-use Areanet\PIM\Classes\Security\Fremdkennung;
+use Areanet\PIM\Classes\Security\ExternalIdentity;
 use Areanet\PIM\Classes\Security\TokenHandler;
 use Areanet\PIM\Classes\Security\JwtAccessToken;
 use Areanet\PIM\Entity\RevokedToken;
@@ -126,7 +126,7 @@ class AuthController extends BaseController
         $loginProvider = null;
 
         if (!empty($anbieterName)) {
-            $loginProvider = $this->app['anmeldeanbieter']->holen(is_string($anbieterName) ? $anbieterName : null);
+            $loginProvider = $this->app['loginProviders']->get(is_string($anbieterName) ? $anbieterName : null);
 
             /*
              * EIN UNBEKANNTER NAME WIRD ABGEWIESEN, nicht auf die Passwortpruefung
@@ -141,7 +141,7 @@ class AuthController extends BaseController
 
         if ($loginProvider) {
             try {
-                $fremd = $loginProvider->pruefen($request);
+                $fremd = $loginProvider->authenticate($request);
             } catch (\Throwable) {
                 /*
                  * Auch eine Ausnahme ist eine Ablehnung. Ihre Meldung nach aussen zu geben —
@@ -151,7 +151,7 @@ class AuthController extends BaseController
                 $fremd = null;
             }
 
-            if (!$fremd instanceof Fremdkennung) {
+            if (!$fremd instanceof ExternalIdentity) {
                 return $abweisen('Benutzername und/oder Passwort fehlerhaft.');
             }
 
@@ -168,7 +168,7 @@ class AuthController extends BaseController
              */
             $anbieter = strtolower(trim((string) $anbieterName));
 
-            $user = $this->app['benutzerbereitstellung']->findenOderAnlegen($anbieter, $fremd);
+            $user = $this->app['userProvisioning']->findOrCreate($anbieter, $fremd);
 
             /*
              * GRUPPE UND ADMINFLAG BEI JEDER ANMELDUNG (013-004-0003).
@@ -177,7 +177,7 @@ class AuthController extends BaseController
              * beim naechsten Login heraus. Genau deshalb stehen Rollen und Gruppen NICHT im JWT
              * (013-003-0001) — dort waeren sie bis zum Ablauf eingefroren.
              */
-            $this->app['gruppenabbildung']->anwenden($anbieter, $fremd, $user);
+            $this->app['groupMapping']->apply($anbieter, $fremd, $user);
 
             if (!$user->getIsActive()) {
                 return $abweisen('Der Benutzer ist gesperrt.');

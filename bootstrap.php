@@ -81,10 +81,10 @@ use Areanet\PIM\Classes\ORM\EntityManagerFactory;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Areanet\PIM\Classes\Security\Anbieterverzeichnis;
+use Areanet\PIM\Classes\Security\LoginProviderRegistry;
 use Areanet\PIM\Classes\Security\Anmeldebremse;
-use Areanet\PIM\Classes\Security\Benutzerbereitstellung;
-use Areanet\PIM\Classes\Security\Gruppenabbildung;
+use Areanet\PIM\Classes\Security\UserProvisioning;
+use Areanet\PIM\Classes\Security\GroupMapping;
 use Areanet\PIM\Classes\Security\TokenAuthenticator;
 use Areanet\PIM\Classes\Security\UserLoader;
 use Areanet\PIM\Classes\Security\TokenHandler;
@@ -366,8 +366,8 @@ $buildCachePool = static function (string $namespace, string $directory): \Psr\C
  * It lives outside `is_installed`: a project registers its providers before anything is checked,
  * and a registration that depended on the installation would be a trap.
  */
-$app['anmeldeanbieter'] = function () {
-    return new Anbieterverzeichnis();
+$app['loginProviders'] = function () {
+    return new LoginProviderRegistry();
 };
 
 $app['loginbremse'] = function () use ($buildCachePool) {
@@ -433,13 +433,13 @@ if($app['is_installed']) {
      * relies on.
      */
     // Creates users that an external system has recognised (013-004-0002).
-    $app['benutzerbereitstellung'] = function ($app) {
-        return new Benutzerbereitstellung($app['orm.em']);
+    $app['userProvisioning'] = function ($app) {
+        return new UserProvisioning($app['orm.em']);
     };
 
     // Maps the groups an external system reports (013-004-0003).
-    $app['gruppenabbildung'] = function ($app) {
-        return new Gruppenabbildung($app['orm.em']);
+    $app['groupMapping'] = function ($app) {
+        return new GroupMapping($app['orm.em']);
     };
 
     $app['tokenHandler'] = function ($app) {

@@ -449,51 +449,48 @@ class Config{
     public $SECURITY_JWT_KEY_ID_PREVIOUS = null;
 
     /**
-     * Wie ein Fremdsystem auf Contentfly-Gruppen abgebildet wird (013-004-0003).
+     * How an external system is mapped to Contentfly groups (013-004-0003).
      *
-     * JE ANBIETERNAME EIN EINTRAG, mit drei Schluesseln:
+     * ONE ENTRY PER PROVIDER NAME, with three keys:
      *
-     *   gruppen  Fremdgruppe => Name einer Contentfly-Gruppe. Der ERSTE Treffer in dieser
-     *            Reihenfolge gewinnt — die Reihenfolge ist damit eine Entscheidung und kein
-     *            Zufall.
-     *   admin    Liste von Fremdgruppen, die das Adminflag setzen.
-     *   vorgabe  Gruppe fuer den Fall, dass nichts passt. Fehlt sie, bleibt der Benutzer ohne
-     *            Gruppe.
+     *   groups   external group => name of a Contentfly group. The FIRST match in this order wins —
+     *            which makes the order a decision and not a coincidence.
+     *   admin    list of external groups that set the admin flag.
+     *   default  group for the case that nothing matches. If it is missing, the user stays without
+     *            a group.
      *
-     * OHNE EINTRAG PASSIERT NICHTS — kein Gruppenwechsel, und vor allem KEIN Adminflag. Eine
-     * Abbildung, die im Zweifel Rechte vergibt, ist die falsche Richtung; das Fremdsystem soll
-     * Rechte begruenden, nicht ihr Fehlen.
+     * WITHOUT AN ENTRY NOTHING HAPPENS — no change of group, and above all NO admin flag. A mapping
+     * that grants permissions when in doubt goes in the wrong direction; the external system should
+     * justify permissions, not their absence.
      *
-     * SIE WIRKT BEI JEDER ANMELDUNG. Wer im Fremdsystem aus einer Gruppe faellt, faellt beim
-     * naechsten Login auch hier heraus — genau deshalb stehen Rollen NICHT im JWT
-     * (`013-003-0001`).
+     * IT APPLIES ON EVERY LOGIN. Whoever drops out of a group in the external system drops out here as
+     * well on their next login — that is exactly why roles are NOT in the JWT (`013-003-0001`).
      *
-     * Beispiel:
+     * Example:
      *
      *     array('ldap' => array(
-     *         'gruppen' => array('CN=Redaktion' => 'Redakteure', 'CN=Admins' => 'Administratoren'),
+     *         'groups'  => array('CN=Editors' => 'Editors', 'CN=Admins' => 'Administrators'),
      *         'admin'   => array('CN=Admins'),
-     *         'vorgabe' => 'Gaeste',
+     *         'default' => 'Guests',
      *     ))
      *
-     * @var array<string, array{gruppen?: array<string,string>, admin?: array<int,string>, vorgabe?: string|null}>
+     * @var array<string, array{groups?: array<string,string>, admin?: array<int,string>, default?: string|null}>
      */
-    public $SECURITY_PROVIDER_GRUPPEN = array();
+    public $SECURITY_PROVIDER_GROUPS = array();
 
     /*
      * ── LDAP / Active Directory (013-005-0001) ────────────────────────────────────────
      *
-     * Nur noetig fuer ein Projekt, das `Classes\Security\LdapProvider` in `custom/app.php`
-     * eintraegt. Ohne Eintrag ist nichts davon in Gebrauch.
+     * Only needed for a project that registers `Classes\Security\LdapProvider` in `custom/app.php`.
+     * Without a registration none of this is in use.
      *
-     * DER WEG IST SUCHEN, DANN BINDEN — und nicht der direkte Bind mit einem aus der Kennung
-     * zusammengesetzten DN. Der funktioniert nur, solange alle Benutzer flach in einer OU
-     * liegen; im Active Directory tun sie das nicht, und angemeldet wird dort mit
-     * `sAMAccountName`, der im DN gar nicht vorkommt. Der Preis ist ein Dienstkonto — oder
-     * eine anonyme Suche, wo das Verzeichnis sie erlaubt.
+     * THE APPROACH IS SEARCH, THEN BIND — and not the direct bind with a DN built from the identifier.
+     * That only works as long as all users sit flat in one OU; in Active Directory they do not, and
+     * login there uses `sAMAccountName`, which does not appear in the DN at all. The price is a
+     * service account — or an anonymous search, where the directory allows it.
      */
 
-    /** @var string Host des Verzeichnisses, z.B. 'ldap.example.invalid' */
+    /** @var string Host of the directory, e.g. 'ldap.example.invalid' */
     public $SECURITY_LDAP_HOST = null;
 
     /** @var integer */
@@ -502,13 +499,13 @@ class Config{
     /** @var string none | ssl | tls */
     public $SECURITY_LDAP_ENCRYPTION = 'none';
 
-    /** @var string Basis der Suche, z.B. 'OU=Benutzer,DC=example,DC=invalid' */
+    /** @var string Base of the search, e.g. 'OU=Users,DC=example,DC=invalid' */
     public $SECURITY_LDAP_BASE_DN = null;
 
     /**
-     * Das Dienstkonto fuer die Suche — oder leer fuer eine anonyme Suche.
+     * The service account for the search — or empty for an anonymous search.
      *
-     * Kein Standardwert und kein Wert im Repo: Beides gehoert in die Umgebung.
+     * No default and no value in the repository: both belong in the environment.
      *
      * @var string|null
      */
@@ -518,62 +515,62 @@ class Config{
     public $SECURITY_LDAP_SEARCH_PASSWORD = null;
 
     /**
-     * Der Suchfilter. `{kennung}` wird durch die maskierte Eingabe ersetzt.
+     * The search filter. `{identifier}` is replaced by the escaped input.
      *
-     * Vorgabe ist der Active-Directory-Fall. Fuer ein OpenLDAP ist es meist `(uid={kennung})`.
+     * The default is the Active Directory case. For OpenLDAP it is usually `(uid={identifier})`.
      *
      * @var string
      */
-    public $SECURITY_LDAP_FILTER = '(sAMAccountName={kennung})';
+    public $SECURITY_LDAP_FILTER = '(sAMAccountName={identifier})';
 
     /**
-     * Woher die Gruppen kommen.
+     * Where the groups come from.
      *
-     * `memberOf` steht am Benutzereintrag und ist der uebliche Weg im Active Directory. Was
-     * dort steht, geht UNVERAENDERT in die `Fremdkennung`; abgebildet wird es von
-     * `SECURITY_PROVIDER_GRUPPEN` (013-004-0003) und nicht hier.
+     * `memberOf` sits on the user entry and is the usual way in Active Directory. What it contains goes
+     * UNCHANGED into the `ExternalIdentity`; it is mapped by `SECURITY_PROVIDER_GROUPS` (013-004-0003)
+     * and not here.
      *
      * @var string
      */
-    public $SECURITY_LDAP_GRUPPEN_ATTRIBUT = 'memberOf';
+    public $SECURITY_LDAP_GROUP_ATTRIBUTE = 'memberOf';
 
     /*
      * ── OIDC (013-005-0003) ───────────────────────────────────────────────────────────
      *
-     * Nur noetig fuer ein Projekt, das `Classes\Security\OidcProvider` eintraegt.
+     * Only needed for a project that registers `Classes\Security\OidcProvider`.
      *
-     * GEWAEHLT IST DER USERINFO-WEG, nicht die lokale Pruefung gegen ein JWKS. Gemessen am
-     * 2026-09-11: drei leichte Pakete gegen fuenf mit `web-token/jwt-library` und
-     * `spomky-labs/pki-framework` darin, und ein Widerruf wirkt sofort statt erst mit dem
-     * Ablauf. Der Preis ist eine HTTP-Anfrage je Anmeldung und die Abhaengigkeit vom Provider —
-     * die aber NUR die Anmeldung betrifft: Contentfly stellt danach ein eigenes Token aus
-     * (013-003), der OIDC-Token wird genau einmal geprueft.
+     * THE USERINFO APPROACH IS CHOSEN, not local verification against a JWKS. Measured on 2026-09-11:
+     * three lightweight packages versus five with `web-token/jwt-library` and
+     * `spomky-labs/pki-framework` among them, and a revocation takes effect immediately instead of only
+     * on expiry. The price is one HTTP request per login and the dependency on the provider — which
+     * however ONLY concerns the login: Contentfly issues its own token afterwards (013-003), and the
+     * OIDC token is verified exactly once.
      */
 
-    /** @var string|null Der Userinfo-Endpunkt des Providers, vollstaendige URL */
+    /** @var string|null The provider's userinfo endpoint, full URL */
     public $SECURITY_OIDC_USERINFO_ENDPOINT = null;
 
     /**
-     * Welches Feld der Userinfo-Antwort die Kennung traegt.
+     * Which field of the userinfo response carries the identifier.
      *
-     * `sub` ist der Standard aus OpenID Connect und das einzige Feld, das ein Provider
-     * garantiert liefert. `email` oder `preferred_username` sind bequemer und **aenderbar** —
-     * wer darauf abbildet, bekommt ein neues Konto, sobald jemand heiratet.
+     * `sub` is the OpenID Connect standard and the only field a provider is guaranteed to return.
+     * `email` or `preferred_username` are more convenient and **changeable** — whoever maps onto them
+     * gets a new account as soon as someone gets married.
      *
      * @var string
      */
-    public $SECURITY_OIDC_KENNUNG_CLAIM = 'sub';
+    public $SECURITY_OIDC_IDENTIFIER_CLAIM = 'sub';
 
     /**
-     * Welches Feld die Gruppen traegt. Leer heisst: keine Gruppen.
+     * Which field carries the groups. Empty means: no groups.
      *
-     * Der Name ist nicht standardisiert — `groups`, `roles`, `realm_access.roles` je nach
-     * Provider. Was dort steht, geht unveraendert in die `Fremdkennung`; abgebildet wird es von
-     * `SECURITY_PROVIDER_GRUPPEN` (013-004-0003).
+     * The name is not standardised — `groups`, `roles`, `realm_access.roles` depending on the provider.
+     * What it contains goes unchanged into the `ExternalIdentity`; it is mapped by
+     * `SECURITY_PROVIDER_GROUPS` (013-004-0003).
      *
      * @var string
      */
-    public $SECURITY_OIDC_GRUPPEN_CLAIM = 'groups';
+    public $SECURITY_OIDC_GROUPS_CLAIM = 'groups';
 
 
     /**

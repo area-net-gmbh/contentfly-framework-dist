@@ -7,126 +7,124 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Anmeldung ueber einen OIDC-Provider, geprueft am Userinfo-Endpunkt (013-005-0003).
+ * Login through an OIDC provider, verified at the userinfo endpoint (013-005-0003).
  *
- * Der Client holt sich sein Access-Token beim Identity-Provider und zeigt es hier vor.
- * Contentfly fragt den Userinfo-Endpunkt: Antwortet der mit den Benutzerdaten, gilt das Token;
- * antwortet er mit einem Fehler, nicht.
+ * The client obtains its access token from the identity provider and presents it here. Contentfly
+ * asks the userinfo endpoint: if it answers with the user data, the token is valid; if it answers with
+ * an error, it is not.
  *
- * ── Warum der Userinfo-Weg und nicht die lokale Pruefung ──────────────────────────────
+ * ── Why the userinfo approach and not local verification ─────────────────────────────
  *
- * Symfony bringt beides mit. Gemessen am 2026-09-11:
+ * Symfony brings both. Measured on 2026-09-11:
  *
- *   lokal gegen JWKS   5 Pakete, darunter web-token/jwt-library und spomky-labs/pki-framework.
- *                      Schnell, uebersteht einen Ausfall des Providers — aber ein Widerruf
- *                      wirkt erst mit dem Ablauf des Tokens.
- *   Userinfo           3 leichte Pakete. Ein Widerruf wirkt sofort — aber jede Anmeldung
- *                      haengt am Provider.
+ *   locally against JWKS   5 packages, including web-token/jwt-library and spomky-labs/pki-framework.
+ *                          Fast, survives an outage of the provider — but a revocation only takes
+ *                          effect when the token expires.
+ *   userinfo               3 lightweight packages. A revocation takes effect immediately — but every
+ *                          login depends on the provider.
  *
- * Entschieden: Userinfo. **Was die Abwaegung relativiert und dazugehoert:** Contentfly stellt
- * nach der Anmeldung ein EIGENES Token aus (013-003). Der OIDC-Token wird genau einmal geprueft,
- * beim Login; danach zaehlt nur noch das eigene. Der Widerrufsvorteil betrifft damit nur das
- * Fenster zwischen Widerruf und dem einen Anmeldeversuch — und der Ausfall-Nachteil ebenso nur
- * die Anmeldung, nicht die laufende Sitzung.
+ * Decided: userinfo. **What puts the trade-off into perspective and belongs to it:** after login
+ * Contentfly issues its OWN token (013-003). The OIDC token is verified exactly once, at login; after
+ * that only Contentfly's own token counts. The revocation advantage therefore only concerns the window
+ * between revocation and that one login attempt — and the outage disadvantage likewise only concerns
+ * the login, not the running session.
  *
- * ── Warum nicht Symfonys OidcUserInfoTokenHandler ─────────────────────────────────────
+ * ── Why not Symfony's OidcUserInfoTokenHandler ────────────────────────────────────────
  *
- * Der ist ein `AccessTokenHandlerInterface` und liefert ein `UserBadge` — also eine Kennung und
- * sonst nichts. **Die Gruppen waeren damit weg**, und genau die braucht der Vertrag aus
- * `013-004`, damit `Gruppenabbildung` etwas abzubilden hat. Ein Wrapper muesste den Endpunkt ein
- * zweites Mal fragen. Der eigene Aufruf ist kuerzer als dieser Umweg.
+ * It is an `AccessTokenHandlerInterface` and returns a `UserBadge` — an identifier and nothing else.
+ * **The groups would be lost**, and those are exactly what the contract from `013-004` needs so that
+ * `GroupMapping` has something to map. A wrapper would have to ask the endpoint a second time. The own
+ * call is shorter than that detour.
  *
- * ── Jeder Fehlschlag sieht gleich aus ─────────────────────────────────────────────────
+ * ── Every failure looks the same ──────────────────────────────────────────────────────
  *
- * Abgelehntes Token, Antwort ohne die erwartete Kennung, Provider nicht erreichbar — alles
- * `null`.
+ * Rejected token, response without the expected identifier, provider unreachable — all `null`.
  */
-final class OidcProvider implements Anmeldeprovider
+final class OidcProvider implements LoginProvider
 {
     /**
-     * @param array{endpunkt: string, kennung_claim: string, gruppen_claim: string} $einstellungen
+     * @param array{endpoint: string, identifier_claim: string, groups_claim: string} $settings
      */
     public function __construct(
         private readonly HttpClientInterface $client,
-        private readonly array $einstellungen,
+        private readonly array $settings,
     ) {
     }
 
-    public static function ausKonfiguration(): self
+    public static function fromConfig(): self
     {
         $config = Adapter::getConfig();
 
         return new self(
             HttpClient::create(array('timeout' => 5)),
             array(
-                'endpunkt'      => (string) $config->SECURITY_OIDC_USERINFO_ENDPOINT,
-                'kennung_claim' => (string) $config->SECURITY_OIDC_KENNUNG_CLAIM,
-                'gruppen_claim' => (string) $config->SECURITY_OIDC_GRUPPEN_CLAIM,
+                'endpoint'         => (string) $config->SECURITY_OIDC_USERINFO_ENDPOINT,
+                'identifier_claim' => (string) $config->SECURITY_OIDC_IDENTIFIER_CLAIM,
+                'groups_claim'     => (string) $config->SECURITY_OIDC_GROUPS_CLAIM,
             )
         );
     }
 
-    public function pruefen(Request $request): ?Fremdkennung
+    public function authenticate(Request $request): ?ExternalIdentity
     {
         $token = $this->token($request);
 
-        if ($token === null || $this->einstellungen['endpunkt'] === '') {
+        if ($token === null || $this->settings['endpoint'] === '') {
             return null;
         }
 
         try {
-            $antwort = $this->client->request('GET', $this->einstellungen['endpunkt'], array(
+            $response = $this->client->request('GET', $this->settings['endpoint'], array(
                 'headers' => array('Authorization' => 'Bearer '.$token),
             ));
 
             /*
-             * Der Statuscode wird AUSDRUECKLICH geprueft.
+             * The status code is checked EXPLICITLY.
              *
-             * `toArray()` wirft bei 4xx und 5xx zwar von sich aus — aber nur, solange niemand
-             * `throw: false` setzt. Sich auf eine Vorgabe zu verlassen, die eine Option
-             * abschalten kann, ist bei einer Anmeldung die falsche Art von Sparsamkeit.
+             * `toArray()` throws on 4xx and 5xx by itself — but only as long as nobody sets
+             * `throw: false`. Relying on a default that an option can switch off is the wrong kind
+             * of economy for a login.
              */
-            if ($antwort->getStatusCode() !== 200) {
+            if ($response->getStatusCode() !== 200) {
                 return null;
             }
 
-            $daten = $antwort->toArray(false);
+            $data = $response->toArray(false);
         } catch (\Throwable) {
             return null;
         }
 
-        $kennung = $daten[$this->einstellungen['kennung_claim']] ?? null;
+        $identifier = $data[$this->settings['identifier_claim']] ?? null;
 
-        if (!is_string($kennung) && !is_int($kennung)) {
+        if (!is_string($identifier) && !is_int($identifier)) {
             return null;
         }
 
-        $kennung = (string) $kennung;
+        $identifier = (string) $identifier;
 
-        if (trim($kennung) === '') {
+        if (trim($identifier) === '') {
             return null;
         }
 
-        return new Fremdkennung($kennung, $this->gruppen($daten));
+        return new ExternalIdentity($identifier, $this->groups($data));
     }
 
     /**
-     * Das Access-Token aus dem Request.
+     * The access token from the request.
      *
-     * `accessToken` ist der sprechende Name; `pass` wird zusaetzlich gelesen, weil ein Client,
-     * der schon eine Anmeldemaske gegen `/auth/login` schickt, dasselbe Feld benutzen kann wie
-     * fuer ein Passwort — und die Anmeldebremse (013-001-0003) greift ohnehin auf denselben
-     * Request.
+     * `accessToken` is the descriptive name; `pass` is read as well, because a client that already
+     * sends a login form to `/auth/login` can use the same field as for a password — and the login
+     * throttle (013-001-0003) applies to the same request anyway.
      */
     private function token(Request $request): ?string
     {
-        $daten = $request->request->all();
+        $data = $request->request->all();
 
-        foreach (array('accessToken', 'pass') as $feld) {
-            $wert = $daten[$feld] ?? null;
+        foreach (array('accessToken', 'pass') as $field) {
+            $value = $data[$field] ?? null;
 
-            if (is_string($wert) && trim($wert) !== '') {
-                return $wert;
+            if (is_string($value) && trim($value) !== '') {
+                return $value;
             }
         }
 
@@ -134,27 +132,27 @@ final class OidcProvider implements Anmeldeprovider
     }
 
     /**
-     * Was der Provider an Gruppen liefert — unveraendert.
+     * What the provider reports as groups — unchanged.
      *
-     * @param array<string, mixed> $daten
+     * @param array<string, mixed> $data
      * @return list<string>
      */
-    private function gruppen(array $daten): array
+    private function groups(array $data): array
     {
-        $feld = $this->einstellungen['gruppen_claim'];
+        $field = $this->settings['groups_claim'];
 
-        if ($feld === '' || !isset($daten[$feld]) || !is_array($daten[$feld])) {
+        if ($field === '' || !isset($data[$field]) || !is_array($data[$field])) {
             return array();
         }
 
-        $gruppen = array();
+        $groups = array();
 
-        foreach ($daten[$feld] as $wert) {
-            if (is_string($wert) && $wert !== '') {
-                $gruppen[] = $wert;
+        foreach ($data[$field] as $value) {
+            if (is_string($value) && $value !== '') {
+                $groups[] = $value;
             }
         }
 
-        return $gruppen;
+        return $groups;
     }
 }

@@ -8,76 +8,73 @@ use Symfony\Component\Ldap\Ldap;
 use Symfony\Component\Ldap\LdapInterface;
 
 /**
- * Anmeldung gegen ein LDAP oder Active Directory (013-005-0001).
+ * Login against an LDAP or Active Directory (013-005-0001).
  *
- * Er erfuellt den Vertrag aus `013-004-0001` und sonst nichts: Er prueft gegen das Verzeichnis
- * und gibt eine `Fremdkennung` zurueck. Benutzer anlegen, Gruppen abbilden und Token ausstellen
- * macht das Framework.
+ * It fulfils the contract from `013-004-0001` and nothing else: it verifies against the directory and
+ * returns an `ExternalIdentity`. Creating users, mapping groups and issuing tokens is done by the
+ * framework.
  *
- * ── SUCHEN, DANN BINDEN — und warum nicht der direkte Bind ────────────────────────────
+ * ── SEARCH, THEN BIND — and why not the direct bind ───────────────────────────────────
  *
- * Der direkte Weg setzt den DN aus der Kennung zusammen (`uid=<kennung>,ou=…`) und bindet damit.
- * Er kommt ohne Dienstkonto aus und ist deshalb verlockend. Er funktioniert aber nur, solange
- * alle Benutzer flach in einer OU liegen — und im Active Directory tun sie das nicht: Dort
- * haengen sie in verschachtelten Organisationseinheiten, und angemeldet wird mit
- * `sAMAccountName`, der im DN ueberhaupt nicht vorkommt. Ein Framework, das nur den einfachen
- * Fall kann, ist fuer den Fall, um den es hier geht, nutzlos.
+ * The direct approach builds the DN from the identifier (`uid=<identifier>,ou=…`) and binds with it.
+ * It needs no service account and is therefore tempting. But it only works as long as all users sit
+ * flat in one OU — and in Active Directory they do not: there they hang in nested organisational
+ * units, and login uses `sAMAccountName`, which does not appear in the DN at all. A framework that can
+ * only do the simple case is useless for the case this is about.
  *
- * Also: mit dem Dienstkonto binden, den Benutzer suchen, dann ein zweites Mal mit SEINEM DN und
- * SEINEM Passwort binden. Wo das Verzeichnis eine anonyme Suche erlaubt, bleibt das Dienstkonto
- * leer.
+ * So: bind with the service account, search for the user, then bind a second time with THEIR DN and
+ * THEIR password. Where the directory allows an anonymous search, the service account stays empty.
  *
- * ── Ein leeres Passwort wird abgewiesen, bevor irgendetwas passiert ───────────────────
+ * ── An empty password is rejected before anything happens ────────────────────────────
  *
- * DAS IST KEINE HOEFLICHKEIT, SONDERN DIE WICHTIGSTE ZEILE HIER. LDAP kennt den
- * „unauthenticated bind": Ein Bind mit gueltigem DN und LEEREM Passwort gilt als erfolgreich —
- * er bedeutet „ich will mich nicht anmelden", nicht „das Passwort stimmt". Wer das Ergebnis
- * dieses Binds als Anmeldung liest, laesst jeden herein, dessen Kennung er kennt. Es ist einer
- * der aeltesten Fehler in LDAP-Anbindungen.
+ * THIS IS NOT POLITENESS BUT THE MOST IMPORTANT LINE HERE. LDAP has the "unauthenticated bind": a bind
+ * with a valid DN and an EMPTY password counts as successful — it means "I do not want to log in", not
+ * "the password is correct". Whoever reads the result of that bind as a login lets in anyone whose
+ * identifier they know. It is one of the oldest mistakes in LDAP integrations.
  *
- * ── Jeder Fehlschlag sieht gleich aus ─────────────────────────────────────────────────
+ * ── Every failure looks the same ──────────────────────────────────────────────────────
  *
- * Kennung unbekannt, Passwort falsch, Verzeichnis nicht erreichbar, Dienstkonto abgelaufen —
- * alles `null`. Der Aufrufer erfaehrt nur, dass es nicht gereicht hat; ob das Verzeichnis
- * antwortet, geht ihn nichts an.
+ * Unknown identifier, wrong password, directory unreachable, expired service account — all `null`.
+ * The caller only learns that it was not enough; whether the directory answers is none of their
+ * business.
  */
-final class LdapProvider implements Anmeldeprovider, Bestandspruefung
+final class LdapProvider implements LoginProvider, UserExistenceCheck
 {
     /**
-     * @param array{base_dn: string, filter: string, gruppen_attribut: string,
-     *              search_dn: ?string, search_password: ?string} $einstellungen
+     * @param array{base_dn: string, filter: string, group_attribute: string,
+     *              search_dn: ?string, search_password: ?string} $settings
      */
     public function __construct(
         private readonly LdapInterface $ldap,
-        private readonly array $einstellungen,
+        private readonly array $settings,
     ) {
     }
 
     /**
-     * Baut den Provider aus der Konfiguration.
+     * Builds the provider from the configuration.
      *
-     * Getrennt vom Konstruktor, damit der Provider fuer Tests einen `LdapInterface` bekommen
-     * kann, ohne dass ein Verzeichnis laeuft.
+     * Separate from the constructor so that the provider can receive an `LdapInterface` for tests
+     * without a directory running.
      */
-    public static function ausKonfiguration(): self
+    public static function fromConfig(): self
     {
         /*
-         * `symfony/ldap` STEHT NICHT IN `require` (013-005-0004).
+         * `symfony/ldap` IS NOT IN `require` (013-005-0004).
          *
-         * Das Paket verlangt die Systemerweiterung `ext-ldap`. Stuende es in `require`, muesste
-         * JEDE Contentfly-Installation sie mitbringen — auch die, die nie ein Verzeichnis
-         * anfasst —, denn `composer install` prueft die Plattformanforderungen aller Pakete.
-         * Gefunden beim Gate-Lauf auf PHP 8.4: `composer install` scheiterte im CI-Image mit
-         * „requires ext-ldap", und der Job starb still.
+         * The package requires the system extension `ext-ldap`. If it were in `require`, EVERY
+         * Contentfly installation would have to bring it — including those that never touch a
+         * directory — because `composer install` checks the platform requirements of all packages.
+         * Found during the gate run on PHP 8.4: `composer install` failed in the CI image with
+         * "requires ext-ldap", and the job died silently.
          *
-         * Es steht deshalb in `require-dev` (das Framework testet den Provider) und in
-         * `suggest`. Ein Projekt, das ihn benutzt, nimmt es selbst auf.
+         * It therefore lives in `require-dev` (the framework tests the provider) and in `suggest`.
+         * A project that uses it adds it itself.
          */
         if (!class_exists(Ldap::class)) {
             throw new \RuntimeException(
-                'LdapProvider braucht symfony/ldap. Das Paket steht bewusst nicht im '
-                .'Root-Manifest, weil es die Systemerweiterung ext-ldap verlangt: '
-                .'`composer require symfony/ldap` im Projekt, und ext-ldap ins PHP-Image.'
+                'LdapProvider requires symfony/ldap. The package is deliberately not in the root '
+                .'manifest because it requires the system extension ext-ldap: '
+                .'`composer require symfony/ldap` in the project, and ext-ldap in the PHP image.'
             );
         }
 
@@ -90,136 +87,136 @@ final class LdapProvider implements Anmeldeprovider, Bestandspruefung
                 'encryption' => (string) $config->SECURITY_LDAP_ENCRYPTION,
             )),
             array(
-                'base_dn'          => (string) $config->SECURITY_LDAP_BASE_DN,
-                'filter'           => (string) $config->SECURITY_LDAP_FILTER,
-                'gruppen_attribut' => (string) $config->SECURITY_LDAP_GRUPPEN_ATTRIBUT,
-                'search_dn'        => $config->SECURITY_LDAP_SEARCH_DN,
-                'search_password'  => $config->SECURITY_LDAP_SEARCH_PASSWORD,
+                'base_dn'         => (string) $config->SECURITY_LDAP_BASE_DN,
+                'filter'          => (string) $config->SECURITY_LDAP_FILTER,
+                'group_attribute' => (string) $config->SECURITY_LDAP_GROUP_ATTRIBUTE,
+                'search_dn'       => $config->SECURITY_LDAP_SEARCH_DN,
+                'search_password' => $config->SECURITY_LDAP_SEARCH_PASSWORD,
             )
         );
     }
 
-    public function pruefen(Request $request): ?Fremdkennung
+    public function authenticate(Request $request): ?ExternalIdentity
     {
-        $daten   = $request->request->all();
-        $kennung = $daten['alias'] ?? null;
-        $passwort = $daten['pass'] ?? null;
+        $data       = $request->request->all();
+        $identifier = $data['alias'] ?? null;
+        $password   = $data['pass'] ?? null;
 
-        if (!is_string($kennung) || trim($kennung) === '') {
+        if (!is_string($identifier) || trim($identifier) === '') {
             return null;
         }
 
         /*
-         * SIEHE KLASSENKOMMENTAR: Ein leeres Passwort ist ein unauthenticated bind und gilt im
-         * Verzeichnis als erfolgreich. Hier ist es eine Ablehnung.
+         * SEE THE CLASS COMMENT: an empty password is an unauthenticated bind and counts as successful
+         * in the directory. Here it is a rejection.
          */
-        if (!is_string($passwort) || $passwort === '') {
+        if (!is_string($password) || $password === '') {
             return null;
         }
 
         try {
-            $eintrag = $this->suchen($kennung);
+            $entry = $this->search($identifier);
 
-            if (!$eintrag instanceof Entry) {
+            if (!$entry instanceof Entry) {
                 return null;
             }
 
-            // Der zweite Bind — mit dem DN aus dem Verzeichnis, nicht mit einem gebauten.
-            $this->ldap->bind($eintrag->getDn(), $passwort);
+            // The second bind — with the DN from the directory, not a constructed one.
+            $this->ldap->bind($entry->getDn(), $password);
 
-            return new Fremdkennung($kennung, $this->gruppen($eintrag));
+            return new ExternalIdentity($identifier, $this->groups($entry));
         } catch (\Throwable) {
             return null;
         }
     }
 
     /**
-     * Der erste Bind und die Suche.
+     * The first bind and the search.
      *
-     * Genau EIN Treffer zaehlt. Zwei Treffer heissen, dass der Filter nicht eindeutig ist — und
-     * dann zu raten, welcher gemeint war, waere die schlechteste aller Antworten.
+     * Exactly ONE match counts. Two matches mean the filter is not unique — and guessing which one was
+     * meant would be the worst of all answers.
      */
-    private function suchen(string $kennung): ?Entry
+    private function search(string $identifier): ?Entry
     {
-        $dienstkonto = $this->einstellungen['search_dn'];
+        $serviceAccount = $this->settings['search_dn'];
 
-        if (is_string($dienstkonto) && $dienstkonto !== '') {
-            $this->ldap->bind($dienstkonto, (string) $this->einstellungen['search_password']);
+        if (is_string($serviceAccount) && $serviceAccount !== '') {
+            $this->ldap->bind($serviceAccount, (string) $this->settings['search_password']);
         } else {
-            // Anonyme Suche, wo das Verzeichnis sie erlaubt.
+            // Anonymous search, where the directory allows it.
             $this->ldap->bind();
         }
 
         /*
-         * MASKIERT, UND ZWAR ALS FILTER.
+         * ESCAPED, AND AS A FILTER.
          *
-         * Ohne `escape()` traegt eine Kennung wie `*` oder `admin)(|(objectClass=*` den Filter
-         * um — LDAP-Injection, dasselbe Muster wie SQL-Injection und genauso alt.
+         * Without `escape()` an identifier such as `*` or `admin)(|(objectClass=*` rewrites the filter —
+         * LDAP injection, the same pattern as SQL injection and just as old.
          */
         $filter = str_replace(
-            '{kennung}',
-            $this->ldap->escape($kennung, '', LdapInterface::ESCAPE_FILTER),
-            (string) $this->einstellungen['filter']
+            '{identifier}',
+            $this->ldap->escape($identifier, '', LdapInterface::ESCAPE_FILTER),
+            (string) $this->settings['filter']
         );
 
-        $treffer = $this->ldap->query((string) $this->einstellungen['base_dn'], $filter)->execute();
+        $matches = $this->ldap->query((string) $this->settings['base_dn'], $filter)->execute();
 
-        if (count($treffer) !== 1) {
+        if (count($matches) !== 1) {
             return null;
         }
 
-        $eintrag = $treffer[0];
+        $entry = $matches[0];
 
-        return $eintrag instanceof Entry ? $eintrag : null;
+        return $entry instanceof Entry ? $entry : null;
     }
 
     /**
-     * Kennt das Verzeichnis diese Kennung noch? (013-005-0002)
+     * Does the directory still know this identifier? (013-005-0002)
      *
-     * Ohne Passwort — es geht nicht um eine Anmeldung, sondern um den Bestand. Gebunden wird
-     * nur mit dem Dienstkonto, gesucht wird mit demselben Filter wie bei der Anmeldung.
+     * Without a password — this is not about a login but about existence. The bind uses the service
+     * account only, and the search uses the same filter as the login.
      *
-     * `null` HEISST „WEISS ICH GERADE NICHT". Jede Ausnahme endet hier, und der Abgleich fasst
-     * dann niemanden an. Ein nicht erreichbares Verzeichnis darf nicht wie ein geloeschter
-     * Benutzer aussehen — sonst sperrt ein Netzwerkfehler die ganze Belegschaft aus.
+     * `null` MEANS "I CANNOT TELL RIGHT NOW". Every exception ends here, and the sync then touches
+     * nobody. An unreachable directory must not look like a deleted user — otherwise a network error
+     * locks out the whole workforce.
      */
-    public function kenntKennung(string $kennung): ?bool
+    public function knowsIdentifier(string $identifier): ?bool
     {
-        if (trim($kennung) === '') {
+        if (trim($identifier) === '') {
             return false;
         }
 
         try {
-            return $this->suchen($kennung) instanceof Entry;
+            return $this->search($identifier) instanceof Entry;
         } catch (\Throwable) {
             return null;
         }
     }
 
     /**
-     * Was das Verzeichnis an Gruppen sagt — unveraendert.
+     * What the directory reports as groups — unchanged.
      *
-     * Abgebildet wird es von `Gruppenabbildung` (013-004-0003). Hier etwas umzuschreiben hiesse,
-     * die Abbildung an zwei Stellen zu haben.
+     * They are mapped by `GroupMapping` (013-004-0003). Rewriting anything here would mean having the
+     * mapping in two places.
      *
      * @return list<string>
      */
-    private function gruppen(Entry $eintrag): array
+    private function groups(Entry $entry): array
     {
-        $werte = $eintrag->getAttribute((string) $this->einstellungen['gruppen_attribut'], false);
+        $values = $entry->getAttribute((string) $this->settings['group_attribute'], false);
 
-        if (!is_array($werte)) {
+        if (!is_array($values)) {
             return array();
         }
 
-        $gruppen = array();
+        $groups = array();
 
-        foreach ($werte as $wert) {
-            if (is_string($wert) && $wert !== '') {
-                $gruppen[] = $wert;
+        foreach ($values as $value) {
+            if (is_string($value) && $value !== '') {
+                $groups[] = $value;
             }
         }
 
-        return $gruppen;
+        return $groups;
     }
 }

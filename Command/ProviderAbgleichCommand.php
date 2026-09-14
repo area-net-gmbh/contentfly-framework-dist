@@ -2,7 +2,7 @@
 namespace Areanet\PIM\Command;
 
 use Areanet\PIM\Classes\Kernel\Command;
-use Areanet\PIM\Classes\Security\Bestandspruefung;
+use Areanet\PIM\Classes\Security\UserExistenceCheck;
 use Areanet\PIM\Entity\User;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -48,7 +48,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  * ── Was er nicht anfasst ─────────────────────────────────────────────────────────────
  *
  * Benutzer ohne `loginManager` — die haben ein lokales Passwort und gehen kein Fremdsystem
- * etwas an. Und Provider, die keine `Bestandspruefung` sind: Sie werden gezaehlt und
+ * etwas an. Und Provider, die keine `UserExistenceCheck` sind: Sie werden gezaehlt und
  * uebersprungen, sichtbar in der Ausgabe.
  */
 class ProviderAbgleichCommand extends Command
@@ -68,7 +68,7 @@ class ProviderAbgleichCommand extends Command
     {
         $app         = $this->application();
         $em          = $app['orm.em'];
-        $verzeichnis = $app['anmeldeanbieter'];
+        $verzeichnis = $app['loginProviders'];
         $trocken     = (bool) $input->getOption('dry-run');
 
         $benutzer = $em->createQuery(
@@ -83,9 +83,9 @@ class ProviderAbgleichCommand extends Command
 
         foreach ($benutzer as $eintrag) {
             $anbietername = (string) $eintrag->getLoginManager();
-            $anbieter     = $verzeichnis->holen($anbietername);
+            $anbieter     = $verzeichnis->get($anbietername);
 
-            if (!$anbieter instanceof Bestandspruefung) {
+            if (!$anbieter instanceof UserExistenceCheck) {
                 /*
                  * Zwei Faelle, ein Ergebnis: Der Anbieter ist nicht eingetragen (etwa weil ein
                  * Projekt ihn umbenannt hat), oder er kann die Frage nicht beantworten. Beide
@@ -98,7 +98,7 @@ class ProviderAbgleichCommand extends Command
 
             $geprueft++;
 
-            $bekannt = $anbieter->kenntKennung((string) $eintrag->getExternalId());
+            $bekannt = $anbieter->knowsIdentifier((string) $eintrag->getExternalId());
 
             if ($bekannt === null) {
                 // "Weiss ich gerade nicht" — dann wird nichts angefasst.

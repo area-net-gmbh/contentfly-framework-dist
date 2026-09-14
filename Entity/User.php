@@ -68,7 +68,7 @@ class User extends Base implements UserInterface
      *
      * Bis dahin stand hier der Klassenname aus `get_class($this)`. Seit `013-004-0001` waehlt
      * kein Klassenname mehr etwas aus; was hier steht, ist der Name aus dem
-     * `Anbieterverzeichnis` — `ldap`, `saml`, was ein Projekt eingetragen hat.
+     * `LoginProviderRegistry` — `ldap`, `saml`, was ein Projekt eingetragen hat.
      *
      * Ist er gesetzt, ist der Benutzer NUR ueber diesen Weg anmeldbar. Das war schon vorher so
      * und bleibt — es ist jetzt aber die zweite Sicherung und nicht mehr die einzige: Sein
