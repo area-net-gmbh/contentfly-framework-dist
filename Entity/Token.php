@@ -55,11 +55,11 @@ class Token
     /**
      * Wozu diese Zeile da ist (013-003-0001).
      *
-     * `null` heisst: ein gewoehnlicher Zugangstoken, wie bisher. `refresh` heisst: ein
+     * `null` heisst: ein gewoehnlicher JwtAccessToken, wie bisher. `refresh` heisst: ein
      * Refresh-Token, das genau eine Sache darf — ein neues Access-JWT holen.
      *
-     * DIE SPALTE IST NICHT KOSMETIK. Der opaque Zweig des `Tokenhandler` nahm bis hierhin JEDE
-     * Zeile aus `pim_token` als Zugangstoken an. Ein Refresh-Token ist aber laenger gueltig als
+     * DIE SPALTE IST NICHT KOSMETIK. Der opaque Zweig des `TokenHandler` nahm bis hierhin JEDE
+     * Zeile aus `pim_token` als JwtAccessToken an. Ein Refresh-Token ist aber laenger gueltig als
      * ein Access-JWT — das ist sein Zweck —, und ohne diesen Vermerk waere es damit ein
      * langlebiger Generalschluessel fuer die ganze API. Genau das soll das Refresh-Modell
      * verhindern.
@@ -236,7 +236,7 @@ class Token
         $this->purpose = $purpose;
     }
 
-    /** Ob diese Zeile ein Refresh-Token ist — und damit KEIN Zugangstoken. */
+    /** Ob diese Zeile ein Refresh-Token ist — und damit KEIN JwtAccessToken. */
     public function istRefreshToken(): bool
     {
         return $this->purpose === self::ZWECK_REFRESH;

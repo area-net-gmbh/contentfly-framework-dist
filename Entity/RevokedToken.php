@@ -17,7 +17,7 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * WOFUER SIE NICHT GEBRAUCHT WIRD, ist nachgemessen: Eine Benutzersperrung wirkt seit
  * `013-002-0001` sofort. Der JWT-Zweig gibt sein `UserBadge` ohne eigenen Lader zurueck, also
- * laedt der `Benutzerlader` den Benutzer aus `pim_user` und weist einen gesperrten mit derselben
+ * laedt der `UserLoader` den Benutzer aus `pim_user` und weist einen gesperrten mit derselben
  * Ausnahme ab wie einen unbekannten. Wer diese Liste fuer die Sperrung baute, baute etwas, das
  * schon steht.
  *

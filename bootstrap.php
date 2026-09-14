@@ -85,10 +85,10 @@ use Areanet\PIM\Classes\Security\Anbieterverzeichnis;
 use Areanet\PIM\Classes\Security\Anmeldebremse;
 use Areanet\PIM\Classes\Security\Benutzerbereitstellung;
 use Areanet\PIM\Classes\Security\Gruppenabbildung;
-use Areanet\PIM\Classes\Security\Anmeldetreiber;
-use Areanet\PIM\Classes\Security\Benutzerlader;
-use Areanet\PIM\Classes\Security\Tokenhandler;
-use Areanet\PIM\Classes\Security\Tokenquellen;
+use Areanet\PIM\Classes\Security\TokenAuthenticator;
+use Areanet\PIM\Classes\Security\UserLoader;
+use Areanet\PIM\Classes\Security\TokenHandler;
+use Areanet\PIM\Classes\Security\TokenSources;
 use Doctrine\DBAL\DriverManager;
 use Areanet\PIM\Classes\Kernel\ConsoleEvents;
 use Areanet\PIM\Classes\Kernel\Application;
@@ -425,10 +425,10 @@ if($app['is_installed']) {
      * AUTHENTICATION (013-002-0004).
      *
      * This is where the switch is flipped: `BaseControllerProvider::checkToken()` is gone, and
-     * Symfony's `access_token` authenticator takes its place, driven by the `Anmeldetreiber`.
+     * Symfony's `access_token` authenticator takes its place, driven by the `TokenAuthenticator`.
      *
      * THE HANDLER HAS ITS OWN KEY, not anonymous inside the driver: after authentication the
-     * caller needs `letzterToken()` for `$app['auth.token']`. The container remembers both
+     * caller needs `lastToken()` for `$app['auth.token']`. The container remembers both
      * results, so there is exactly one instance per request — which the state kept in the handler
      * relies on.
      */
@@ -442,15 +442,15 @@ if($app['is_installed']) {
         return new Gruppenabbildung($app['orm.em']);
     };
 
-    $app['tokenhandler'] = function ($app) {
-        return new Tokenhandler($app['orm.em']);
+    $app['tokenHandler'] = function ($app) {
+        return new TokenHandler($app['orm.em']);
     };
 
-    $app['anmeldetreiber'] = function ($app) {
-        return new Anmeldetreiber(
-            $app['tokenhandler'],
-            Tokenquellen::kette(),
-            new Benutzerlader($app['orm.em'])
+    $app['tokenAuthenticator'] = function ($app) {
+        return new TokenAuthenticator(
+            $app['tokenHandler'],
+            TokenSources::chain(),
+            new UserLoader($app['orm.em'])
         );
     };
 

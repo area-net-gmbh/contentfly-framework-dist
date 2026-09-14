@@ -5,8 +5,8 @@ use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Controller\BaseController;
 use Areanet\PIM\Classes\LoginProvider;
 use Areanet\PIM\Classes\Security\Fremdkennung;
-use Areanet\PIM\Classes\Security\Tokenhandler;
-use Areanet\PIM\Classes\Security\Zugangstoken;
+use Areanet\PIM\Classes\Security\TokenHandler;
+use Areanet\PIM\Classes\Security\JwtAccessToken;
 use Areanet\PIM\Entity\RevokedToken;
 use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
@@ -246,7 +246,7 @@ class AuthController extends BaseController
          */
         $jwtGewuenscht = strtolower((string) ($request->request->all()['tokenType'] ?? '')) === 'jwt';
 
-        if ($jwtGewuenscht && !Zugangstoken::eingerichtet()) {
+        if ($jwtGewuenscht && !JwtAccessToken::isConfigured()) {
             /*
              * Die Meldung richtet sich an den Betreiber, nicht an den Aufrufer: Sie nennt das
              * fehlende Feld und sonst nichts. Ueber Konten, Passwoerter oder vorhandene Tokens
@@ -263,8 +263,8 @@ class AuthController extends BaseController
         $token->setUser($user);
 
         if ($jwtGewuenscht) {
-            // Die Zeile wird zum Refresh-Token. Als Zugangstoken taugt sie damit nicht mehr —
-            // der opaque Zweig des Tokenhandler weist sie ab.
+            // Die Zeile wird zum Refresh-Token. Als JwtAccessToken taugt sie damit nicht mehr —
+            // der opaque Zweig des TokenHandler weist sie ab.
             $token->setPurpose(Token::ZWECK_REFRESH);
         }
 
@@ -283,7 +283,7 @@ class AuthController extends BaseController
         );
 
         if ($jwtGewuenscht) {
-            $zugang = Zugangstoken::ausstellen($user);
+            $zugang = JwtAccessToken::issue($user);
 
             /*
              * `token` bleibt das, was der Client vorzeigt — jetzt eben das Access-JWT. Damit
@@ -375,7 +375,7 @@ class AuthController extends BaseController
             array('token' => Token::hashen($vorgezeigt))
         );
 
-        // Kein Treffer — oder ein Treffer, der kein Refresh-Token ist. Ein Zugangstoken taugt
+        // Kein Treffer — oder ein Treffer, der kein Refresh-Token ist. Ein JwtAccessToken taugt
         // hier nicht: Sonst waere die Trennung aus 013-003-0001 in eine Richtung wieder auf.
         if (!$zeile instanceof Token || !$zeile->istRefreshToken()) {
             return $abweisen();
@@ -387,14 +387,14 @@ class AuthController extends BaseController
             return $abweisen();
         }
 
-        if (Tokenhandler::abgelaufen($zeile, $benutzer)) {
+        if (TokenHandler::isExpired($zeile, $benutzer)) {
             $this->em->remove($zeile);
             $this->em->flush();
 
             return $abweisen();
         }
 
-        if (!Zugangstoken::eingerichtet()) {
+        if (!JwtAccessToken::isConfigured()) {
             return new JsonResponse(
                 array('message' => 'JWT sind auf dieser Installation nicht eingerichtet: SECURITY_JWT_SECRET fehlt.'),
                 500
@@ -424,7 +424,7 @@ class AuthController extends BaseController
 
         $this->app['auth.user'] = $benutzer;
 
-        $zugang = Zugangstoken::ausstellen($benutzer);
+        $zugang = JwtAccessToken::issue($benutzer);
 
         return new JsonResponse(array(
             'message'      => 'Refresh successful',
@@ -476,7 +476,7 @@ class AuthController extends BaseController
          * Ohne mitgeschicktes Refresh-Token wird nur das Access-JWT gesperrt; die Refresh-Zeile
          * verfaellt dann ueber ihr eigenes Zeitlimit.
          */
-        if (($claims = $this->app['tokenhandler']->letzteClaims())) {
+        if (($claims = $this->app['tokenHandler']->lastClaims())) {
             $sperre = new RevokedToken();
             $sperre->setJti((string) $claims['jti']);
             $sperre->setExpiresAt((new \DateTime())->setTimestamp((int) $claims['exp']));

@@ -33,12 +33,12 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
      *
      * TOKEN_HEADER_KEY ('appcms-token'), TOKEN_HEADER_KEY_ALT ('X-XSRF-TOKEN') und
      * TOKEN_REQUEST_KEY ('_token') standen hier, weil `checkToken()` sie las. Die Methode gibt
-     * es nicht mehr; die Werte stehen jetzt in `Areanet\PIM\Classes\Security\Tokenquellen`,
+     * es nicht mehr; die Werte stehen jetzt in `Areanet\PIM\Classes\Security\TokenSources`,
      * zusammen mit dem Code, der sie benutzt.
      *
      * Sie hier stehen zu lassen waere schlimmer als sie zu entfernen: Drei oeffentliche
      * Konstanten, die nichts mehr steuern, sehen beim naechsten Lesen aus wie die Stelle, an
-     * der man die Tokenquellen aendert. Die Bruchstelle steht in
+     * der man die TokenSources aendert. Die Bruchstelle steht in
      * an_project/docs/breaking-changes.md.
      */
 
@@ -158,9 +158,9 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
      * `pim_token` nach, prueste Benutzer und Timeout und schrieb `modified` zurueck — alles in
      * einem Rumpf. Dasselbe steht jetzt auf drei Klassen verteilt, jede fuer sich pruefbar:
      *
-     *   Tokenquellen     woher ein Token kommen darf, in der Reihenfolge von frueher
-     *   Tokenhandler     die Verzweigung: JWT oder `pim_token`
-     *   Anmeldetreiber   faehrt den Authenticator und faengt jeden Fehlschlag gleich ab
+     *   TokenSources     woher ein Token kommen darf, in der Reihenfolge von frueher
+     *   TokenHandler     die Verzweigung: JWT oder `pim_token`
+     *   TokenAuthenticator   faehrt den Authenticator und faengt jeden Fehlschlag gleich ab
      *
      * WAS BLEIBT, IST DIE SCHNITTSTELLE NACH AUSSEN: ein `bool`, und im Erfolgsfall stehen
      * `$app['auth.user']` und `$app['auth.token']` wie bisher. Das Contentfly-eigene
@@ -173,14 +173,14 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
      */
     protected function anmelden(Request $request, Application $app): bool
     {
-        $benutzer = $app['anmeldetreiber']->benutzer($request);
+        $benutzer = $app['tokenAuthenticator']->user($request);
 
         if (!$benutzer instanceof User) {
             return false;
         }
 
         $app['auth.user']  = $benutzer;
-        $app['auth.token'] = $app['tokenhandler']->letzterToken();
+        $app['auth.token'] = $app['tokenHandler']->lastToken();
 
         return true;
     }

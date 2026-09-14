@@ -375,78 +375,74 @@ class Config{
     public $SECURITY_CIPHER_KEY    = null;
 
     /**
-     * Das Signaturgeheimnis fuer JWT.
+     * The signing secret for JWTs.
      *
-     * NEU MIT 013-002-0003, und wie `SECURITY_CIPHER_KEY` **ohne Standardwert**. Ein im
-     * Repository hinterlegtes Geheimnis ist keines: Jede Installation, die vergisst es zu
-     * setzen, signierte dann mit einem oeffentlich bekannten Wert — und niemand merkt es, weil
-     * alles funktioniert. Ohne Wert weist der JWT-Zweig jeden Token ab, statt ihn
-     * stillschweigend zu ueberspringen.
+     * NEW WITH 013-002-0003, and like `SECURITY_CIPHER_KEY` **without a default value**. A secret
+     * stored in the repository is no secret: every installation that forgets to set it would then
+     * sign with a publicly known value — and nobody notices, because everything works. Without a
+     * value the JWT branch rejects every token instead of silently skipping it.
      *
-     * Der Wert gehoert in die Umgebung, nicht in eine committete Datei; die ausgelieferte
-     * `custom/config.php` liest ihn von dort.
+     * The value belongs in the environment, not in a committed file; the shipped
+     * `custom/config.php` reads it from there.
      *
-     * MINDESTENS 32 BYTE. `firebase/php-jwt` ab 7.0 weist ein kuerzeres Geheimnis fuer HS256 ab
-     * („Provided key is too short") — beim Signieren wie beim Pruefen. Der Handler faengt das
-     * mit jedem anderen Fehler ab: Ein Betreiber mit zu kurzem Geheimnis bekommt kein halb
-     * funktionierendes System, sondern gar keines. Das ist die richtige Richtung, denn HS256
-     * mit einem kurzen Geheimnis ist ratbar.
+     * AT LEAST 32 BYTES. `firebase/php-jwt` from 7.0 rejects a shorter secret for HS256
+     * ("Provided key is too short") — when signing as well as when verifying. The handler catches
+     * that together with every other error: an operator with a secret that is too short does not
+     * get a half-working system but none at all. That is the right direction, because HS256 with a
+     * short secret can be guessed.
      *
-     * Ausgestellt werden JWT erst mit `013-003`. Diese Fassung verifiziert nur — Schluesselwechsel
-     * mit Kennung im Token-Header und Uebergangszeit gehoeren zu jener Story.
+     * JWTs are only issued from `013-003` on. This version only verifies — key rotation with a key
+     * ID in the token header and a transition period belong to that story.
      *
      * @var string|null
      */
     public $SECURITY_JWT_SECRET    = null;
 
     /**
-     * Lebensdauer eines Access-JWT in Sekunden. Vorgabe: 15 Minuten.
+     * Lifetime of an access JWT in seconds. Default: 15 minutes.
      *
-     * NEU MIT 013-003-0001. Kurzlebigkeit ist die ganze Sicherheitsleistung eines zustandslosen
-     * Tokens: Es laesst sich nicht zurueckrufen, solange es gilt, also entscheidet die Dauer
-     * ueber die Groesse des Fensters. Erneuert wird ueber das Refresh-Token, ohne dass sich
-     * jemand neu anmelden muss.
+     * NEW WITH 013-003-0001. Being short-lived is the entire security feature of a stateless token:
+     * it cannot be recalled while it is valid, so its duration decides the size of the window. It
+     * is renewed through the refresh token without anyone having to log in again.
      *
-     * Wer den Wert hochsetzt, kauft sich Bequemlichkeit mit genau diesem Fenster.
+     * Whoever raises the value buys convenience with exactly this window.
      *
      * @var integer
      */
     public $SECURITY_JWT_TTL       = 900;
 
     /**
-     * Die Kennung des aktuellen Signaturschluessels — sie steht als `kid` im Token-Header.
+     * The ID of the current signing key — it appears as `kid` in the token header.
      *
-     * NEU MIT 013-003-0004. Ohne Kennung liesse sich ein Schluessel nur wechseln, indem man alle
-     * laufenden Sitzungen beendet — und ein Schluessel, dessen Wechsel wehtut, wird nicht
-     * gewechselt. Damit waere ein Leak dauerhaft.
+     * NEW WITH 013-003-0004. Without an ID a key could only be rotated by ending all running
+     * sessions — and a key whose rotation hurts does not get rotated. A leak would then be
+     * permanent.
      *
-     * Der Wert ist ein Name, kein Geheimnis: Er steht im Klartext in jedem Token. `k1`, `k2`,
-     * ein Datum — was immer beim naechsten Wechsel erkennbar macht, welcher Schluessel gemeint
-     * ist.
+     * The value is a name, not a secret: it appears in plain text in every token. `k1`, `k2`, a
+     * date — whatever makes it recognisable at the next rotation which key is meant.
      *
      * @var string
      */
     public $SECURITY_JWT_KEY_ID    = 'k1';
 
     /**
-     * Der vorherige Signaturschluessel, waehrend einer Uebergangszeit.
+     * The previous signing key, during a transition period.
      *
-     * SO LAEUFT EIN WECHSEL AB: Den bisherigen Wert hierher, einen neuen nach
-     * `SECURITY_JWT_SECRET`, beide Kennungen setzen. Signiert wird ab sofort mit dem neuen,
-     * angenommen werden beide — niemand muss sich neu anmelden. Wenn das laengste zu dieser Zeit
-     * ausgestellte Access-JWT abgelaufen ist (`SECURITY_JWT_TTL`), koennen die beiden
-     * `*_PREVIOUS`-Felder wieder leer.
+     * HOW A ROTATION WORKS: move the current value here, put a new one in `SECURITY_JWT_SECRET`,
+     * set both key IDs. From then on tokens are signed with the new key, and both are accepted —
+     * nobody has to log in again. Once the longest access JWT issued at that time has expired
+     * (`SECURITY_JWT_TTL`), the two `*_PREVIOUS` fields can be emptied again.
      *
      * @var string|null
      */
     public $SECURITY_JWT_SECRET_PREVIOUS = null;
 
     /**
-     * Die Kennung des vorherigen Schluessels.
+     * The ID of the previous key.
      *
-     * Muss sich von `SECURITY_JWT_KEY_ID` unterscheiden — sonst zeigten zwei Kennungen auf
-     * denselben Namen, und eine der beiden Faessungen verschwaende stillschweigend. Die Anwendung
-     * weist das ab, statt es geschehen zu lassen.
+     * Must differ from `SECURITY_JWT_KEY_ID` — otherwise two IDs would point to the same name, and
+     * one of the two keys would silently disappear. The application rejects that instead of letting
+     * it happen.
      *
      * @var string|null
      */

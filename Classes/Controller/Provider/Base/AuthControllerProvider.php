@@ -36,7 +36,7 @@ class AuthControllerProvider extends BaseControllerProvider
         /*
          * `/refresh` OHNE $checkAuth (013-003-0002).
          *
-         * Ein Refresh-Token ist kein Zugangstoken — der Tokenhandler weist es ausdruecklich ab.
+         * Ein Refresh-Token ist kein JwtAccessToken — der TokenHandler weist es ausdruecklich ab.
          * Haenge man die Anmeldung davor, waere der Endpunkt nur mit einem gueltigen Access-JWT
          * erreichbar, also genau dann nicht, wenn man ihn braucht: nach dessen Ablauf.
          *

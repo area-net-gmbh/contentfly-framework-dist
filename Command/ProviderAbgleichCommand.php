@@ -26,7 +26,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * `isActive` auf false. Drei Gruende:
  *
- *   Es wirkt sofort.   Der `Benutzerlader` weist einen inaktiven Benutzer ab (013-002-0001),
+ *   Es wirkt sofort.   Der `UserLoader` weist einen inaktiven Benutzer ab (013-002-0001),
  *                      und zwar auf JEDEM Weg — laufende Access-JWT fallen mit, weil der
  *                      Benutzer bei jedem Request geladen wird. Auch der Refresh-Endpunkt
  *                      lehnt ab (013-003-0002).
