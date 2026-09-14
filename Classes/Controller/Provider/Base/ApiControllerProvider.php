@@ -27,27 +27,27 @@ class ApiControllerProvider extends BaseControllerProvider
         $controllers = new RouteCollector();
 
         $checkAuth = function (Request $request, Application $app) {
-            if (!$this->anmelden($request, $app)) {
+            if (!$this->authenticate($request, $app)) {
                 throw new ContentflyException(Messages::contentfly_general_access_denied, null, Messages::contentfly_status_invalid_token);
             }
         };
 
         /*
-         * `/api/login` UND `/api/logout` SIND ENTFALLEN (013-001-0005).
+         * `/api/login` AND `/api/logout` HAVE BEEN REMOVED (013-001-0005).
          *
-         * Sie zeigten auf `api.controller:loginAction` und `:logoutAction` — beide Methoden gibt
-         * es im ApiController nicht und gab es in diesem Baum nie.
+         * They pointed to `api.controller:loginAction` and `:logoutAction` — neither method
+         * exists in the ApiController, and neither ever existed in this tree.
          *
-         * Aufgefallen sind sie nie, weil sie den Router gar nicht erreichten: `RouteCollector`
-         * zaehlt je Provider durch, `/api/login` hiess `login_0` und wurde beim Mounten von
-         * `/auth/login` gleichen Namens verdraengt. Der Namensvetter ist mit demselben Task
-         * behoben — womit diese beiden Routen erstmals wirksam geworden waeren, und zwar als
-         * Fehler aus dem Controller-Resolver statt als 405.
+         * They were never noticed because they never even reached the router: `RouteCollector`
+         * numbers routes per provider, `/api/login` was named `login_0` and was displaced when
+         * `/auth/login` with the same name was mounted. The name clash is fixed by the same
+         * task — which would have made these two routes effective for the first time, namely
+         * as an error from the controller resolver instead of a 405.
          *
-         * ENTFERNT STATT UMGEBOGEN. Sie auf `auth.controller` zeigen zu lassen waere ein
-         * zweiter Name fuer dieselbe Sache und eine zweite Oberflaeche, die man absichern muss.
-         * Die funktionierenden Routen sind `/auth/login` und `/auth/logout`; ein Aufruf von
-         * `/api/login` antwortet mit 405, wie jeder unbekannte Pfad.
+         * REMOVED INSTEAD OF REDIRECTED. Pointing them to `auth.controller` would be a second
+         * name for the same thing and a second surface that has to be secured. The working
+         * routes are `/auth/login` and `/auth/logout`; a call to `/api/login` responds with
+         * 405, like any unknown path.
          */
         $controllers->post('/single', "api.controller:singleAction")->before($checkAuth);
         $controllers->post('/list',   "api.controller:listAction")->before($checkAuth);

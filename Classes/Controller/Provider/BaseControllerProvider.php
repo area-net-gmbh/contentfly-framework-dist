@@ -12,33 +12,33 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
 {
 
     /*
-     * LOGIN_PATH UND isAuthRequiredForPath() SIND ENTFALLEN (000-000-0026).
+     * LOGIN_PATH AND isAuthRequiredForPath() HAVE BEEN REMOVED (000-000-0026).
      *
-     * Die Methode gab zurueck, ob ein Pfad eine Anmeldung braucht — und niemand rief sie.
-     * Nicht seit `013-002-0004`, sondern nie: Auch `checkToken()` hat sie nicht benutzt.
-     * Nachgemessen ueber `lib/`, `custom/`, `plugins/`, `tests/` und `bin/`: ausser ihrer
-     * eigenen Definition kein einziger Treffer.
+     * The method returned whether a path requires authentication — and nobody called it.
+     * Not since `013-002-0004`, but never: `checkToken()` did not use it either. Checked
+     * across `lib/`, `custom/`, `plugins/`, `tests/` and `bin/`: apart from its own
+     * definition, not a single hit.
      *
-     * Sie zu entfernen ist mehr als Aufraeumen. Beim Lesen sah sie aus wie die Stelle, an der
-     * man steuert, welche Pfade offen sind — und das tut sie nicht. Diese Entscheidung faellt
-     * je Route: ueber `isSecure` im `RouteManager`, beziehungsweise ueber den
-     * `$checkAuth`-Hook der Provider. Eine Methode, die einen Schalter vortaeuscht, den es
-     * woanders gibt, ist gefaehrlicher als gar keine.
+     * Removing it is more than tidying up. When reading, it looked like the place where you
+     * control which paths are open — and it does not do that. That decision is made per
+     * route: via `isSecure` in the `RouteManager`, or via the providers' `$checkAuth` hook. A
+     * method that pretends to be a switch that exists elsewhere is more dangerous than none
+     * at all.
      *
-     * Die Bruchstelle steht in an_project/docs/breaking-changes.md.
+     * The breaking change is recorded in an_project/docs/breaking-changes.md.
      */
 
     /*
-     * DIE DREI TOKEN-KONSTANTEN SIND ENTFALLEN (013-002-0004).
+     * THE THREE TOKEN CONSTANTS HAVE BEEN REMOVED (013-002-0004).
      *
-     * TOKEN_HEADER_KEY ('appcms-token'), TOKEN_HEADER_KEY_ALT ('X-XSRF-TOKEN') und
-     * TOKEN_REQUEST_KEY ('_token') standen hier, weil `checkToken()` sie las. Die Methode gibt
-     * es nicht mehr; die Werte stehen jetzt in `Areanet\PIM\Classes\Security\TokenSources`,
-     * zusammen mit dem Code, der sie benutzt.
+     * TOKEN_HEADER_KEY ('appcms-token'), TOKEN_HEADER_KEY_ALT ('X-XSRF-TOKEN') and
+     * TOKEN_REQUEST_KEY ('_token') lived here because `checkToken()` read them. The method no
+     * longer exists; the values now live in `Areanet\PIM\Classes\Security\TokenSources`,
+     * together with the code that uses them.
      *
-     * Sie hier stehen zu lassen waere schlimmer als sie zu entfernen: Drei oeffentliche
-     * Konstanten, die nichts mehr steuern, sehen beim naechsten Lesen aus wie die Stelle, an
-     * der man die TokenSources aendert. Die Bruchstelle steht in
+     * Leaving them here would be worse than removing them: three public constants that no
+     * longer control anything look, on the next read, like the place where you change the
+     * TokenSources. The breaking change is recorded in
      * an_project/docs/breaking-changes.md.
      */
 
@@ -54,25 +54,25 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
     {
         $app->before(function (Request $request)use ($app) {
 
-            // Nicht installiert: Frueher fuehrte hier ein Redirect auf die Installer-Maske.
-            // Die gibt es nicht mehr - installiert wird auf der Kommandozeile. Statt eines
-            // Redirects ins Leere sagen wir, was zu tun ist.
+            // Not installed: this used to redirect to the installer screen. That no longer
+            // exists - installation happens on the command line. Instead of a redirect to
+            // nowhere, we say what needs to be done.
             if (Adapter::getConfig()->DB_HOST == '$SET_DB_HOST') {
                 return new \Symfony\Component\HttpFoundation\JsonResponse(array(
-                    'message' => 'Contentfly ist nicht installiert. Installation ausfuehren: php bin/console.php appcms:install'
+                    'message' => 'Contentfly is not installed. Run the installation: php bin/console.php appcms:install'
                 ), 503);
             }
 
             /*
-             * HIER LANDET DIE NUTZLAST — und deshalb lesen die Controller sie aus
+             * THIS IS WHERE THE PAYLOAD LANDS — and that is why the controllers read it from
              * `$request->request` (009-003-0001).
              *
-             * Der JSON-Rumpf wird dekodiert und in den request-Beutel gelegt. Bis Symfony 7.4
-             * las der Code ihn mit `$request->get()`, das der Reihe nach `attributes`, `query`
-             * und `request` durchsucht; die Methode ist jetzt deprecated und faellt in Symfony
-             * 8 weg. Ersetzt wurde sie je Aufrufstelle durch die Quelle, die tatsaechlich
-             * gemeint ist — 73 Mal `request`, viermal `attributes` fuer `_controller`, das der
-             * Router setzt.
+             * The JSON body is decoded and put into the request bag. Up to Symfony 7.4 the
+             * code read it with `$request->get()`, which searches `attributes`, `query` and
+             * `request` in that order; the method is now deprecated and is removed in Symfony
+             * 8. It was replaced at each call site by the source that is actually meant — 73
+             * times `request`, four times `attributes` for `_controller`, which the router
+             * sets.
              */
             if ($request->headers->get('Content-Type') && (0 === strpos($request->headers->get('Content-Type'), 'application/json'))) {
                 $data = null;
@@ -92,11 +92,11 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                 $event->setParam('request', $request);
                 $event->setParam('app', $app);
                 /*
-                 * `_controller` fehlt bei internen Anfragen ganz — der Fall ist gueltig, der
-                 * Hook hat dann nichts zu verteilen. Bis PHP 8.0 ergab strtolower(null) still
-                 * "", seit 8.1 ist es eine Deprecation und ab PHP 9 ein TypeError
-                 * (000-000-0023). Benannt statt weggecastet: Ein (string)-Cast haette die
-                 * Meldung beseitigt und die Frage versteckt, warum hier null ankommt.
+                 * `_controller` is missing entirely for internal requests — the case is valid,
+                 * the hook then has nothing to dispatch. Up to PHP 8.0, strtolower(null)
+                 * silently returned "", since 8.1 it is a deprecation and from PHP 9 on a
+                 * TypeError (000-000-0023). Named instead of cast away: a (string) cast would
+                 * have removed the notice and hidden the question of why null arrives here.
                  */
                 $controller = $request->attributes->get('_controller');
                 if (!is_string($controller)) {
@@ -126,11 +126,11 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
                 $event->setParam('app', $app);
 
                 /*
-                 * `_controller` fehlt bei internen Anfragen ganz — der Fall ist gueltig, der
-                 * Hook hat dann nichts zu verteilen. Bis PHP 8.0 ergab strtolower(null) still
-                 * "", seit 8.1 ist es eine Deprecation und ab PHP 9 ein TypeError
-                 * (000-000-0023). Benannt statt weggecastet: Ein (string)-Cast haette die
-                 * Meldung beseitigt und die Frage versteckt, warum hier null ankommt.
+                 * `_controller` is missing entirely for internal requests — the case is valid,
+                 * the hook then has nothing to dispatch. Up to PHP 8.0, strtolower(null)
+                 * silently returned "", since 8.1 it is a deprecation and from PHP 9 on a
+                 * TypeError (000-000-0023). Named instead of cast away: a (string) cast would
+                 * have removed the notice and hidden the question of why null arrives here.
                  */
                 $controller = $request->attributes->get('_controller');
                 if (!is_string($controller)) {
@@ -152,34 +152,33 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
     }
 
     /**
-     * Meldet den Request an — ueber Symfonys `access_token`-Authenticator (013-002-0004).
+     * Authenticates the request — via Symfony's `access_token` authenticator (013-002-0004).
      *
-     * `checkToken()` IST ENTFALLEN. Die Methode las den Token aus vier Quellen, schlug ihn in
-     * `pim_token` nach, prueste Benutzer und Timeout und schrieb `modified` zurueck — alles in
-     * einem Rumpf. Dasselbe steht jetzt auf drei Klassen verteilt, jede fuer sich pruefbar:
+     * `checkToken()` HAS BEEN REMOVED. The method read the token from four sources, looked it
+     * up in `pim_token`, checked user and timeout and wrote `modified` back — all in one body.
+     * The same is now spread across three classes, each testable on its own:
      *
-     *   TokenSources     woher ein Token kommen darf, in der Reihenfolge von frueher
-     *   TokenHandler     die Verzweigung: JWT oder `pim_token`
-     *   TokenAuthenticator   faehrt den Authenticator und faengt jeden Fehlschlag gleich ab
+     *   TokenSources     where a token may come from, in the same order as before
+     *   TokenHandler     the branching: JWT or `pim_token`
+     *   TokenAuthenticator   runs the authenticator and catches every failure right away
      *
-     * WAS BLEIBT, IST DIE SCHNITTSTELLE NACH AUSSEN: ein `bool`, und im Erfolgsfall stehen
-     * `$app['auth.user']` und `$app['auth.token']` wie bisher. Das Contentfly-eigene
-     * Berechtigungsmodell liest sie an Dutzenden Stellen; es durch Symfony-Rollen zu ersetzen
-     * ist ausdruecklich nicht Teil dieser Story.
+     * WHAT REMAINS IS THE OUTWARD INTERFACE: a `bool`, and on success `$app['auth.user']` and
+     * `$app['auth.token']` are set as before. Contentfly's own permission model reads them in
+     * dozens of places; replacing it with Symfony roles is explicitly not part of this story.
      *
-     * `$app['auth.token']` KANN JETZT NULL SEIN. Im JWT-Zweig gibt es keine Zeile in
-     * `pim_token` — das ist der ganze Gewinn dieses Zweigs. Gelesen wird der Schluessel nur
-     * beim Abmelden, und der Fall ist dort behandelt.
+     * `$app['auth.token']` CAN NOW BE NULL. In the JWT branch there is no row in `pim_token` —
+     * that is the whole benefit of this branch. The key is only read on logout, and the case
+     * is handled there.
      */
-    protected function anmelden(Request $request, Application $app): bool
+    protected function authenticate(Request $request, Application $app): bool
     {
-        $benutzer = $app['tokenAuthenticator']->user($request);
+        $user = $app['tokenAuthenticator']->user($request);
 
-        if (!$benutzer instanceof User) {
+        if (!$user instanceof User) {
             return false;
         }
 
-        $app['auth.user']  = $benutzer;
+        $app['auth.user']  = $user;
         $app['auth.token'] = $app['tokenHandler']->lastToken();
 
         return true;

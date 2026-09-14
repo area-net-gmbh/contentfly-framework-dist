@@ -29,32 +29,32 @@ class SystemControllerProvider extends BaseControllerProvider
 
         $checkAuth = function (Request $request, Application $app) {
             try {
-                if (!$this->anmelden($request, $app)) {
-                    throw new AccessDeniedHttpException('Zugriff verweigert', null, 401);
+                if (!$this->authenticate($request, $app)) {
+                    throw new AccessDeniedHttpException('Access denied', null, 401);
                 }
                 if (!$app['auth.user']->getIsAdmin()) {
-                    throw new AccessDeniedHttpException('Zugriff nur für Administratoren gestattet', null, 401);
+                    throw new AccessDeniedHttpException('Access is restricted to administrators', null, 401);
                 }
             }catch(InvalidFieldNameException $e){
 
                 /*
-                 * DAS NOTSCHLOSS — und warum nur noch updateDatabase darin steht
+                 * THE EMERGENCY LOCK — and why only updateDatabase is left in it
                  * (000-000-0015).
                  *
-                 * Ist das Schema kaputt, scheitert schon das Laden von Benutzer und Token mit
-                 * einer InvalidFieldNameException. Dann waere auch der Weg versperrt, der das
-                 * Schema wieder in Ordnung bringt. Diese Ausnahme laesst genau ihn durch.
+                 * If the schema is broken, even loading the user and token fails with an
+                 * InvalidFieldNameException. Then the very path that puts the schema back in
+                 * order would be blocked too. This exception lets exactly that path through.
                  *
-                 * `validateORM` stand hier ebenfalls — die Methode gibt es im Controller
-                 * nicht. Die Bedingung oeffnete die Tuer fuer etwas, das dahinter ohnehin
-                 * abgewiesen wurde: eine Ausnahme ins Leere.
+                 * `validateORM` used to be here as well — the method does not exist in the
+                 * controller. The condition opened the door for something that was rejected
+                 * behind it anyway: an exception leading nowhere.
                  *
-                 * GESTRICHEN STATT WIEDERHERGESTELLT. Doctrine braechte mit SchemaValidator
-                 * alles mit, und der Import steht noch oben in der Datei — aber eine
-                 * wiederhergestellte Methode waere ein zweiter Endpunkt, der OHNE Token und
-                 * OHNE Adminrecht erreichbar ist. Ein Notschloss soll so klein sein wie
-                 * moeglich; wer den Schemazustand pruefen will, kann das mit einem
-                 * Console-Command tun, der keine offene Tuer braucht.
+                 * DROPPED INSTEAD OF RESTORED. Doctrine would provide everything via
+                 * SchemaValidator, and the import is still at the top of the file — but a
+                 * restored method would be a second endpoint reachable WITHOUT a token and
+                 * WITHOUT admin rights. An emergency lock should be as small as possible;
+                 * whoever wants to check the schema state can do so with a console command
+                 * that needs no open door.
                  */
                 if(($request->request->all()['method'] ?? null) == 'updateDatabase'){
 

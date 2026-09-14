@@ -34,8 +34,8 @@ class CustomControllerProvider extends BaseControllerProvider
 
         $controllers = new RouteCollector();
         $checkAuth = function (Request $request, Application $app) {
-            if (!$this->anmelden($request, $app) && !$app['auth.user']) {
-                throw new AccessDeniedHttpException('Zugriff verweigert', null, 401);
+            if (!$this->authenticate($request, $app) && !$app['auth.user']) {
+                throw new AccessDeniedHttpException('Access denied', null, 401);
             }
         };
 

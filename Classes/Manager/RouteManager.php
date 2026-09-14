@@ -25,14 +25,14 @@ class RouteManager extends Manager
     public function bindRoutes(){
         foreach($this->controllerProviders as $mountPath => $controllerProvider){
             /*
-             * connect() wird hier selbst gerufen (009-001-0003).
+             * connect() is called here directly (009-001-0003).
              *
-             * Vorher stand hier `mount($mountPath, $controllerProvider)`. Silex erkennt einen
-             * Provider daran, dass er `Silex\Api\ControllerProviderInterface` implementiert,
-             * und ruft `connect()` dann selbst. Die Provider implementieren stattdessen die
-             * eigene Schnittstelle — also wird `connect()` hier gerufen und die fertige
-             * Sammlung uebergeben. `mount()` nimmt sie unveraendert entgegen; das Ergebnis ist
-             * dasselbe, nur ohne Silex' Erkennung dazwischen.
+             * Previously this read `mount($mountPath, $controllerProvider)`. Silex recognises a
+             * provider by the fact that it implements `Silex\Api\ControllerProviderInterface`,
+             * and then calls `connect()` itself. The providers implement our own interface
+             * instead — so `connect()` is called here and the finished collection is passed
+             * on. `mount()` accepts it unchanged; the result is the same, just without Silex'
+             * detection in between.
              */
             $this->app->mount($mountPath, $controllerProvider->connect($this->app));
         }

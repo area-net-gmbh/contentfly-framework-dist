@@ -27,18 +27,18 @@ class SystemController extends BaseController
     /**
      * @apiVersion 1.3.0
      * @api {post} /system/do do
-     * @apiName Ausführen
-     * @apiDescription Führt Systembefehle aus.
+     * @apiName Execute
+     * @apiDescription Executes system commands.
      * @apiGroup System
      * @apiHeader {String} X-Token Acces-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} method Auszuführende Methode
-     * @apiParamExample {json} Schema-Cache leeren:
+     * @apiParam {String} method Method to execute
+     * @apiParamExample {json} Flush schema cache:
      *     {
      *      "method": "flushSchemaCache",
      *     }
-     * @apiParamExample {json} Datenbank synchronisieren:
+     * @apiParamExample {json} Synchronise database:
      *     {
      *      "method": "updateDatabase",
      *     }
@@ -50,10 +50,10 @@ class SystemController extends BaseController
      *   }
      */
     /**
-     * Die ueber `POST /system/do` aufrufbaren Methoden (000-000-0015).
+     * The methods callable via `POST /system/do` (000-000-0015).
      *
-     * Ausgeschrieben statt abgeleitet: Wer eine Methode hinzufuegt, entscheidet damit auch,
-     * ob sie ein Endpunkt sein soll.
+     * Spelled out instead of derived: whoever adds a method thereby also decides whether it
+     * should be an endpoint.
      */
     private const ERLAUBTE_METHODEN = array(
         'flushSchemaCache',
@@ -69,28 +69,28 @@ class SystemController extends BaseController
         $method = ($request->request->all()['method'] ?? null);
 
         /*
-         * ERLAUBNISLISTE STATT method_exists (000-000-0015).
+         * ALLOWLIST INSTEAD OF method_exists (000-000-0015).
          *
-         * Das Tor war `method_exists($this, $method)` — und damit erreichbar, was immer der
-         * Controller oder seine Basisklasse mitbringt:
+         * The gate was `method_exists($this, $method)` — and thus anything the controller or
+         * its base class brings along was reachable:
          *
-         *   doAction         ist public, besteht die Pruefung und ruft sich selbst auf. Die
-         *                    Rekursion endet erst am memory_limit — mit dem Standardwert nach
-         *                    etwa 0,2 s in einem Fatal Error, OHNE Limit gar nicht.
-         *   setEM,           kommen aus BaseController, werden aufgerufen und scheitern erst
-         *   __construct      an ihrer Typpruefung. Die Grenze zog die Signatur, nicht der
-         *                    Endpunkt.
+         *   doAction         is public, passes the check and calls itself. The recursion only
+         *                    ends at memory_limit — with the default value in a fatal error
+         *                    after about 0.2 s, WITHOUT a limit not at all.
+         *   setEM,           come from BaseController, get called and only fail at their
+         *   __construct      type check. The boundary was drawn by the signature, not by the
+         *                    endpoint.
          *
-         * Die Liste nennt jetzt, was aufgerufen werden darf. Sie ist bewusst ausgeschrieben
-         * und nicht aus Reflection abgeleitet: Was hier steht, ist eine Entscheidung, keine
-         * Eigenschaft der Klasse — sonst waere jede neue Methode automatisch ein Endpunkt.
+         * The list now names what may be called. It is deliberately spelled out and not
+         * derived via reflection: what stands here is a decision, not a property of the
+         * class — otherwise every new method would automatically be an endpoint.
          *
-         * `method` fehlt, wenn der Aufrufer sie nicht mitschickt. Bis PHP 8.0 ergab
-         * method_exists($this, null) still false, seit 8.1 ist es eine Deprecation
+         * `method` is missing if the caller does not send it. Up to PHP 8.0,
+         * method_exists($this, null) silently returned false; since 8.1 it is a deprecation
          * (000-000-0023).
          */
         if (!is_string($method) || !in_array($method, self::ERLAUBTE_METHODEN, true)) {
-            throw new \Exception('Methode '.(is_string($method) ? $method : '').' nicht verfügbar.');
+            throw new \Exception('Method '.(is_string($method) ? $method : '').' is not available.');
         }
 
         $date = new \DateTime();
@@ -99,20 +99,20 @@ class SystemController extends BaseController
     }
 
     /**
-     * Leert den Schema-Cache: die Datei und die beiden Doctrine-Caches.
+     * Flushes the schema cache: the file and the two Doctrine caches.
      *
-     * PSR-6 STATT doctrine/cache (010-002-0003). Hier stand
-     * `getQueryCacheImpl()->deleteAll()`. Die `…Impl()`-Getter liefern heute noch etwas — ORM
-     * 2.20 verpackt den PSR-6-Pool in `Doctrine\Common\Cache\Psr6\DoctrineProvider` —, aber
-     * diese Bruecke liegt in `doctrine/cache`, und das Paket geht mit `010-002-0004`.
+     * PSR-6 INSTEAD OF doctrine/cache (010-002-0003). This used to read
+     * `getQueryCacheImpl()->deleteAll()`. The `…Impl()` getters still return something today —
+     * ORM 2.20 wraps the PSR-6 pool in `Doctrine\Common\Cache\Psr6\DoctrineProvider` — but
+     * this bridge lives in `doctrine/cache`, and that package goes away with `010-002-0004`.
      *
-     * DIE PRUEFUNG AUF `null` IST NICHT VORSORGLICH, SONDERN NOETIG. Der Cache wird im
-     * Bootstrap nur eingerichtet, wenn `!APP_DEBUG && !APPCMS_CONSOLE` gilt; ohne ihn liefern
-     * die Getter `null`. Bisher stand hier stattdessen `if(!APP_DEBUG)` — dieselbe Bedingung,
-     * aber nur die halbe: An `APPCMS_CONSOLE` war nicht gedacht. Dass es gutging, lag daran,
-     * dass diese Methode ueber HTTP gerufen wird und die Konstante dort nie gesetzt ist. Zwei
-     * Bedingungen, die an verschiedenen Stellen stehen und sich zufaellig decken, sind eine
-     * Verabredung auf Zeit; die Methode fragt jetzt selbst.
+     * THE CHECK FOR `null` IS NOT PRECAUTIONARY BUT NECESSARY. The cache is only set up in the
+     * bootstrap when `!APP_DEBUG && !APPCMS_CONSOLE` holds; without it the getters return
+     * `null`. Previously this read `if(!APP_DEBUG)` instead — the same condition, but only
+     * half of it: `APPCMS_CONSOLE` had not been considered. That it worked out was because
+     * this method is called via HTTP and the constant is never set there. Two conditions that
+     * live in different places and happen to coincide are a temporary arrangement; the method
+     * now asks for itself.
      */
     protected function flushSchemaCache(Request $request)
     {
@@ -120,15 +120,15 @@ class SystemController extends BaseController
             unlink(Paths::data().'/cache/schema.cache');
         }
 
-        $konfiguration = $this->app['orm.em']->getConfiguration();
+        $configuration = $this->app['orm.em']->getConfiguration();
 
-        foreach (array($konfiguration->getQueryCache(), $konfiguration->getMetadataCache()) as $cache) {
+        foreach (array($configuration->getQueryCache(), $configuration->getMetadataCache()) as $cache) {
             if ($cache !== null) {
                 $cache->clear();
             }
         }
 
-        return 'Schema-Cache wurde geleert!';
+        return 'Schema cache cleared!';
     }
 
     protected function updateDatabase(Request $request)
@@ -142,7 +142,7 @@ class SystemController extends BaseController
             return $e->getMessage();
         }
 
-        return "Die Datenbank wurde erfolgreich aktualisiert.";
+        return "The database was updated successfully.";
     }
     
 
@@ -152,7 +152,7 @@ class SystemController extends BaseController
 
         $token = $this->em->getRepository('Areanet\\PIM\\Entity\\Token')->find($id);
         if(!$token){
-            throw new \Exception('Token ungültig');
+            throw new \Exception('Invalid token');
         }
 
         $log = new Log();
@@ -161,12 +161,12 @@ class SystemController extends BaseController
         $log->setUser($this->app['auth.user']);
         $log->setMode(Log::DELETED);
         /*
-         * DAS LABEL IST DER HASH, NICHT DER TOKEN (013-001-0004).
+         * THE LABEL IS THE HASH, NOT THE TOKEN (013-001-0004).
          *
-         * Hier stand der Token im Klartext — und `pim_log` ist ein Protokoll, das laenger lebt
-         * als die Sitzung, die es beschreibt. Ein Dump des Logs uebergab damit dieselben
-         * Sitzungen wie ein Dump der Tokentabelle. `getToken()` liefert seit diesem Task den
-         * Hash; als Kennzeichen im Protokoll taugt er genauso, verwenden kann ihn niemand.
+         * The token used to be stored here in plain text — and `pim_log` is a log that lives
+         * longer than the session it describes. A dump of the log therefore handed over the
+         * same sessions as a dump of the token table. Since this task, `getToken()` returns the
+         * hash; it works just as well as an identifier in the log, but nobody can use it.
          */
         $log->setModelLabel($token->getToken());
 
@@ -179,9 +179,9 @@ class SystemController extends BaseController
 
     protected function generateToken(Request $request)
     {
-        // `random_bytes()` statt `openssl_random_pseudo_bytes()` (013-001-0004): Die zweite
-        // meldet ueber einen Ausgabeparameter, ob das Ergebnis kryptographisch stark ist —
-        // niemand hat ihn je gelesen. `random_bytes()` liefert starke Bytes oder wirft.
+        // `random_bytes()` instead of `openssl_random_pseudo_bytes()` (013-001-0004): the latter
+        // reports via an output parameter whether the result is cryptographically strong —
+        // nobody ever read it. `random_bytes()` returns strong bytes or throws.
         return bin2hex(random_bytes(64));
     }
 
@@ -199,13 +199,13 @@ class SystemController extends BaseController
             );
 
             /*
-             * `token` ist seit 013-001-0004 der HASH.
+             * Since 013-001-0004, `token` is the HASH.
              *
-             * Der Token selbst laesst sich nicht mehr nachschlagen — auch nicht vom Betreiber.
-             * Das Feld bleibt trotzdem stehen: Es benennt die Zeile eindeutig, und wer einen
-             * Token in der Hand haelt, kann ihn selbst hashen und so herausfinden, welcher
-             * Eintrag dazugehoert. Ein Client, der den Wert versehentlich als Token vorzeigt,
-             * bekommt eine 401 — er faellt zu, nicht auf.
+             * The token itself can no longer be looked up — not even by the operator. The
+             * field stays nonetheless: it identifies the row unambiguously, and whoever holds
+             * a token can hash it themselves and thus find out which entry belongs to it. A
+             * client that mistakenly presents the value as a token gets a 401 — it fails
+             * closed, not open.
              */
             $data[] = array('id' => $token->getId(), 'token' => $token->getToken(), 'referrer' => $token->getReferrer(), 'user' => $userData);
         }
@@ -220,12 +220,12 @@ class SystemController extends BaseController
         $userId      =  ($request->request->all()['user'] ?? null);
 
         if(!$referrer || !$tokenString || !$userId){
-            throw new \Exception('Token und/oder Referrer ungültig');
+            throw new \Exception('Invalid token and/or referrer');
         }
 
         $user = $this->em->getRepository('Areanet\\PIM\\Entity\\User')->find($userId);
         if(!$user){
-            throw new \Exception('Benutzer ungültig');
+            throw new \Exception('Invalid user');
         }
 
         $token = new Token();
@@ -239,7 +239,7 @@ class SystemController extends BaseController
             $this->em->persist($token);
             $this->em->flush();
         }catch(\Exception $e){
-            throw new \Exception('Der Token ist bereits vorhanden.');
+            throw new \Exception('The token already exists.');
         }
 
         $log = new Log();
@@ -247,7 +247,7 @@ class SystemController extends BaseController
         $log->setModelName('PIM\\Token');
         $log->setUser($this->app['auth.user']);
         $log->setMode(Log::INSERTED);
-        // Der Hash, nicht der Token — siehe deleteToken() (013-001-0004).
+        // The hash, not the token — see deleteToken() (013-001-0004).
         $log->setModelLabel($token->getToken());
         $this->em->persist($log);
         $this->em->flush();
@@ -258,8 +258,8 @@ class SystemController extends BaseController
             'active' => $token->getUser()->getIsActive()
         );
 
-        // Hier der KLARTEXT: Es ist der Wert, den der Aufrufer selbst mitgebracht hat, und der
-        // einzige Zeitpunkt, an dem er zurueckgegeben werden kann.
+        // Here the PLAIN TEXT: it is the value the caller brought along themselves, and the
+        // only point in time at which it can be returned.
         return array('id' => $token->getId(), 'token' => $token->getPlaintext(), 'referrer' => $token->getReferrer(), 'user' => $userData);
     }
 }

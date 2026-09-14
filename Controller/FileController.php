@@ -33,7 +33,7 @@ class FileController extends BaseController
      * @apiHeader {String} X-Token Acces-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiDescription Normaler POST-Upload von Dateien
+     * @apiDescription Regular POST upload of files
      *
      */
     public function uploadAction(Request $request): JsonResponse
@@ -41,7 +41,7 @@ class FileController extends BaseController
 
 
         if(!Permission::isWritable($this->app['auth.user'], 'PIM\\File')){
-            throw new AccessDeniedHttpException("Zugriff auf PIM\\File verweigert.");
+            throw new AccessDeniedHttpException("Access to PIM\\File denied.");
         }
 
         $event = new Event();
@@ -53,30 +53,30 @@ class FileController extends BaseController
         $file   = $request->files->get('file');
 
         /*
-         * Die vier Werte werden EINMAL hier gelesen, nicht 16-mal im Rumpf.
+         * The four values are read ONCE here, not 16 times in the body.
          *
-         * Bis Symfony 3.4 kam aus files->get() das rohe $_FILES-Array, und der Rumpf griff
-         * mit $uploadName darauf zu. Das funktionierte zufaellig: PHP 8.1 ergaenzt $_FILES
-         * um den Schluessel `full_path`, die Erkennung in HttpFoundation 3.4
-         * (FileBag::$fileKeys) vergleicht die Schluessel exakt, scheitert daran und reichte
-         * das Array durch. Seit 006-002-0003 (Symfony 4.4) kommt ein UploadedFile, und der
-         * Array-Zugriff wurde zum Fatal Error — genau dort, wo 008-002 es vorhergesagt hatte.
+         * Up to Symfony 3.4, files->get() returned the raw $_FILES array, and the body
+         * accessed it via $uploadName. That worked by accident: PHP 8.1 adds the key
+         * `full_path` to $_FILES, the detection in HttpFoundation 3.4 (FileBag::$fileKeys)
+         * compares the keys exactly, fails on it and passed the array through. Since
+         * 006-002-0003 (Symfony 4.4) an UploadedFile comes back, and the array access became
+         * a fatal error — exactly where 008-002 had predicted it.
          *
-         * Die Zuordnung ist bewusst wortgetreu zum alten $_FILES-Eintrag, damit sich das
-         * Verhalten nicht nebenbei aendert:
+         * The mapping deliberately follows the old $_FILES entry word for word, so that the
+         * behaviour does not change along the way:
          *
-         *   getClientOriginalName()  <- $_FILES['name']      vom Client gemeldeter Name
-         *   getPathname()            <- $_FILES['tmp_name']  Pfad der Upload-Temporaerdatei
-         *   getClientMimeType()      <- $_FILES['type']      vom Client gemeldeter Typ
-         *   getSize()                <- $_FILES['size']      Groesse
+         *   getClientOriginalName()  <- $_FILES['name']      name reported by the client
+         *   getPathname()            <- $_FILES['tmp_name']  path of the temporary upload file
+         *   getClientMimeType()      <- $_FILES['type']      type reported by the client
+         *   getSize()                <- $_FILES['size']      size
          *
-         * getClientMimeType() und NICHT getMimeType(): Letzteres raet den Typ aus dem Inhalt
-         * und lieferte damit etwas anderes als bisher. Was hier gebraucht wird, ist die
-         * Angabe des Clients — dieselbe wie vorher.
+         * getClientMimeType() and NOT getMimeType(): the latter guesses the type from the
+         * content and would therefore return something different than before. What is needed
+         * here is the client's statement — the same one as before.
          *
-         * Die Methoden gibt es in HttpFoundation 4.4 wie in 7.4. Der Rumpf sieht danach
-         * ueberhaupt kein Symfony mehr, ist also beim Kernel-Tausch (Epic 009) nicht wieder
-         * die Stelle, die bricht.
+         * These methods exist in HttpFoundation 4.4 just as in 7.4. After this, the body does
+         * not see any Symfony at all, so it is not once again the spot that breaks during the
+         * kernel swap (Epic 009).
          */
         $uploadName    = $file->getClientOriginalName();
         $uploadTmpPath = $file->getPathname();
@@ -259,26 +259,26 @@ class FileController extends BaseController
      * @api {get} /file/get/:id/[:size]/[:variant]/[:alias] get
      * @apiName Get
      * @apiGroup File
-     * @apiParam {string} id ID oder Dateiname
-     * @apiParam {string} size=null Optional: Alias der gewünschten Thumbnail-Größe, muss im PIM-Backend oder als PIM-Standard ("pim_list", "pim_small") entsprechend definiert sein
-     * @apiParam {string} variant=null Optional: 1x = 1/3 Größe von Originalbild / 2x = 2/3 Größe von Originalbild / 3x = Originalbild
-     * @apiParam {string} alias=null Optional: Beliebiger Dateiname für SEO (Die Datei wird lediglich über die ID geladen)
-     * @apiExample {curl} Abfrage anhand ID
+     * @apiParam {string} id ID or file name
+     * @apiParam {string} size=null Optional: alias of the desired thumbnail size, must be defined accordingly in the PIM backend or as a PIM default ("pim_list", "pim_small")
+     * @apiParam {string} variant=null Optional: 1x = 1/3 size of the original image / 2x = 2/3 size of the original image / 3x = original image
+     * @apiParam {string} alias=null Optional: arbitrary file name for SEO (the file is loaded solely via the ID)
+     * @apiExample {curl} Query by ID
      *     /file/get/12
-     * @apiExample {curl} ID und Dateiname
+     * @apiExample {curl} ID and file name
      *     /file/get/12/sample.jpg
-     * @apiExample {curl} ID und Größe
+     * @apiExample {curl} ID and size
      *     /file/get/12/s-large
-     * @apiExample {curl} Thumbnails anhand ID und Dateiname
+     * @apiExample {curl} Thumbnails by ID and file name
      *     /file/get/12/small/sample.jpg
-     * @apiExample {curl} Thumbnails anhand ID, Dateiname und Responsive
-     *     /file/get/12/small/3x/sample.jpg (Original-Bild)
-     * @apiExample {curl} Thumbnails anhand ID, Dateiname und Responsive
-     *     /file/get/12/small/2x/sample.jpg (2/3 Größe von Original-Bild)
-     * @apiExample {curl} Thumbnails anhand ID, Dateiname und Responsive
-     *     /file/get/12/small/1x/sample.jpg (1/3 Größe von Original-Bild)
+     * @apiExample {curl} Thumbnails by ID, file name and responsive
+     *     /file/get/12/small/3x/sample.jpg (original image)
+     * @apiExample {curl} Thumbnails by ID, file name and responsive
+     *     /file/get/12/small/2x/sample.jpg (2/3 size of the original image)
+     * @apiExample {curl} Thumbnails by ID, file name and responsive
+     *     /file/get/12/small/1x/sample.jpg (1/3 size of the original image)
      *
-     * @apiDescription Download/Darstellung von Dateien, der Aufruf kann über folgende Kombinationen erfolgen
+     * @apiDescription Download/display of files; the call can be made using the following combinations
      *
      * - /file/get/ID
      * - /file/get/ID/ALIAS
@@ -288,7 +288,7 @@ class FileController extends BaseController
      * - /file/get/ID/SIZE/VARIANT/ALIAS
      * - /file/get/ID/s-SIZE/VARIANT/ALIAS
      *
-     * Der Parameter ALIAS (z.B. beliebiger Dateiname) kann frei für SEO-Zwecke gesetzt werden und hat keinen Einfluss auf die Abfrage des entsprechenden Objektes. Für die Abfrage spielt lediglich die ID eine Rolle.
+     * The parameter ALIAS (e.g. an arbitrary file name) can be set freely for SEO purposes and has no influence on the query of the corresponding object. Only the ID matters for the query.
      */
     public function getAction($id, $alias = null, $size = null, $variant = null): RedirectResponse|StreamedResponse|Response
     {
@@ -409,18 +409,18 @@ class FileController extends BaseController
             };
 
             /**
-             * Direkt eine StreamedResponse (009-001-0004).
+             * A StreamedResponse directly (009-001-0004).
              *
-             * Vorher `$this->app->stream(...)` — eine Bequemlichkeit von Silex, deren ganzer
-             * Rumpf `return new StreamedResponse($callback, $status, $headers)` lautet. Der
-             * Umweg ueber die Anwendung brachte nichts und haette 009-002 eine Methode mehr
-             * nachzubauen gegeben.
+             * Previously `$this->app->stream(...)` — a Silex convenience whose entire body
+             * reads `return new StreamedResponse($callback, $status, $headers)`. The detour
+             * via the application gained nothing and would have given 009-002 one more
+             * method to rebuild.
              *
-             * DASS HIER GESTREAMT WIRD, HAENGT MIT bootstrap.php ZUSAMMEN: Dort ist bewusst
-             * KEIN ob_start() gesetzt (000-000-0018). Eine StreamedResponse schreibt ihren
-             * Rumpf beim Senden, nicht beim Erzeugen; ein Ausgabepuffer darueber wuerde die
-             * Auslieferung grosser Dateien in den Speicher ziehen. Wer das eine aendert, muss
-             * das andere mitdenken.
+             * THAT STREAMING HAPPENS HERE IS TIED TO bootstrap.php: there, deliberately NO
+             * ob_start() is set (000-000-0018). A StreamedResponse writes its body when it is
+             * sent, not when it is created; an output buffer on top of it would pull the
+             * delivery of large files into memory. Whoever changes the one has to take the
+             * other into account.
              */
             return new StreamedResponse($stream, 200, array(
                 'Content-Type'   => $mimeType,
@@ -433,13 +433,13 @@ class FileController extends BaseController
             ));
         }else{
 
-            // WEB_ROOT ist der Mountpunkt aus der Konfiguration, Vorgabe '/'. Bis 000-000-0006
-            // hat bootstrap-web.php ihn aus $_SERVER['PHP_SELF'] ueberschrieben; der Redirect
-            // zeigte dann ueberall ausser hinter der mitgelieferten .htaccess ins Leere.
+            // WEB_ROOT is the mount point from the configuration, default '/'. Up to
+            // 000-000-0006, bootstrap-web.php overwrote it from $_SERVER['PHP_SELF']; the
+            // redirect then pointed nowhere everywhere except behind the bundled .htaccess.
             $redirectUri = Config\Adapter::getConfig()->WEB_ROOT."data/files/$id/".basename($fileName);
 
-            // Direkt eine RedirectResponse (009-001-0004) — $this->app->redirect() tat nichts
-            // anderes, als genau diese zu bauen.
+            // A RedirectResponse directly (009-001-0004) — $this->app->redirect() did nothing
+            // other than build exactly this.
             return new RedirectResponse($redirectUri, 301);
         }
 
@@ -451,7 +451,7 @@ class FileController extends BaseController
         $destId     = ($request->request->all()["destId"] ?? null);
 
         if(!Permission::isWritable($this->app['auth.user'], 'PIM\\File')){
-            throw new AccessDeniedHttpException("Zugriff auf PIM\\File verweigert.");
+            throw new AccessDeniedHttpException("Access to PIM\\File denied.");
         }
 
         if(!$sourceId || !$destId){
@@ -472,14 +472,14 @@ class FileController extends BaseController
 
         $backend    = Backend::getInstance();
 
-        //Alte Daten löschen
+        //Delete old data
         $pathDest   = $backend->getPath($fileDest);
         foreach (new DirectoryIterator($pathDest) as $fileInfo) {
             if ($fileInfo->isDot() || !$fileInfo->isFile()) continue;
             unlink($fileInfo->getPathname());
         }
 
-        //Neue Daten verschieben
+        //Move new data
         $pathSource  = $backend->getPath($fileSource);
 
         foreach (new DirectoryIterator($pathSource) as $fileInfo) {

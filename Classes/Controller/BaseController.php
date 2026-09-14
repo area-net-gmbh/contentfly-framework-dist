@@ -15,9 +15,9 @@ abstract class BaseController
     public function __construct($app)
     {
         $this->app = $app;
-        // Vor der Installation registriert bootstrap.php weder DBAL noch ORM
-        // (`if($app['is_installed'])`). Der Container wirft dann beim Zugriff, statt null
-        // zu liefern - deshalb erst fragen, dann holen.
+        // Before installation, bootstrap.php registers neither DBAL nor ORM
+        // (`if($app['is_installed'])`). The container then throws on access instead of
+        // returning null - hence ask first, then fetch.
         if (isset($this->app['orm.em']) && $this->app['orm.em']) {
             $this->setEM($this->app['orm.em']);
         }

@@ -18,12 +18,12 @@ class TypeManager extends Manager
             throw new ContentflyException(Messages::contentfly_general_use_plugin_register_method, get_class($type));
         }
 
-        // HIER STANDEN DREI `AnnotationRegistry::registerFile()` (010-001-0005).
+        // THREE `AnnotationRegistry::registerFile()` CALLS USED TO BE HERE (010-001-0005).
         //
-        // Sie luden die Annotationsklasse eines Typs von Hand nach, weil Doctrines DocParser
-        // eine Annotation nur aufloest, wenn ihre Klasse bereits bekannt ist. Ein Attribut
-        // nennt eine echte Klasse; der Autoloader holt sie. Damit ist die Mechanik
-        // gegenstandslos, und mit ihr `Type::getAnnotationFile()`.
+        // They loaded a type's annotation class by hand, because Doctrine's DocParser only
+        // resolves an annotation if its class is already known. An attribute names a real
+        // class; the autoloader fetches it. That makes the mechanism obsolete, and with it
+        // `Type::getAnnotationFile()`.
         $this->types[$type->getAlias()] = $type;
     }
 
@@ -31,8 +31,8 @@ class TypeManager extends Manager
 
         $type->setPluginKey($plugin->getKey());
 
-        // Auch hier stand ein `registerFile()`. Ein Plugin liegt unter dem PSR-4-Praefix
-        // `Plugins\`, seine Attributklassen sind also autoladbar.
+        // There used to be a `registerFile()` here as well. A plugin lives under the PSR-4
+        // prefix `Plugins\`, so its attribute classes are autoloadable.
         $this->types[$type->getAlias()] = $type;
     }
 

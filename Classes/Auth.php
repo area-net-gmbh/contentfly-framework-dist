@@ -15,7 +15,7 @@ use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
  *
  * `login()` and `logout()` had no caller anyway: the `AuthController` brings its own login and
  * issues tokens. Since `013-002-0004`, the one setting the logged-in user is
- * `BaseControllerProvider::anmelden()` — before that it was `checkToken()`, which was dropped
+ * `BaseControllerProvider::authenticate()` — before that it was `checkToken()`, which was dropped
  * with that task.
  */
 class Auth

@@ -33,7 +33,7 @@ use Symfony\Component\Security\Http\Authenticator\AccessTokenAuthenticator;
  * distinguishes causes here tells the caller which kind of token is expected and which accounts
  * exist.
  *
- * WIRED UP SINCE 013-002-0004: `BaseControllerProvider::anmelden()` calls it, and `checkToken()` no
+ * WIRED UP SINCE 013-002-0004: `BaseControllerProvider::authenticate()` calls it, and `checkToken()` no
  * longer exists.
  */
 final class TokenAuthenticator

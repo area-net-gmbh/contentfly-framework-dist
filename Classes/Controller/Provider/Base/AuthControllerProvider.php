@@ -26,7 +26,7 @@ class AuthControllerProvider extends BaseControllerProvider
         $controllers = new RouteCollector();
 
         $checkAuth = function (Request $request, Application $app) {
-            if (!$this->anmelden($request, $app)) {
+            if (!$this->authenticate($request, $app)) {
                 throw new AccessDeniedHttpException('Access Denied');
             }
         };
@@ -34,13 +34,13 @@ class AuthControllerProvider extends BaseControllerProvider
         $controllers->post('/login',  "auth.controller:loginAction");
 
         /*
-         * `/refresh` OHNE $checkAuth (013-003-0002).
+         * `/refresh` WITHOUT $checkAuth (013-003-0002).
          *
-         * Ein Refresh-Token ist kein JwtAccessToken — der TokenHandler weist es ausdruecklich ab.
-         * Haenge man die Anmeldung davor, waere der Endpunkt nur mit einem gueltigen Access-JWT
-         * erreichbar, also genau dann nicht, wenn man ihn braucht: nach dessen Ablauf.
+         * A refresh token is not a JwtAccessToken — the TokenHandler explicitly rejects it. If
+         * authentication were put in front of it, the endpoint would only be reachable with a
+         * valid access JWT, i.e. precisely not when it is needed: after that token has expired.
          *
-         * Er prueft dafuer selbst, und er unterliegt der LoginThrottle.
+         * Instead, it checks for itself, and it is subject to the LoginThrottle.
          */
         $controllers->post('/refresh', "auth.controller:refreshAction");
         $controllers->get('/logout', "auth.controller:logoutAction")->before($checkAuth);
