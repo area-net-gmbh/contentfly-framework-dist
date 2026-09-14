@@ -48,16 +48,16 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/all all
      * @apiName All
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiDeprecated
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiDescription Gibt alle Objekte aller Entitys zurück
+     * @apiDescription Returns all objects of all entities
      *
-     * @apiParam {String} [lastModified="yyyymmdd hh:mm:ii"] Es werden nur die Objekte zurückgegeben, die seit lastModified geändert wurden.
-     * @apiParam {Boolean} [flatten="false"] Gibt bei Joins lediglich die IDs und nicht die kompletten Objekte zurück
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} [lastModified="yyyymmdd hh:mm:ii"] Only the objects that have been changed since lastModified are returned.
+     * @apiParam {Boolean} [flatten="false"] For joins, returns only the IDs and not the complete objects
+     * @apiParamExample {json} Request example:
      *     {
      *      "lastModified": "2016-02-20 15:30:22"
      *      }
@@ -72,7 +72,7 @@ class ApiController extends BaseController
      *                  "id": 1,
      *                  "isHidden": false,
      *                  "isDeleted": false,
-     *                  "title": "Eine News"
+     *                  "title": "A news item"
      *              },
      *              ...
      *          },
@@ -114,7 +114,7 @@ class ApiController extends BaseController
      * @apiGroup Settings
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiDescription Grundlegende, frei-zugängliche Konfiguration, z.B. für Login-Seite
+     * @apiDescription Basic, publicly accessible configuration, e.g. for the login page
      *
      * @apiSuccessExample Success-Response:
      *     HTTP/1.1 200 OK
@@ -129,15 +129,15 @@ class ApiController extends BaseController
     public function configAction()
     {
         /*
-         * DER frontend-SCHLUESSEL IST ENTFALLEN (000-000-0010).
+         * THE frontend KEY HAS BEEN DROPPED (000-000-0010).
          *
-         * Er enthielt genau einen Eintrag, customLogo — eine Eigenschaft der PIM-Oberflaeche,
-         * die Epic 012 entfernt hat. Das waere an jeder Stelle ein Rest; hier war es mehr:
-         * /api/config ist die EINZIGE Route des ApiControllerProvider ohne ->before(checkAuth)
-         * und damit der oeffentliche Teil der API. Was sie preisgibt, sieht jeder ohne Token.
+         * It contained exactly one entry, customLogo — a property of the PIM UI that Epic 012
+         * removed. That would be a leftover anywhere; here it was more: /api/config is the ONLY
+         * route of the ApiControllerProvider without ->before(checkAuth) and therefore the public
+         * part of the API. Whatever it reveals, anyone can see without a token.
          *
-         * Leer stehen gelassen wurde er nicht: Ein Schluessel, der nichts mehr traegt, laedt
-         * dazu ein, wieder etwas hineinzulegen. Die Entfernung steht als Breaking Change in
+         * It was not left standing empty: a key that no longer carries anything invites people to
+         * put something back into it. The removal is recorded as a breaking change in
          * an_project/docs/breaking-changes.md.
          */
         return $this->renderResponse(array('devmode' => Config\Adapter::getConfig()->APP_DEBUG, 'version' => APP_VERSION.'/'.CUSTOM_VERSION));
@@ -147,12 +147,12 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/count count
      * @apiName Count
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Es werden nur die Objekte zurückgegeben, die seit lastModified geändert wurden.
-     * @apiParamExample {json} Request-Beispiel mit globalem Zeitstempel:
+     * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Only the objects that have been changed since lastModified are returned.
+     * @apiParamExample {json} Request example with a global timestamp:
      *     {
      *      "lastModified": "2016-02-20 15:30:22"
      *      }
@@ -169,17 +169,17 @@ class ApiController extends BaseController
      * @apiVersion 1.5.2
      * @api {post} /api/count count
      * @apiName Count
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Es werden nur die Objekte zurückgegeben, die seit lastModified geändert wurden.
-     * @apiParam {String} [entity = null] Es wird nur die Anzahl der angegebenen Entität ausgegeben
-     * @apiParamExample {json} Request-Beispiel mit globalem Zeitstempel:
+     * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Only the objects that have been changed since lastModified are returned.
+     * @apiParam {String} [entity = null] Only the count of the specified entity is returned
+     * @apiParamExample {json} Request example with a global timestamp:
      *     {
      *      "lastModified": "2016-02-20 15:30:22"
      *      }
-     * @apiParamExample {json} Request-Beispiel mit Zeitstempel pro Entität:
+     * @apiParamExample {json} Request example with a timestamp per entity:
      *     {
      *      "lastModified": {
      *          "Entity1" : "2016-02-20 15:30:22",
@@ -208,15 +208,15 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/delete delete
      * @apiName Delete
-     * @apiDescription API-Endpoint zum Löschen eines Objektes einer Entität.
-     * @apiGroup Objekte
+     * @apiDescription API endpoint for deleting an object of an entity.
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Zu löschende Entity
-     * @apiParam {Integer} id Zu löschende Objekt-ID
-     * @apiParam {String} [lang = null] Sprachcode bei sprachabhängigen Entitäten (I18N)
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity Entity to delete
+     * @apiParam {Integer} id Object ID to delete
+     * @apiParam {String} [lang = null] Language code for language-dependent entities (I18N)
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "News",
      *      "id": 12
@@ -261,16 +261,16 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/deleted deleted
      * @apiName Deleted
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Es werden nur die Objekte zurückgegeben, die seit lastModified gelöscht wurden.
-     * @apiParamExample {json} Request-Beispiel mit globalem Zeitstempel:
+     * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Only the objects that have been deleted since lastModified are returned.
+     * @apiParamExample {json} Request example with a global timestamp:
      *     {
      *      "lastModified": "2016-02-20 15:30:22"
      *      }
-     * @apiParamExample {json} Request-Beispiel mit Zeitstempel pro Entität:
+     * @apiParamExample {json} Request example with a timestamp per entity:
      *     {
      *      "lastModified": {
      *          "Entity1" : "2016-02-20 15:30:22",
@@ -295,28 +295,28 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/insert insert
      * @apiName Insert
-     * @apiDescription API-Endpoint zum Hinzufügen eines neues Objektes einer Entität.
+     * @apiDescription API endpoint for adding a new object of an entity.
      *
-     * Datumsfelder sollten im ISO 8601-Format übertragen werden.
-     * @apiGroup Objekte
+     * Date fields should be transmitted in ISO 8601 format.
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Einzutragende Entity
-     * @apiParam {Object} data Daten des Objekts, abhhängig von der Entity
-     * @apiParam {String} [lang = null] Sprachcode bei sprachabhängigen Entitäten (I18N)
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity Entity to insert
+     * @apiParam {Object} data Data of the object, depending on the entity
+     * @apiParam {String} [lang = null] Language code for language-dependent entities (I18N)
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "News",
      *      "data": {
-     *          "title": "Eine neue News",
-     *          "subtitle: "Untertitel der neuen News",
+     *          "title": "A new news item",
+     *          "subtitle: "Subtitle of the new news item",
      *          "date": "2016-02-18 15:30:00",
      *          // Join 1:n
      *          "category": {
      *              "id": 1
      *          },
-     *          // Datum im Format yyyy-mm-dd hh:ii:ss
+     *          // Date in the format yyyy-mm-dd hh:ii:ss
      *          "active_from": "2016-02-18 15:30:00",
      *          // Multijoin n:m
      *          "cross_selling": [
@@ -328,8 +328,8 @@ class ApiController extends BaseController
      *              }
      *           ]
      *      }
-     * @apiError 500 Ein Objekt mit einem gleichen UNIQUE-INDEX ist bereits vorhanden
-     * @apiError 501 Unbekannter Serverfehler
+     * @apiError 500 An object with the same UNIQUE-INDEX already exists
+     * @apiError 501 Unknown server error
      */
     public function insertAction(Request $request)
     {
@@ -373,23 +373,26 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/list list
      * @apiName List
-     * @apiDescription API-Endpoint zum Abruf von Objekten einer Entität.
+     * @apiDescription API endpoint for retrieving objects of an entity.
      *
-     * Die Rückgabe der Daten erfolgt im JSON-Format auf Basis des Doctrine ORM. Joins (1:n) und Multijoins (n:m) werden automatisch umgewandelt und als Unterobjekte zurückgegeben. Das kann bei vielen Objekten mit Joins/Multijoins zu Performance-Problemen führen. Abhilfe bietet der Parameter flatten.
-     * @apiGroup Objekte
+     * The data is returned in JSON format based on the Doctrine ORM. Joins (1:n) and multijoins
+     * (n:m) are converted automatically and returned as sub-objects. With many objects that have
+     * joins/multijoins, this can lead to performance problems. The parameter flatten provides a
+     * remedy.
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Auszulesende Entity
-     * @apiParam {Array} [properties] Gibt nur die angebenenen Eigenschaften/Felder zurück, ansonsten werden alle Eigenschaften geladen (Performance!)<code>['feld1', 'feld2', ...]</code>
-     * @apiParam {Object} [order="{'id': 'DESC'}"] Sortierung: <code>{'date': 'ASC/DESC',...}</code>
-     * @apiParam {String} [groupBy] Gruppierung der Rückgabe nach Eigenschaft
-     * @apiParam {Object} [where] Bedingung, mehrere Felder werden mit AND verknüpft: <code>{'title': 'test', 'desc': 'foo',...}</code>
-     * @apiParam {Boolean} [count] Nur Rückgabe der Anzahl der Objekte
-     * @apiParam {Integer} [currentPage] Aktuelle Seite für Pagination
-     * @apiParam {Integer} [itemsPerPage="Config::FRONTEND_ITEMS_PER_PAGE"] Anzahl Objekte pro Seite bei Pagination
-     * @apiParam {Boolean} [flatten="false"] Gibt bei Joins lediglich die IDs und nicht die kompletten Objekte zurück
-     * @apiParamExample {json} Request-Beispiel mit Where-Abfrage:
+     * @apiParam {String} entity Entity to read
+     * @apiParam {Array} [properties] Returns only the specified properties/fields, otherwise all properties are loaded (performance!)<code>['field1', 'field2', ...]</code>
+     * @apiParam {Object} [order="{'id': 'DESC'}"] Sort order: <code>{'date': 'ASC/DESC',...}</code>
+     * @apiParam {String} [groupBy] Grouping of the result by property
+     * @apiParam {Object} [where] Condition; multiple fields are combined with AND: <code>{'title': 'test', 'desc': 'foo',...}</code>
+     * @apiParam {Boolean} [count] Return only the number of objects
+     * @apiParam {Integer} [currentPage] Current page for pagination
+     * @apiParam {Integer} [itemsPerPage="Config::FRONTEND_ITEMS_PER_PAGE"] Number of objects per page for pagination
+     * @apiParam {Boolean} [flatten="false"] For joins, returns only the IDs and not the complete objects
+     * @apiParamExample {json} Request example with a where query:
      *     {
      *      "entity": "News",
      *      "currentPage": 1,
@@ -413,39 +416,42 @@ class ApiController extends BaseController
      *              "id": 1,
      *              "isHidden": false,
      *              "isDeleted": false,
-     *              "title": "Eine News"
+     *              "title": "A news item"
      *          },
      *          {...},
      *          ...
      *      ]
      *   }
-     * @apiError 404 Keine Einträge vorhanden
+     * @apiError 404 No entries available
      */
 
      /**
      * @apiVersion 1.5.0
      * @api {post} /api/list list
      * @apiName List
-     * @apiDescription API-Endpoint zum Abruf von Objekten einer Entität.
+     * @apiDescription API endpoint for retrieving objects of an entity.
      *
-     * Die Rückgabe der Daten erfolgt im JSON-Format auf Basis des Doctrine ORM. Joins (1:n) und Multijoins (n:m) werden automatisch umgewandelt und als Unterobjekte zurückgegeben. Das kann bei vielen Objekten mit Joins/Multijoins zu Performance-Problemen führen. Abhilfe bietet der Parameter flatten.
-     * @apiGroup Objekte
+     * The data is returned in JSON format based on the Doctrine ORM. Joins (1:n) and multijoins
+     * (n:m) are converted automatically and returned as sub-objects. With many objects that have
+     * joins/multijoins, this can lead to performance problems. The parameter flatten provides a
+     * remedy.
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Auszulesende Entity
-     * @apiParam {Array} [properties] Gibt nur die angebenenen Eigenschaften/Felder zurück, ansonsten werden alle Eigenschaften geladen (Performance!)<code>['feld1', 'feld2', ...]</code>
-     * @apiParam {Object} [order="{'id': 'DESC'}"] Sortierung: <code>{'date': 'ASC/DESC',...}</code>
-     * @apiParam {String} [groupBy] Gruppierung der Rückgabe nach Eigenschaft
-     * @apiParam {Object} [where] Bedingung, mehrere Felder werden mit AND verknüpft: <code>{'title': 'test', 'desc': 'foo',...}</code>
-     * @apiParam {Boolean} [count] Nur Rückgabe der Anzahl der Objekte
-     * @apiParam {Integer} [currentPage] Aktuelle Seite für Pagination
-     * @apiParam {Integer} [itemsPerPage="Config::FRONTEND_ITEMS_PER_PAGE"] Anzahl Objekte pro Seite bei Pagination
-     * @apiParam {Boolean} [flatten="false"] Gibt bei Joins lediglich die IDs und nicht die kompletten Objekte zurück
-     * @apiParam {String} [lastModified="yyyymmdd hh:mm:ii"] Es werden nur die Objekte zurückgegeben, die seit lastModified geändert wurden.
-     * @apiParam {String} [lang = null] Sprachcode bei sprachabhängigen Entitäten (I18N)
-     * @apiParam {String} [untranslatedLang = null ]Sprachcode bei dem noch nicht übersetzte Datensätze für lang gesetzt sind. Parameter lang muss gesetzt sein. (I18N)
-     * @apiParamExample {json} Request-Beispiel mit Where-Abfrage:
+     * @apiParam {String} entity Entity to read
+     * @apiParam {Array} [properties] Returns only the specified properties/fields, otherwise all properties are loaded (performance!)<code>['field1', 'field2', ...]</code>
+     * @apiParam {Object} [order="{'id': 'DESC'}"] Sort order: <code>{'date': 'ASC/DESC',...}</code>
+     * @apiParam {String} [groupBy] Grouping of the result by property
+     * @apiParam {Object} [where] Condition; multiple fields are combined with AND: <code>{'title': 'test', 'desc': 'foo',...}</code>
+     * @apiParam {Boolean} [count] Return only the number of objects
+     * @apiParam {Integer} [currentPage] Current page for pagination
+     * @apiParam {Integer} [itemsPerPage="Config::FRONTEND_ITEMS_PER_PAGE"] Number of objects per page for pagination
+     * @apiParam {Boolean} [flatten="false"] For joins, returns only the IDs and not the complete objects
+     * @apiParam {String} [lastModified="yyyymmdd hh:mm:ii"] Only the objects that have been changed since lastModified are returned.
+     * @apiParam {String} [lang = null] Language code for language-dependent entities (I18N)
+     * @apiParam {String} [untranslatedLang = null ]Language code for which records that have not yet been translated are set for lang. The parameter lang must be set. (I18N)
+     * @apiParamExample {json} Request example with a where query:
      *     {
      *      "entity": "News",
      *      "currentPage": 1,
@@ -457,12 +463,12 @@ class ApiController extends BaseController
      *          "isHidden": false
      *      },
      *      "properties": ["id", "title"]
-     * @apiParamExample {json} Request-Beispiel zuletzt aktualisierte Objekte
+     * @apiParamExample {json} Request example: recently updated objects
      *     {
      *      "entity": "News",
      *      "lastModified": "2016-02-20 15:30:22"
      *     }
-     * @apiParamExample {json} Request-Beispiel Zeige alle englischen Datensätze, die noch nicht ins Deutsche übersetzt sind
+     * @apiParamExample {json} Request example: show all English records that have not yet been translated into German
      *     {
      *      "entity": "News",
      *      "lang": "de",
@@ -480,13 +486,13 @@ class ApiController extends BaseController
      *              "id": 1,
      *              "isHidden": false,
      *              "isDeleted": false,
-     *              "title": "Eine News"
+     *              "title": "A news item"
      *          },
      *          {...},
      *          ...
      *      ]
      *   }
-     * @apiError 404 Keine Einträge vorhanden
+     * @apiError 404 No entries available
      */
     public function listAction(Request $request)
     {
@@ -511,21 +517,20 @@ class ApiController extends BaseController
         $data = $api->getList($entityName, $where, $order, $groupBy, $properties, $lastModified, $flatten, $currentPage, $itemsPerPage, $lang, $untranslatedLang);
 
         /**
-         * Eine leere Menge ist ein Ergebnis, kein Fehler (000-000-0014).
+         * An empty set is a result, not an error (000-000-0014).
          *
-         * HIER STAND `return new JsonResponse(array('message' => "Not found"), 404)` — eine
-         * achte Antwortform, die mit keiner der sieben anderen etwas zu tun hatte. Fuer einen
-         * Client waren damit **"keine Treffer" und "diese Route gibt es nicht" nicht
-         * unterscheidbar**: gleicher Statuscode, gleicher Rumpf.
+         * THIS USED TO SAY `return new JsonResponse(array('message' => "Not found"), 404)` — an
+         * eighth response shape that had nothing in common with any of the other seven. For a
+         * client, **"no matches" and "this route does not exist" were therefore
+         * indistinguishable**: same status code, same body.
          *
-         * Eine unbekannte Entity wirft weiterhin und kommt als 404 mit
-         * `contentfly_general_unknown_entity` an — das ist der Fall, fuer den der Code
-         * gedacht war. Eine bekannte Entity ohne Treffer antwortet mit 200 und einer leeren
-         * Liste, so wie eine Abfrage mit einem Treffer mit 200 und einer Liste mit einem
-         * Eintrag antwortet.
+         * An unknown entity still throws and arrives as 404 with
+         * `contentfly_general_unknown_entity` — that is the case the code was meant for. A known
+         * entity without matches responds with 200 and an empty list, just as a query with one
+         * match responds with 200 and a list with one entry.
          *
-         * Das ist der einzige Teil der Envelope-Vereinheitlichung, der jetzt schon kommt.
-         * Warum der Rest wartet, steht in an_project/docs/api-envelope.md.
+         * This is the only part of the envelope unification that is coming already now. Why the
+         * rest is waiting is explained in an_project/docs/api-envelope.md.
          */
         if($data === null){
             $data = array('objects' => array(), 'totalObjects' => 0);
@@ -556,29 +561,29 @@ class ApiController extends BaseController
     }
 
     /**
-     * Aktualisiert einen Stapel von Objekten — ganz oder gar nicht.
+     * Updates a batch of objects — all or nothing.
      *
-     * ENTSCHEIDUNG ZU 000-000-0009: Von den drei dort offengelassenen Richtungen (Transaktion,
-     * Fehlersammlung, nur die Antwort verbessern) gilt die TRANSAKTION.
+     * DECISION ON 000-000-0009: Of the three directions left open there (transaction, error
+     * collection, only improving the response), the TRANSACTION applies.
      *
-     * Der Grund ist nicht Sauberkeit, sondern was der Aufrufer hinterher weiß. Vorher lief der
-     * Stapel ohne Transaktion durch: Scheiterte das dritte von fünf Objekten, blieben zwei
-     * geändert, drei unberührt, und die Antwort war ein Fehler ohne Angabe, wie weit es kam.
-     * Der Aufrufer musste den Zustand seiner Daten zurückfragen, um ihn zu kennen.
+     * The reason is not tidiness but what the caller knows afterwards. Previously the batch ran
+     * through without a transaction: if the third of five objects failed, two remained changed,
+     * three untouched, and the response was an error with no indication of how far it had got.
+     * The caller had to query the state of its data back in order to know it.
      *
-     * Die Fehlersammlung (Richtung 2) hätte das gemeldet, aber den Mischzustand behalten — und
-     * sie hängt daran, dass die Antwort ankommt. Geht sie unterwegs verloren, ist der Aufrufer
-     * wieder da, wo er vorher war. Die Transaktion hält auch dann: Kommt keine Antwort, wurde
-     * entweder alles geschrieben oder nichts, und ein Wiederholen des ganzen Stapels ist sicher.
+     * The error collection (direction 2) would have reported that, but kept the mixed state — and
+     * it depends on the response arriving. If the response gets lost on the way, the caller is
+     * back where it was before. The transaction holds even then: if no response arrives, either
+     * everything was written or nothing, and repeating the whole batch is safe.
      *
-     * DAS IST EINE VERHALTENSÄNDERUNG und als solche in an_project/docs/breaking-changes.md
-     * vermerkt. Ein Projekt, das sich darauf verlassen hat, dass die Objekte vor dem Fehler
-     * geschrieben bleiben, bekommt sie jetzt zurückgerollt.
+     * THIS IS A CHANGE IN BEHAVIOUR and is noted as such in an_project/docs/breaking-changes.md.
+     * A project that relied on the objects before the error remaining written now gets them
+     * rolled back.
      *
-     * Gefangen wird \Throwable, nicht \Exception: doUpdate() nimmt entity, id und data typisiert
-     * entgegen: ein Eintrag ohne diese Schlüssel löst einen TypeError aus, und der ist kein
-     * Exception. Würde er hier durchfallen, bliebe die Transaktion offen und die Verbindung
-     * räumte sie am Ende des Requests ohne Commit ab — richtig im Ergebnis, aber aus Versehen.
+     * \Throwable is caught, not \Exception: doUpdate() takes entity, id and data as typed
+     * parameters: an entry without these keys raises a TypeError, and that is not an Exception.
+     * If it fell through here, the transaction would remain open and the connection would clear
+     * it away at the end of the request without a commit — correct in outcome, but by accident.
      */
     public function multiupdateAction(Request $request)
     {
@@ -586,9 +591,9 @@ class ApiController extends BaseController
         $disableModifiedTime = ($request->request->all()['disableModifiedTime'] ?? null);
         $lang                = ($request->request->all()['lang'] ?? null);
 
-        // Vorher lief foreach über null durch und der Aufruf endete mit 200. Solange die Antwort
-        // leer war, fiel das nicht auf; jetzt, wo sie aufzählt, was geschrieben wurde, wäre eine
-        // leere Liste auf einen kaputten Request hin eine falsche Auskunft.
+        // Previously foreach ran through over null and the call ended with 200. As long as the
+        // response was empty, nobody noticed; now that it lists what was written, an empty list in
+        // reply to a broken request would be false information.
         if(!is_array($objects)){
             throw new ContentflyException(Messages::contentfly_general_invalid_params, 'objects');
         }
@@ -610,8 +615,8 @@ class ApiController extends BaseController
                     }
                 }
 
-                // Ein Eintrag je Objekt aus dem Request, in dessen Reihenfolge. Die Mitschriften
-                // in die übrigen Sprachen sind Folge desselben Eintrags und keine eigenen.
+        // One entry per object from the request, in its order. The copies written into the other
+        // languages are a consequence of the same entry and not entries of their own.
                 $aktualisiert[] = array('entity' => $object['entity'], 'id' => $object['id']);
             }
 
@@ -633,56 +638,56 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/update update
      * @apiName Update
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
-     * @apiDescription API-Endpoint zum Hinzufügen eines neues Objektes einer Entität.
+     * @apiDescription API endpoint for adding a new object of an entity.
      *
-     * Datumsfelder sollten im ISO 8601-Format übertragen werden.
+     * Date fields should be transmitted in ISO 8601 format.
      *
-     * @apiParam {String} entity zu aktualisierende Entity
-     * @apiParam {Integer} id Zu aktualisierende Objekt-ID
-     * @apiParam {String=null} pass Passwort des eingeloggten Benutzers. Muss übergeben werden, wenn die pass-Property für Entität PIM\User unter data gesetzt wird.
-     * @apiParam {Object} data Daten des Objekts, abhhängig von der Entity
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity entity to update
+     * @apiParam {Integer} id Object ID to update
+     * @apiParam {String=null} pass Password of the logged-in user. Must be passed if the pass property for the entity PIM\User is set under data.
+     * @apiParam {Object} data Data of the object, depending on the entity
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "News",
      *      "id": 12,
      *      "data": {
-     *          "title": "Eine geänderte News",
-     *          "subtitle: "Untertitel der geänderten News",
+     *          "title": "A changed news item",
+     *          "subtitle: "Subtitle of the changed news item",
      *          "date": "2016-02-18 15:30:00"
      *      }
-     * @apiError 400 zu aktualisierendes Objekt ist nicht vorhanden
-     * @apiError 500 Ein Objekt mit einem gleichen UNIQUE-INDEX ist bereits vorhanden
+     * @apiError 400 object to update does not exist
+     * @apiError 500 An object with the same UNIQUE-INDEX already exists
      */
     /**
      * @apiVersion 1.5.0
      * @api {post} /api/update update
      * @apiName Update
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
-     * @apiDescription API-Endpoint zum Hinzufügen eines neues Objektes einer Entität.
+     * @apiDescription API endpoint for adding a new object of an entity.
      *
-     * Datumsfelder sollten im ISO 8601-Format übertragen werden.
+     * Date fields should be transmitted in ISO 8601 format.
      *
-     * @apiParam {String} entity zu aktualisierende Entity
-     * @apiParam {Integer} id Zu aktualisierende Objekt-ID
-     * @apiParam {String} [lang = null] Sprachcode bei sprachabhängigen Entitäten (I18N)
-     * @apiParam {String} [pass=null] Passwort des eingeloggten Benutzers. Muss übergeben werden, wenn die pass-Property für Entität PIM\User unter data gesetzt wird.
-     * @apiParam {Object} data Daten des Objekts, abhhängig von der Entity
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity entity to update
+     * @apiParam {Integer} id Object ID to update
+     * @apiParam {String} [lang = null] Language code for language-dependent entities (I18N)
+     * @apiParam {String} [pass=null] Password of the logged-in user. Must be passed if the pass property for the entity PIM\User is set under data.
+     * @apiParam {Object} data Data of the object, depending on the entity
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "News",
      *      "id": 12,
      *      "data": {
-     *          "title": "Eine geänderte News",
-     *          "subtitle: "Untertitel der geänderten News",
+     *          "title": "A changed news item",
+     *          "subtitle: "Subtitle of the changed news item",
      *          "date": "2016-02-18 15:30:00"
      *      }
-     * @apiError 400 zu aktualisierendes Objekt ist nicht vorhanden
-     * @apiError 500 Ein Objekt mit einem gleichen UNIQUE-INDEX ist bereits vorhanden
+     * @apiError 400 object to update does not exist
+     * @apiError 500 An object with the same UNIQUE-INDEX already exists
      */
     public function updateAction(Request $request)
     {
@@ -742,54 +747,54 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/replace replace
      * @apiName Replace
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiDescription API-Endpoint zum Abruf von Objekten einer Entität. Ist das Objekt vorhanden, wird ein Insert, ansonsten ein Update durchgeführt.
+     * @apiDescription API endpoint for retrieving objects of an entity. If the object exists, an insert is performed, otherwise an update.
      *
-     * Datumsfelder sollten im ISO 8601-Format übertragen werden.
+     * Date fields should be transmitted in ISO 8601 format.
      *
-     * @apiParam {String} entity zu aktualisierende oder einzufügende Entity
-     * @apiParam {Integer/String} [id=null] Objekt-ID (wenn vorhanden, wird das Objekt aktualisiert, ansonten neu angelegt)
-     * @apiParam {Object} data Daten des Objekts, abhhängig von der Entity
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity entity to update or insert
+     * @apiParam {Integer/String} [id=null] Object ID (if present, the object is updated, otherwise newly created)
+     * @apiParam {Object} data Data of the object, depending on the entity
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "News",
      *      "id": 12,
      *      "data": {
-     *          "title": "Eine geänderte News",
-     *          "subtitle: "Untertitel der geänderten News",
+     *          "title": "A changed news item",
+     *          "subtitle: "Subtitle of the changed news item",
      *          "date": "2016-02-18 15:30:00"
      *      }
-     * @apiError 500 Ein Objekt mit einem gleichen UNIQUE-INDEX ist bereits vorhanden
+     * @apiError 500 An object with the same UNIQUE-INDEX already exists
      */
     /**
      * @apiVersion 1.5.0
      * @api {post} /api/replace replace
      * @apiName Replace
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiDescription API-Endpoint zum Abruf von Objekten einer Entität. Ist das Objekt vorhanden, wird ein Insert, ansonsten ein Update durchgeführt.
+     * @apiDescription API endpoint for retrieving objects of an entity. If the object exists, an insert is performed, otherwise an update.
      *
-     * Datumsfelder sollten im ISO 8601-Format übertragen werden.
+     * Date fields should be transmitted in ISO 8601 format.
      *
-     * @apiParam {String} entity zu aktualisierende oder einzufügende Entity
-     * @apiParam {Integer/String} [id=null] Objekt-ID (wenn vorhanden, wird das Objekt aktualisiert, ansonten neu angelegt)
-     * @apiParam {String} [lang = null] Sprachcode bei sprachabhängigen Entitäten (I18N)
-     * @apiParam {Object} data Daten des Objekts, abhhängig von der Entity
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity entity to update or insert
+     * @apiParam {Integer/String} [id=null] Object ID (if present, the object is updated, otherwise newly created)
+     * @apiParam {String} [lang = null] Language code for language-dependent entities (I18N)
+     * @apiParam {Object} data Data of the object, depending on the entity
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "News",
      *      "id": 12,
      *      "data": {
-     *          "title": "Eine geänderte News",
-     *          "subtitle: "Untertitel der geänderten News",
+     *          "title": "A changed news item",
+     *          "subtitle: "Subtitle of the changed news item",
      *          "date": "2016-02-18 15:30:00"
      *      }
-     * @apiError 500 Ein Objekt mit einem gleichen UNIQUE-INDEX ist bereits vorhanden
+     * @apiError 500 An object with the same UNIQUE-INDEX already exists
      */
     public function replaceAction(Request $request)
     {
@@ -812,27 +817,27 @@ class ApiController extends BaseController
         }
 
         /**
-         * Zwei interne Sub-Requests — und was beim Kernel-Wechsel an ihnen zu pruefen ist
-         * (009-001-0004).
+         * Two internal sub-requests — and what has to be checked about them during the kernel
+         * switch (009-001-0004).
          *
-         * `replace` entscheidet nicht selbst, ob angelegt oder geaendert wird, sondern schickt
-         * die Anfrage noch einmal durch die Anwendung — an `/api/insert`, wenn es das Objekt
-         * nicht gibt, sonst an `/api/update`. Das ist kein Aufruf der Methode, sondern ein
-         * vollstaendiger Request durch den Kernel: **before- und after-Hooks laufen ein zweites
-         * Mal**, und der Ereignisname, den `BaseControllerProvider` daraus bildet, lautet dann
-         * `pim.controller.before.api.insertaction` statt `…replaceaction`.
+         * `replace` does not decide by itself whether to create or to change, but sends the request
+         * through the application once more — to `/api/insert` if the object does not exist,
+         * otherwise to `/api/update`. That is not a call of the method but a complete request
+         * through the kernel: **before and after hooks run a second time**, and the event name that
+         * `BaseControllerProvider` builds from it is then `pim.controller.before.api.insertaction`
+         * instead of `…replaceaction`.
          *
-         * Die drei Zeilen davor sind der Grund, warum das ueberhaupt geht: Die Id aus dem
-         * Request wandert nach `data.id`, und `$subRequest` uebernimmt `request` und `query`
-         * des Originals per Referenz — anders kaeme der Rumpf nicht mit, weil
-         * `Request::create()` ihn aus `getContent()` nicht erneut parst.
+         * The three lines before it are the reason this works at all: the id from the request moves
+         * to `data.id`, and `$subRequest` takes over `request` and `query` of the original by
+         * reference — otherwise the body would not come along, because `Request::create()` does not
+         * parse it again from `getContent()`.
          *
-         * `handle()` kommt aus Symfonys `HttpKernelInterface`, nicht aus Silex. Der Aufruf
-         * bleibt also woertlich stehen. **Zu pruefen ist etwas anderes:** ob `SUB_REQUEST` beim
-         * neuen Kernel dieselben Listener durchlaeuft. Symfony unterscheidet Haupt- und
-         * Unteranfrage in `kernel.request`; ein Listener, der heute mitlaeuft, kann dort
-         * uebersprungen werden — und das waere ein Verhaltenswechsel, den nur
-         * `UpdateReplaceApiTest` sichtbar macht.
+         * `handle()` comes from Symfony's `HttpKernelInterface`, not from Silex. The call therefore
+         * stays literally as it is. **What has to be checked is something else:** whether
+         * `SUB_REQUEST` passes through the same listeners with the new kernel. Symfony
+         * distinguishes main and sub requests in `kernel.request`; a listener that runs along today
+         * can be skipped there — and that would be a change in behaviour that only
+         * `UpdateReplaceApiTest` makes visible.
          */
         if(!$object){
             $subRequest = Request::create('/api/insert', 'POST', $request->attributes->all(), $request->cookies->all(), $request->files->all(), $request->server->all(), $request->getContent());
@@ -868,7 +873,7 @@ class ApiController extends BaseController
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiDescription Gibt das Schema aller Entitäten zurück.
+     * @apiDescription Returns the schema of all entities.
      *
      * @apiSuccessExample Success-Response:
      *     HTTP/1.1 200 OK
@@ -893,25 +898,26 @@ class ApiController extends BaseController
      * @apiVersion 1.4.2
      * @api {post} /api/single single
      * @apiName Single
-     * @apiDescription API-Endpoint zum Abruf eines einzelnen Objektes einer Entität.
+     * @apiDescription API endpoint for retrieving a single object of an entity.
      *
-     * Die Rückgabe der Daten erfolgt im JSON-Format auf Basis des Doctrine ORM. Joins (1:n) und Multijoins (n:m) werden automatisch umgewandelt und als Unterobjekte zurückgegeben.
-     * @apiGroup Objekte
+     * The data is returned in JSON format based on the Doctrine ORM. Joins (1:n) and multijoins
+     * (n:m) are converted automatically and returned as sub-objects.
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Auszulesende Entity
-     * @apiParam {String/Integer} [id = null] ID des Objektes
-     * @apiParam {Object} [where = null] Bedingung, mehrere Felder werden mit AND verknüpft: <code>{'title': 'test', 'desc': 'foo',...}</code>
-     * @apiParamExample {json} Request-Beispiel über ID:
+     * @apiParam {String} entity Entity to read
+     * @apiParam {String/Integer} [id = null] ID of the object
+     * @apiParam {Object} [where = null] Condition; multiple fields are combined with AND: <code>{'title': 'test', 'desc': 'foo',...}</code>
+     * @apiParamExample {json} Request example by ID:
      *     {
      *      "entity": "News",
      *      "id": 1
      *     }
-     * @apiParamExample {json} Request-Beispiel über WHERE:
+     * @apiParamExample {json} Request example by WHERE:
      *     {
-     *      "entity": "Kunden",
-     *      "where": {"kundennummer": 200200}
+     *      "entity": "Customers",
+     *      "where": {"customerNumber": 200200}
      *     }
      * @apiSuccessExample Success-Response:
      *     HTTP/1.1 200 OK
@@ -921,37 +927,38 @@ class ApiController extends BaseController
      *          "id": 1,
      *          "isHidden": false,
      *          "isDeleted": false,
-     *          "title": "Eine News"
+     *          "title": "A news item"
      *       }
      *   }
-     * @apiError 404 Objekt nicht gefunden
+     * @apiError 404 Object not found
      */
     /**
      * @apiVersion 1.5.0
      * @api {post} /api/single single
      * @apiName Single
-     * @apiDescription API-Endpoint zum Abruf eines einzelnen Objektes einer Entität.
+     * @apiDescription API endpoint for retrieving a single object of an entity.
      *
-     * Die Rückgabe der Daten erfolgt im JSON-Format auf Basis des Doctrine ORM. Joins (1:n) und Multijoins (n:m) werden automatisch umgewandelt und als Unterobjekte zurückgegeben.
-     * @apiGroup Objekte
+     * The data is returned in JSON format based on the Doctrine ORM. Joins (1:n) and multijoins
+     * (n:m) are converted automatically and returned as sub-objects.
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Auszulesende Entity
-     * @apiParam {String/Integer} [id = null] ID des Objektes
-     * @apiParam {String} [lang = null] Sprachcode bei sprachabhängigen Entitäten (I18N)
-     * @apiParam {String} [compareToLang = null] Lädt für eine Übersetzung vernküpfte Objekte aus 'compareToLang' und gibt eine Fehlermeldung aus, wenn Übersetzungen fehlen (I18N)
-     * @apiParam {String} [compareToMainLang = null] Lädt für eine Übersetzung vernküpfte Objekte aus der Hauptsprache und gibt eine Fehlermeldung aus, wenn Übersetzungen fehlen (I18N)
-     * @apiParam {Object} [where = null] Bedingung, mehrere Felder werden mit AND verknüpft: <code>{'title': 'test', 'desc': 'foo',...}</code>
-     * @apiParamExample {json} Request-Beispiel über ID:
+     * @apiParam {String} entity Entity to read
+     * @apiParam {String/Integer} [id = null] ID of the object
+     * @apiParam {String} [lang = null] Language code for language-dependent entities (I18N)
+     * @apiParam {String} [compareToLang = null] For a translation, loads linked objects from 'compareToLang' and outputs an error message if translations are missing (I18N)
+     * @apiParam {String} [compareToMainLang = null] For a translation, loads linked objects from the main language and outputs an error message if translations are missing (I18N)
+     * @apiParam {Object} [where = null] Condition; multiple fields are combined with AND: <code>{'title': 'test', 'desc': 'foo',...}</code>
+     * @apiParamExample {json} Request example by ID:
      *     {
      *      "entity": "News",
      *      "id": 1
      *     }
-     * @apiParamExample {json} Request-Beispiel über WHERE:
+     * @apiParamExample {json} Request example by WHERE:
      *     {
-     *      "entity": "Kunden",
-     *      "where": {"kundennummer": 200200}
+     *      "entity": "Customers",
+     *      "where": {"customerNumber": 200200}
      *     }
      * @apiSuccessExample Success-Response:
      *     HTTP/1.1 200 OK
@@ -961,10 +968,10 @@ class ApiController extends BaseController
      *          "id": 1,
      *          "isHidden": false,
      *          "isDeleted": false,
-     *          "title": "Eine News"
+     *          "title": "A news item"
      *       }
      *   }
-     * @apiError 404 Objekt nicht gefunden
+     * @apiError 404 Object not found
      */
     public function singleAction(Request $request)
     {
@@ -981,10 +988,10 @@ class ApiController extends BaseController
         $api  = new Api($this->app);
         $data = $api->getSingle($entityName, $id, $where, $lang, false, $compareToLang, $loadJoinedLang);
 
-        // Seit 000-000-0006 meldet getSingle() "nicht gefunden" mit null statt mit einer
-        // fertigen JsonResponse. Die Entscheidung, welchen Statuscode das ergibt, gehoert
-        // hierher und nicht in die Api-Klasse. Vorher antwortete dieser Endpunkt mit 200 und
-        // `data: {"headers": {}}` — der serialisierten Antwort, die er weiterreichte.
+        // Since 000-000-0006, getSingle() reports "not found" with null instead of a ready-made
+        // JsonResponse. The decision which status code that results in belongs here and not in the
+        // Api class. Previously this endpoint responded with 200 and
+        // `data: {"headers": {}}` — the serialised response it passed on.
         if($data === null){
             throw new ContentflyException(Messages::contentfly_general_not_found, $entityName, Messages::contentfly_status_not_found);
         }
@@ -997,17 +1004,17 @@ class ApiController extends BaseController
     /**
      * @apiVersion 1.4.2
      * @api {post} /api/tree tree
-     * @apiName Baumansicht
-     * @apiDescription API-Endpoint, zum Abruf einer Baumstruktur.
+     * @apiName Tree view
+     * @apiDescription API endpoint for retrieving a tree structure.
      *
-     * Die Entität muss vom Typ Areanet\PIM\Entity\BaseTree
-     * @apiGroup Objekte
+     * The entity must be of type Areanet\PIM\Entity\BaseTree
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Auszulesende Entity
-     * @apiParam {Array} [properties=null] Gibt nur die angebenenen Eigenschaften/Felder zurück, ansonsten werden alle Eigenschaften geladen (Performance!)<code>['feld1', 'feld2', ...]</code>
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity Entity to read
+     * @apiParam {Array} [properties=null] Returns only the specified properties/fields, otherwise all properties are loaded (performance!)<code>['field1', 'field2', ...]</code>
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "Category",
      *      "properties": ["title"]
@@ -1021,7 +1028,7 @@ class ApiController extends BaseController
      *              "id": 1,
      *              "isHidden": false,
      *              "isDeleted": false,
-     *              "title": "Eine Kategorie",
+     *              "title": "A category",
      *              "treeChilds" : [
      *                  {
      *                      ....
@@ -1036,18 +1043,18 @@ class ApiController extends BaseController
     /**
      * @apiVersion 1.5.0
      * @api {post} /api/tree tree
-     * @apiName Baumansicht
-     * @apiDescription API-Endpoint, zum Abruf einer Baumstruktur.
+     * @apiName Tree view
+     * @apiDescription API endpoint for retrieving a tree structure.
      *
-     * Die Entität muss vom Typ Areanet\PIM\Entity\BaseTree
-     * @apiGroup Objekte
+     * The entity must be of type Areanet\PIM\Entity\BaseTree
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Auszulesende Entity
-     * @apiParam {Array} [properties=null] Gibt nur die angebenenen Eigenschaften/Felder zurück, ansonsten werden alle Eigenschaften geladen (Performance!)<code>['feld1', 'feld2', ...]</code>
-     * @apiParam {String} [lang=null] Sprachvariante
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity Entity to read
+     * @apiParam {Array} [properties=null] Returns only the specified properties/fields, otherwise all properties are loaded (performance!)<code>['field1', 'field2', ...]</code>
+     * @apiParam {String} [lang=null] Language variant
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "Category",
      *      "properties": ["title"]
@@ -1061,7 +1068,7 @@ class ApiController extends BaseController
      *              "id": 1,
      *              "isHidden": false,
      *              "isDeleted": false,
-     *              "title": "Eine Kategorie",
+     *              "title": "A category",
      *              "treeChilds" : [
      *                  {
      *                      ....
@@ -1089,17 +1096,17 @@ class ApiController extends BaseController
     /**
      * @apiVersion 1.5.2
      * @api {post} /api/tree2 tree2
-     * @apiName Baumansicht optimiert
-     * @apiDescription API-Endpoint, zum Abruf einer optimierten/performanten Baumstruktur.
+     * @apiName Tree view optimized
+     * @apiDescription API endpoint for retrieving an optimized/performant tree structure.
      *
-     * Die Entität muss vom Typ Areanet\PIM\Entity\BaseTree
-     * @apiGroup Objekte
+     * The entity must be of type Areanet\PIM\Entity\BaseTree
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Auszulesende Entity
-     * @apiParam {String} [lang=null] Sprachvariante
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity Entity to read
+     * @apiParam {String} [lang=null] Language variant
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "Category"
      *     }
@@ -1112,7 +1119,7 @@ class ApiController extends BaseController
      *              "id": 1,
      *              "isHidden": false,
      *              "isDeleted": false,
-     *              "title": "Eine Kategorie",
+     *              "title": "A category",
      *              "treeChilds" : [
      *                  {
      *                      ....
@@ -1139,16 +1146,16 @@ class ApiController extends BaseController
     /**
      * @apiVersion 1.5.0
      * @api {post} /api/translations translations
-     * @apiName Übersetzungen
-     * @apiDescription Liefert die Anzahl der offenen Übersetzungen für eine Entität.
+     * @apiName Translations
+     * @apiDescription Returns the number of pending translations for an entity.
      *
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParam {String} entity Auszulesende Entity
-     * @apiParam {String} lang Sprachcode (z.B. de, en,..), für den noch nicht übersetzte Datensätze analysiert werden sollen.
-     * @apiParamExample {json} Request-Beispiel:
+     * @apiParam {String} entity Entity to read
+     * @apiParam {String} lang Language code (e.g. de, en,..) for which untranslated records are to be analysed.
+     * @apiParamExample {json} Request example:
      *     {
      *      "entity": "Category",
      *      "lang": "en"
@@ -1179,26 +1186,27 @@ class ApiController extends BaseController
     /**
      * @apiVersion 1.4.2
      * @api {post} /api/query query
-     * @apiDescription Erweiterter API-Endpoint, über den nahezu beliebige Abfragen auf die Datenbank/Entitäten gestellt werden können. Die Abfragesyntax basiert dabei auf dem DBAL-QueryBuilder (http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/query-builder.html) von Doctrine. Der JSON-Request (siehe Beispiele unten) wird im Contentfly CMS in eine analoge DBAL-Abfrage über den QueryBuilder umgewandelt.
+     * @apiDescription Extended API endpoint through which almost arbitrary queries can be run against the database/entities. The query syntax is based on Doctrine's DBAL QueryBuilder (http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/query-builder.html). The JSON request (see examples below) is converted in the Contentfly CMS into an equivalent DBAL query via the QueryBuilder.
      *
-     * Die Rückgabe der Daten erfolgt im JSON-Format. Durch die DBAL-Abfrage erfolgt die Rückgabe direkt auf Datenbankebene und nicht auf Doctrine Entitäten.
+     * The data is returned in JSON format. Because of the DBAL query, the data is returned directly
+     * at database level and not as Doctrine entities.
      * @apiName Query
-     * @apiGroup Objekte
+     * @apiGroup Objects
      * @apiHeader {String} APPMS-TOKEN Access-Token
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiParamExample {json} Einfache Abfrage:
+     * @apiParamExample {json} Simple query:
      *     {
      *      "select": "*",
      *      "from": "Product"
      *     }
-     * @apiParamExample {json} Einfache Abfrage mit Where
+     * @apiParamExample {json} Simple query with where
      *     {
      *      "select": "*",
      *      "from": "Product",
      *      "where": {"active": true},
      *     }
-     * @apiParamExample {json} Abfrage mit Group, Count(), Limit und Offset
+     * @apiParamExample {json} Query with group, Count(), limit and offset
      *     {
      *      "select": ['title', 'field2', 'COUNT(id) AS users'],
      *      "from": "Product",
@@ -1214,7 +1222,7 @@ class ApiController extends BaseController
      *     HTTP/1.1 200 OK
      *      [
      *          {
-     *              "name" : "Produkt1",
+     *              "name" : "Product1",
      *              "active": true
      *          },
      *          {
