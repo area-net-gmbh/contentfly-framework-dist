@@ -28,7 +28,7 @@ use Areanet\PIM\Classes\Config\Adapter;
  *
  * WHY CBC HAD TO GO, measured in 010-004-0001: a flipped byte in the ciphertext goes through and yields
  * a different plaintext — one block of garbage, the rest intact. The application notices nothing and
- * delivers it. `testEineManipulationFaelltAuf()` records that this is over.
+ * delivers it. `testEveryTamperingIsDetected()` records that this is over.
  *
  * THE KEY IS DERIVED, NOT PASSED THROUGH. `SECURITY_CIPHER_KEY` is a passphrase of any length;
  * libsodium requires exactly 32 bytes. It is derived with `crypto_generichash` (BLAKE2b) and a fixed
