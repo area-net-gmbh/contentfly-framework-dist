@@ -77,7 +77,7 @@ class SelectType extends Type
      * Checks the write value against the options of the annotation (000-000-0017).
      *
      * UNTIL THEN @PIM\Select VALIDATED NOTHING. The options were in the schema, but nobody
-     * compared a write value against them: `state: "gibtsnicht"` was accepted and ended up
+     * compared a write value against them: `state: "doesnotexist"` was accepted and ended up
      * unchanged in the column. The only consumer of the list was the deleted user interface —
      * what remained was a guarantee in the schema that guaranteed nothing.
      *

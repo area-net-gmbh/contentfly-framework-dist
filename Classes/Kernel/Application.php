@@ -95,7 +95,7 @@ class Application extends Container implements ApplicationInterface
                  *
                  * Measured: with the default, `POST /api/update` with `data` as a string returns
                  * a body of 0 bytes; with `true`, the application's JSON response.
-                 * FehlerantwortApiTest checks both halves.
+                 * ErrorResponseApiTest checks both halves.
                  */
                 true
             );

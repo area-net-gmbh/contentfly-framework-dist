@@ -100,7 +100,7 @@ if(Config\Adapter::getConfig()->APP_HTTP_AUTH_USER) {
  * package both classes came from left the tree with 009-002-0001 anyway — rebuilding it with
  * symfony/error-handler would be machinery without a reason.
  *
- * FehlerantwortApiTest proves it: a deliberately triggered TypeError has to arrive as this
+ * ErrorResponseApiTest proves it: a deliberately triggered TypeError has to arrive as this
  * application's JSON, not as an HTML page.
  */
 
