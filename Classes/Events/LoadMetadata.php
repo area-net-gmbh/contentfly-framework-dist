@@ -14,7 +14,7 @@ use Doctrine\ORM\Mapping\Builder\ClassMetadataBuilder;
  * Up to this point the listener attached the index UNCONDITIONALLY. If the column was missing,
  * even the installation failed:
  *
- *     Die Installation ist fehlgeschlagen: There is no column with name "modified" on table
+ *     The installation failed: There is no column with name "modified" on table
  *     "pim_revoked_token".
  *
  * The message says WHAT is missing, but not WHO requires it — and this listener sits in a place

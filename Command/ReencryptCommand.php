@@ -10,45 +10,44 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Bringt verschluesselte Feldwerte vom alten AES-CBC-Format auf XChaCha20-Poly1305
+ * Moves encrypted field values from the old AES-CBC format to XChaCha20-Poly1305
  * (010-004-0003).
  *
- * ── Wozu ─────────────────────────────────────────────────────────────────────────────
+ * ── What for ─────────────────────────────────────────────────────────────────────────
  *
- * Seit 010-004-0002 schreibt das Framework AEAD und liest beides. Ein Bestandswert bleibt also
- * lesbar und wird beim naechsten Schreiben nebenbei umgestellt. Wer nicht warten will, bis
- * jeder Datensatz einmal angefasst wurde, laesst diesen Befehl laufen.
+ * Since 010-004-0002 the framework writes AEAD and reads both. An existing value therefore stays
+ * readable and is converted in passing the next time it is written. Whoever does not want to wait
+ * until every record has been touched once runs this command.
  *
- * ── --dry-run ist keine Zierde ───────────────────────────────────────────────────────
+ * ── --dry-run is not decoration ──────────────────────────────────────────────────────
  *
- * Der Befehl laeuft spaeter in fremden Bestandsprojekten auf deren Daten (Epic 007). Eine
- * Migration, die man nicht vorher ansehen kann, wird zu Recht nicht ausgefuehrt. Der
- * Trockenlauf zaehlt, was er taete, und fasst nichts an.
+ * Later on, the command runs in other people's existing projects on their data (Epic 007). A
+ * migration that cannot be inspected beforehand rightly does not get executed. The dry run
+ * counts what it would do and touches nothing.
  *
- * ── Der Rueckweg ─────────────────────────────────────────────────────────────────────
+ * ── The way back ─────────────────────────────────────────────────────────────────────
  *
- * VOR DEM LAUF EINE SICHERUNG DER DATENBANK ANLEGEN. Das ist der Rueckweg, und er ist der
- * einzige: Umgeschluesselte Werte lassen sich nicht zurueckrechnen, ohne den alten Schluessel
- * erneut anzuwenden — und genau davon soll man wegkommen.
+ * CREATE A BACKUP OF THE DATABASE BEFORE THE RUN. That is the way back, and it is the only
+ * one: re-encrypted values cannot be converted back without applying the old key again — and
+ * getting away from exactly that is the point.
  *
- * ABER: Ein ABGEBROCHENER Lauf ist kein Schaden. Beide Formate bleiben lesbar, und der Befehl
- * ueberspringt, was schon umgestellt ist. Wer nach einem Fehler noch einmal startet, macht dort
- * weiter, wo es aufgehoert hat. Der Rueckweg wird also nur gebraucht, wenn jemand mit dem
- * FALSCHEN SECURITY_CIPHER_KEY gelaufen ist — dann sind die Werte nicht kaputt, aber mit einem
- * Schluessel verschluesselt, den niemand wollte.
+ * BUT: an ABORTED run does no harm. Both formats stay readable, and the command skips what has
+ * already been converted. Whoever starts again after an error picks up where it stopped. The way
+ * back is therefore only needed if someone ran with the WRONG SECURITY_CIPHER_KEY — then the
+ * values are not broken, but encrypted with a key nobody wanted.
  *
- * ── Warum DBAL und nicht der EntityManager ───────────────────────────────────────────
+ * ── Why DBAL and not the EntityManager ───────────────────────────────────────────────
  *
- * Der Befehl arbeitet auf Spalten, nicht auf Objekten. Ueber den EntityManager muesste er jede
- * Entity laden, haette Lifecycle-Callbacks am Hals (`Base::updateModifiedDatetime()` wuerde
- * `modified` fortschreiben, obwohl sich fachlich nichts aendert) und den ganzen Bestand im
- * Speicher. Ueber DBAL sind es Stapel fester Groesse und ein UPDATE je Zeile.
+ * The command works on columns, not on objects. Through the EntityManager it would have to load
+ * every entity, would be saddled with lifecycle callbacks (`Base::updateModifiedDatetime()` would
+ * update `modified` even though nothing changes in business terms) and would hold the entire
+ * dataset in memory. Through DBAL it is batches of fixed size and one UPDATE per row.
  *
- * ── Wie die Felder gefunden werden ───────────────────────────────────────────────────
+ * ── How the fields are found ─────────────────────────────────────────────────────────
  *
- * Ueber das Schema, nicht ueber eine feste Liste — sonst faende er die Felder eines Projekts
- * nicht, und genau die sind der Grund fuer den Befehl. Im Framework selbst gibt es heute
- * KEIN Feld mit `encoded: true`; ein Lauf hier meldet folgerichtig nichts zu tun.
+ * Through the schema, not through a fixed list — otherwise it would not find a project's fields,
+ * and those are exactly the reason for the command. In the framework itself there is currently
+ * NO field with `encoded: true`; a run here consequently reports nothing to do.
  */
 class ReencryptCommand extends Command
 {
@@ -58,196 +57,195 @@ class ReencryptCommand extends Command
 
         $this
             ->setName('appcms:security:reencrypt')
-            ->setDescription('Bringt verschluesselte Feldwerte auf das AEAD-Format')
-            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Nur zaehlen, nichts schreiben')
-            ->addOption('batch', null, InputOption::VALUE_REQUIRED, 'Zeilen je Stapel', '500')
+            ->setDescription('Converts encrypted field values to the AEAD format')
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Only count, write nothing')
+            ->addOption('batch', null, InputOption::VALUE_REQUIRED, 'Rows per batch', '500')
         ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $app     = $this->application();
-        $trocken = (bool) $input->getOption('dry-run');
-        $stapel  = max(1, (int) $input->getOption('batch'));
+        $app       = $this->application();
+        $dryRun    = (bool) $input->getOption('dry-run');
+        $batchSize = max(1, (int) $input->getOption('batch'));
 
-        $felder = $this->betroffeneFelder($app['schema'], $app['orm.em'], $app['helper']);
+        $fields = $this->affectedFields($app['schema'], $app['orm.em'], $app['helper']);
 
-        if (!$felder) {
-            $output->writeln('<comment>Kein Feld mit encoded: true — es gibt nichts umzuschluesseln.</comment>');
+        if (!$fields) {
+            $output->writeln('<comment>No field with encoded: true — there is nothing to re-encrypt.</comment>');
 
             return 0;
         }
 
-        if ($trocken) {
-            $output->writeln('<comment>--dry-run: es wird nichts geschrieben.</comment>');
+        if ($dryRun) {
+            $output->writeln('<comment>--dry-run: nothing is written.</comment>');
         }
 
-        $summe = array('geprueft' => 0, 'umgeschluesselt' => 0, 'uebersprungen' => 0);
+        $total = array('checked' => 0, 'reencrypted' => 0, 'skipped' => 0);
 
-        foreach ($felder as $feld) {
-            $ergebnis = $this->spalteUmschluesseln(
+        foreach ($fields as $field) {
+            $result = $this->reencryptColumn(
                 $app['db'],
-                $feld['tabelle'],
-                $feld['spalte'],
-                $feld['schluesselspalte'],
-                $trocken,
-                $stapel
+                $field['table'],
+                $field['column'],
+                $field['key_column'],
+                $dryRun,
+                $batchSize
             );
 
             $output->writeln(sprintf(
-                '  %-40s %5d geprueft, %5d umgeschluesselt, %5d schon neu',
-                $feld['entity'].'::'.$feld['feld'],
-                $ergebnis['geprueft'],
-                $ergebnis['umgeschluesselt'],
-                $ergebnis['uebersprungen']
+                '  %-40s %5d checked, %5d re-encrypted, %5d already new',
+                $field['entity'].'::'.$field['field'],
+                $result['checked'],
+                $result['reencrypted'],
+                $result['skipped']
             ));
 
-            foreach ($summe as $k => $v) {
-                $summe[$k] = $v + $ergebnis[$k];
+            foreach ($total as $k => $v) {
+                $total[$k] = $v + $result[$k];
             }
         }
 
         $output->writeln(sprintf(
-            '%s %d Werte geprueft, %d umgeschluesselt, %d waren schon im neuen Format.',
-            $trocken ? '→' : '✓',
-            $summe['geprueft'],
-            $summe['umgeschluesselt'],
-            $summe['uebersprungen']
+            '%s %d values checked, %d re-encrypted, %d were already in the new format.',
+            $dryRun ? '→' : '✓',
+            $total['checked'],
+            $total['reencrypted'],
+            $total['skipped']
         ));
 
         return 0;
     }
 
     /**
-     * Die Felder mit `encoded: true`, aufgeloest auf Tabelle und Spalte.
+     * The fields with `encoded: true`, resolved to table and column.
      *
-     * OEFFENTLICH, DAMIT ES PRUEFBAR IST. Im Baum gibt es kein solches Feld — ein Test, der den
-     * Befehl von aussen aufruft, koennte also nur bestaetigen, dass er nichts tut. Mit einem
-     * uebergebenen Schema laesst sich pruefen, dass er das Richtige faende.
+     * PUBLIC SO THAT IT IS TESTABLE. There is no such field in the tree — a test that calls the
+     * command from outside could therefore only confirm that it does nothing. With a schema
+     * passed in, it can be verified that it would find the right thing.
      *
      * @param array<string,array<string,mixed>> $schema
      *
-     * @return array<int,array{entity:string,feld:string,tabelle:string,spalte:string,schluesselspalte:string}>
+     * @return array<int,array{entity:string,field:string,table:string,column:string,key_column:string}>
      */
-    public function betroffeneFelder(array $schema, EntityManagerInterface $em, $helper): array
+    public function affectedFields(array $schema, EntityManagerInterface $em, $helper): array
     {
-        $felder = array();
+        $fields = array();
 
-        foreach ($schema as $entity => $angaben) {
-            if ($entity === '_hash' || empty($angaben['properties'])) {
+        foreach ($schema as $entity => $definition) {
+            if ($entity === '_hash' || empty($definition['properties'])) {
                 continue;
             }
 
-            foreach ($angaben['properties'] as $feld => $eigenschaft) {
-                if (empty($eigenschaft['encoded'])) {
+            foreach ($definition['properties'] as $field => $property) {
+                if (empty($property['encoded'])) {
                     continue;
                 }
 
-                $klasse    = $helper->getFullEntityName($entity);
-                $metadaten = $em->getClassMetadata($klasse);
+                $class    = $helper->getFullEntityName($entity);
+                $metadata = $em->getClassMetadata($class);
 
-                $felder[] = array(
-                    'entity'           => $entity,
-                    'feld'             => $feld,
-                    'tabelle'          => $metadaten->getTableName(),
-                    'spalte'           => $metadaten->getColumnName($feld),
-                    'schluesselspalte' => $metadaten->getSingleIdentifierColumnName(),
+                $fields[] = array(
+                    'entity'     => $entity,
+                    'field'      => $field,
+                    'table'      => $metadata->getTableName(),
+                    'column'     => $metadata->getColumnName($field),
+                    'key_column' => $metadata->getSingleIdentifierColumnName(),
                 );
             }
         }
 
-        return $felder;
+        return $fields;
     }
 
     /**
-     * Schluesselt eine Spalte um, in Stapeln.
+     * Re-encrypts one column, in batches.
      *
-     * OEFFENTLICH AUS DEMSELBEN GRUND wie oben: Ohne ein Feld mit `encoded: true` im Baum ist
-     * dies die einzige Stelle, an der sich der Vorgang gegen eine echte Datenbank belegen
-     * laesst.
+     * PUBLIC FOR THE SAME REASON as above: without a field with `encoded: true` in the tree, this
+     * is the only place where the operation can be demonstrated against a real database.
      *
-     * EIN STAPEL IST EINE TRANSAKTION. Bricht er ab, ist kein halb umgeschluesselter Stapel
-     * zurueckgeblieben. Ueber Stapel hinweg ist ein Abbruch ohnehin unschaedlich — was schon
-     * umgestellt ist, wird beim naechsten Lauf uebersprungen.
+     * ONE BATCH IS ONE TRANSACTION. If it aborts, no half re-encrypted batch is left behind.
+     * Across batches an abort is harmless anyway — whatever has already been converted is
+     * skipped on the next run.
      *
-     * @return array{geprueft:int,umgeschluesselt:int,uebersprungen:int}
+     * @return array{checked:int,reencrypted:int,skipped:int}
      */
-    public function spalteUmschluesseln(
+    public function reencryptColumn(
         Connection $db,
-        string $tabelle,
-        string $spalte,
-        string $schluesselspalte,
-        bool $trocken,
-        int $stapel
+        string $table,
+        string $column,
+        string $keyColumn,
+        bool $dryRun,
+        int $batchSize
     ): array {
-        $krypto  = new FieldEncryption();
-        $zaehler = array('geprueft' => 0, 'umgeschluesselt' => 0, 'uebersprungen' => 0);
-        $letzte  = null;
+        $encryption = new FieldEncryption();
+        $counts     = array('checked' => 0, 'reencrypted' => 0, 'skipped' => 0);
+        $lastKey    = null;
 
         while (true) {
-            $abfrage = sprintf(
-                'SELECT %1$s AS pk, %2$s AS wert FROM %3$s WHERE %2$s IS NOT NULL AND %2$s <> \'\'%4$s ORDER BY %1$s ASC LIMIT %5$d',
-                $db->quoteIdentifier($schluesselspalte),
-                $db->quoteIdentifier($spalte),
-                $db->quoteIdentifier($tabelle),
-                $letzte === null ? '' : sprintf(' AND %s > ?', $db->quoteIdentifier($schluesselspalte)),
-                $stapel
+            $query = sprintf(
+                'SELECT %1$s AS pk, %2$s AS value FROM %3$s WHERE %2$s IS NOT NULL AND %2$s <> \'\'%4$s ORDER BY %1$s ASC LIMIT %5$d',
+                $db->quoteIdentifier($keyColumn),
+                $db->quoteIdentifier($column),
+                $db->quoteIdentifier($table),
+                $lastKey === null ? '' : sprintf(' AND %s > ?', $db->quoteIdentifier($keyColumn)),
+                $batchSize
             );
 
-            $zeilen = $db->fetchAllAssociative($abfrage, $letzte === null ? array() : array($letzte));
+            $rows = $db->fetchAllAssociative($query, $lastKey === null ? array() : array($lastKey));
 
-            if (!$zeilen) {
+            if (!$rows) {
                 break;
             }
 
             $db->beginTransaction();
 
             try {
-                foreach ($zeilen as $zeile) {
-                    $letzte = $zeile['pk'];
-                    $zaehler['geprueft']++;
+                foreach ($rows as $row) {
+                    $lastKey = $row['pk'];
+                    $counts['checked']++;
 
-                    if ($krypto->isNewFormat((string) $zeile['wert'])) {
-                        $zaehler['uebersprungen']++;
+                    if ($encryption->isNewFormat((string) $row['value'])) {
+                        $counts['skipped']++;
                         continue;
                     }
 
-                    $klartext = $krypto->decrypt((string) $zeile['wert']);
+                    $plaintext = $encryption->decrypt((string) $row['value']);
 
-                    if ($klartext === false) {
+                    if ($plaintext === false) {
                         throw new \RuntimeException(sprintf(
-                            'Der Wert in %s.%s (%s = %s) laesst sich nicht entschluesseln. '
-                            .'Steht der richtige SECURITY_CIPHER_KEY in custom/config.php?',
-                            $tabelle,
-                            $spalte,
-                            $schluesselspalte,
-                            (string) $zeile['pk']
+                            'The value in %s.%s (%s = %s) cannot be decrypted. '
+                            .'Is the correct SECURITY_CIPHER_KEY set in custom/config.php?',
+                            $table,
+                            $column,
+                            $keyColumn,
+                            (string) $row['pk']
                         ));
                     }
 
-                    $zaehler['umgeschluesselt']++;
+                    $counts['reencrypted']++;
 
-                    if (!$trocken) {
+                    if (!$dryRun) {
                         $db->update(
-                            $tabelle,
-                            array($spalte => $krypto->encrypt($klartext)),
-                            array($schluesselspalte => $zeile['pk'])
+                            $table,
+                            array($column => $encryption->encrypt($plaintext)),
+                            array($keyColumn => $row['pk'])
                         );
                     }
                 }
 
                 $db->commit();
-            } catch (\Throwable $fehler) {
+            } catch (\Throwable $error) {
                 $db->rollBack();
 
-                throw $fehler;
+                throw $error;
             }
 
-            if (count($zeilen) < $stapel) {
+            if (count($rows) < $batchSize) {
                 break;
             }
         }
 
-        return $zaehler;
+        return $counts;
     }
 }

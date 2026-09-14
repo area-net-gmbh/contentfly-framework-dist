@@ -8,43 +8,43 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
- * Raeumt abgelaufene Anmeldetoken aus `pim_token` (000-000-0015) und gegenstandslose
- * Sperrlisten-Eintraege aus `pim_revoked_token` (013-003-0003).
+ * Clears expired login tokens from `pim_token` (000-000-0015) and obsolete revocation-list
+ * entries from `pim_revoked_token` (013-003-0003).
  *
- * ── Wogegen ──────────────────────────────────────────────────────────────────────────
+ * ── Against what ─────────────────────────────────────────────────────────────────────
  *
- * Jede Anmeldung legt eine Zeile an. Aufgeraeumt wurde bisher nur TRAEGE, in
- * `BaseControllerProvider::checkToken()`: Wird ein abgelaufener Token noch einmal vorgezeigt,
- * verschwindet er. Ein Token, den niemand wieder benutzt — der Normalfall beim Schliessen des
- * Browsers — blieb fuer immer. Es gab keinen Aufraeumlauf, kein Command und keinen Endpunkt.
+ * Every login creates a row. Until now, cleanup only happened LAZILY, in
+ * `BaseControllerProvider::checkToken()`: if an expired token is presented once more, it
+ * disappears. A token that nobody uses again — the normal case when the browser is closed —
+ * stayed forever. There was no cleanup run, no command and no endpoint.
  *
- * ── Warum das nicht auf Epic 013 warten kann ─────────────────────────────────────────
+ * ── Why this cannot wait for Epic 013 ────────────────────────────────────────────────
  *
- * Der Task liess offen, ob 013-003 die Tokentabelle durch JWT ersetzt. Tut es nicht: Die Story
- * behaelt den opaquen DB-Token ausdruecklich als REFRESH-Token — "genau der Mechanismus, der
- * ohnehin existiert". Die Tabelle bleibt also, und mit ihr das Wachstum. Eingeloest hat sich das
- * mit 013-003-0001: Ein Refresh-Token IST eine `pim_token`-Zeile, nur mit `purpose = refresh`.
- * Sie unterliegt demselben Zeitlimit und wird von diesem Command mit aufgeraeumt.
+ * The task left open whether 013-003 replaces the token table with JWT. It does not: the story
+ * explicitly keeps the opaque DB token as the REFRESH token — "exactly the mechanism that
+ * already exists". So the table stays, and with it the growth. This came true with
+ * 013-003-0001: a refresh token IS a `pim_token` row, just with `purpose = refresh`. It is
+ * subject to the same time limit and is cleaned up by this command as well.
  *
- * ── Was als abgelaufen gilt ──────────────────────────────────────────────────────────
+ * ── What counts as expired ───────────────────────────────────────────────────────────
  *
- * Dieselbe Rechnung wie in checkToken(), damit hier nichts faellt, was dort noch gueltig
- * waere:
+ * The same calculation as in checkToken(), so that nothing is dropped here that would still be
+ * valid there:
  *
- *   - `modified` aelter als das Zeitlimit. Gezaehlt wird ab der letzten Benutzung, nicht ab
- *     der Anmeldung — checkToken() schreibt `modified` bei jedem Aufruf zurueck.
- *   - Das Limit kommt aus der Gruppe des Benutzers (`tokenTimeout`, in Minuten), sonst aus
- *     `APP_TOKEN_TIMEOUT` (in Sekunden).
- *   - Ein Token MIT `referrer` ist ein API-Token und verfaellt nicht. checkToken() nimmt ihn
- *     ebenfalls aus; er wird ueber `deleteToken` entfernt, nicht ueber die Zeit.
- *   - Ist `APP_CHECK_TOKEN_TIMEOUT` aus, verfaellt gar nichts — dann raeumt dieses Command
- *     auch nichts weg, sonst loeschte es gueltige Sitzungen.
+ *   - `modified` older than the time limit. It is counted from the last use, not from the
+ *     login — checkToken() writes `modified` back on every call.
+ *   - The limit comes from the user's group (`tokenTimeout`, in minutes), otherwise from
+ *     `APP_TOKEN_TIMEOUT` (in seconds).
+ *   - A token WITH a `referrer` is an API token and does not expire. checkToken() exempts it
+ *     as well; it is removed via `deleteToken`, not by time.
+ *   - If `APP_CHECK_TOKEN_TIMEOUT` is off, nothing expires at all — then this command does not
+ *     clear anything either, otherwise it would delete valid sessions.
  *
  * ── --dry-run ────────────────────────────────────────────────────────────────────────
  *
- * Ein Aufraeumlauf, den man nicht vorher ansehen kann, wird nicht ausgefuehrt. Der Vorgabewert
- * ist deshalb bewusst NICHT trocken — wer das Command in einen Cron haengt, soll nicht
- * feststellen, dass es nie etwas getan hat.
+ * A cleanup run that cannot be inspected beforehand does not get executed. The default is
+ * therefore deliberately NOT dry — whoever hooks the command into a cron job should not
+ * discover that it never did anything.
  */
 class TokenCleanupCommand extends Command
 {
@@ -54,8 +54,8 @@ class TokenCleanupCommand extends Command
 
         $this
             ->setName('appcms:token:cleanup')
-            ->setDescription('Entfernt abgelaufene Anmeldetoken aus pim_token')
-            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Nur zaehlen, nichts loeschen')
+            ->setDescription('Removes expired login tokens from pim_token')
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Only count, delete nothing')
         ;
     }
 
@@ -65,85 +65,85 @@ class TokenCleanupCommand extends Command
         $em  = $app['orm.em'];
 
         if (!Adapter::getConfig()->APP_CHECK_TOKEN_TIMEOUT) {
-            $output->writeln('<comment>APP_CHECK_TOKEN_TIMEOUT ist aus — Token verfallen nicht, es wird nichts entfernt.</comment>');
+            $output->writeln('<comment>APP_CHECK_TOKEN_TIMEOUT is off — tokens do not expire, nothing is removed.</comment>');
 
             return 0;
         }
 
-        $trocken = (bool) $input->getOption('dry-run');
-        $jetzt   = new \DateTime();
-        $standard = (int) Adapter::getConfig()->APP_TOKEN_TIMEOUT;
+        $dryRun  = (bool) $input->getOption('dry-run');
+        $now     = new \DateTime();
+        $default = (int) Adapter::getConfig()->APP_TOKEN_TIMEOUT;
 
-        $token = $em->createQuery(
+        $tokens = $em->createQuery(
             "SELECT t FROM Areanet\\PIM\\Entity\\Token t WHERE t.referrer IS NULL OR t.referrer = ''"
         )->getResult();
 
-        $abgelaufen = 0;
-        $geprueft   = 0;
+        $expired = 0;
+        $checked = 0;
 
-        foreach ($token as $eintrag) {
-            $geprueft++;
+        foreach ($tokens as $entry) {
+            $checked++;
 
-            $benutzer = $eintrag->getUser();
-            $limit    = $standard;
+            $user  = $entry->getUser();
+            $limit = $default;
 
-            if ($benutzer && ($gruppe = $benutzer->getGroup()) && $gruppe->getTokenTimeout()) {
-                $limit = ((int) $gruppe->getTokenTimeout()) * 60;
+            if ($user && ($group = $user->getGroup()) && $group->getTokenTimeout()) {
+                $limit = ((int) $group->getTokenTimeout()) * 60;
             }
 
             if (!$limit) {
                 continue;
             }
 
-            if (($jetzt->getTimestamp() - $eintrag->getModified()->getTimestamp()) <= $limit) {
+            if (($now->getTimestamp() - $entry->getModified()->getTimestamp()) <= $limit) {
                 continue;
             }
 
-            $abgelaufen++;
+            $expired++;
 
-            if (!$trocken) {
-                $em->remove($eintrag);
+            if (!$dryRun) {
+                $em->remove($entry);
             }
         }
 
         /*
-         * DIE SPERRLISTE HAENGT AN DEMSELBEN LAUF (013-003-0003).
+         * THE REVOCATION LIST RIDES ON THE SAME RUN (013-003-0003).
          *
-         * Ein Eintrag ist gegenstandslos, sobald das Token, das er sperrt, ohnehin abgelaufen
-         * waere. Er hier mit wegzuraeumen ist kein Beiwerk, sondern der Grund, warum die Liste
-         * klein bleibt — das Kundenprojekt hatte eine solche Liste ohne Verfall, und sie musste
-         * unbegrenzt wachsen.
+         * An entry is obsolete as soon as the token it revokes would have expired anyway.
+         * Clearing it here along with the rest is not an extra, but the reason the list stays
+         * small — the customer project had such a list without expiry, and it was bound to grow
+         * without limit.
          *
-         * KEIN ZWEITER AUFRAEUMWEG: Ein Betreiber, der dieses Command im Cron hat, soll nicht
-         * herausfinden muessen, dass es ein zweites gibt.
+         * NO SECOND CLEANUP PATH: an operator who has this command in cron should not have to
+         * find out that there is a second one.
          */
-        $gesperrt = $em->createQuery(
-            "SELECT s FROM Areanet\\PIM\\Entity\\RevokedToken s WHERE s.expiresAt < :jetzt"
-        )->setParameter('jetzt', $jetzt)->getResult();
+        $revoked = $em->createQuery(
+            "SELECT s FROM Areanet\\PIM\\Entity\\RevokedToken s WHERE s.expiresAt < :now"
+        )->setParameter('now', $now)->getResult();
 
-        foreach ($gesperrt as $eintrag) {
-            if (!$trocken) {
-                $em->remove($eintrag);
+        foreach ($revoked as $entry) {
+            if (!$dryRun) {
+                $em->remove($entry);
             }
         }
 
-        if (!$trocken) {
+        if (!$dryRun) {
             $em->flush();
         }
 
         $output->writeln(sprintf(
-            '%s %d von %d Anmeldetoken abgelaufen%s.',
-            $trocken ? '→' : '✓',
-            $abgelaufen,
-            $geprueft,
-            $trocken ? ' (--dry-run, nichts entfernt)' : ' und entfernt'
+            '%s %d of %d login tokens expired%s.',
+            $dryRun ? '→' : '✓',
+            $expired,
+            $checked,
+            $dryRun ? ' (--dry-run, nothing removed)' : ' and removed'
         ));
 
         $output->writeln(sprintf(
-            '%s %d Sperrlisten-Eintrag/-Eintraege gegenstandslos%s.',
-            $trocken ? '→' : '✓',
-            count($gesperrt),
-            $trocken ? ' (--dry-run, nichts entfernt)' : ' und entfernt'
+            '%s %d revocation list entries obsolete%s.',
+            $dryRun ? '→' : '✓',
+            count($revoked),
+            $dryRun ? ' (--dry-run, nothing removed)' : ' and removed'
         ));
 
         return 0;

@@ -12,7 +12,7 @@ namespace Areanet\PIM\Classes\Security;
  * WHAT FOR: whoever disappears from the directory can no longer get in — that follows by itself.
  * Their Contentfly account remains, however, and with it a refresh token that keeps fetching fresh
  * access JWTs until its time limit. A user removed by HR therefore keeps working until a time limit
- * expires that nobody chose for this purpose. `appcms:provider:abgleich` closes that gap — and needs
+ * expires that nobody chose for this purpose. `appcms:provider:sync` closes that gap — and needs
  * exactly this question for it.
  *
  * NOT EVERY PROVIDER CAN ANSWER IT. An OIDC provider, for instance, verifies a token the client

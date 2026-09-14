@@ -15,7 +15,7 @@ class SetupCommand extends Command
 
         $this
             ->setName('appcms:setup')
-            ->setDescription('Setup-Routine für APP-CMS')
+            ->setDescription('Setup routine for APP-CMS')
         ;
     }
 
@@ -26,11 +26,11 @@ class SetupCommand extends Command
 
         $app['helper']->install($em);
 
-        $output->writeln("<info>APP-CMS Setup wurde erfolgreich durchgeführt. Login in das Backend mit Benutzer=admin und Passwort=admin!</info>");
+        $output->writeln("<info>APP-CMS setup completed successfully. Log in with user=admin and password=admin!</info>");
 
-        // Der einzige Command ohne Rueckgabe — unter Console 4 war execute() untypisiert und
-        // ein fehlendes return ergab still null, was Symfony als 0 las. Console 7 verlangt den
-        // int (009-002-0005).
+        // The only command without a return value — under Console 4, execute() was untyped and
+        // a missing return silently yielded null, which Symfony read as 0. Console 7 requires
+        // the int (009-002-0005).
         return 0;
     }
 }

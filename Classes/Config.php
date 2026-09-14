@@ -74,7 +74,7 @@ class Config{
     public $DB_ID_INTEGER_TYPE  = 'integer';
 
     /**
-     * @var boolean Doctrine erstellt Proxy-Klassen automatisch zur Laufzeit
+     * @var boolean Doctrine generates proxy classes automatically at runtime
      */
     public $APP_AUTOGENERATE_PROXIES = true;
 
@@ -84,28 +84,27 @@ class Config{
     public $APP_ENABLE_SCHEMA_CACHE = true;
 
     /**
-     * Metadaten- und Abfrage-Cache von Doctrine.
+     * Doctrine's metadata and query cache.
      *
-     * Erlaubt sind `filesystem` (Vorgabe), `apcu` und `memcached`. Der Cache ist nur aktiv,
-     * wenn `APP_DEBUG` aus ist und die Anwendung nicht auf der Konsole laeuft.
+     * Allowed are `filesystem` (default), `apcu` and `memcached`. The cache is only active
+     * when `APP_DEBUG` is off and the application is not running on the console.
      *
-     * `apc` ist mit `010-002-0002` entfallen und wird ausdruecklich abgewiesen statt
-     * stillschweigend auf die Vorgabe zurueckzufallen: Die APC-Erweiterung gibt es fuer
-     * PHP 7 und 8 nicht mehr — der Zweig konnte auf keiner unterstuetzten Version laufen.
-     * Der Nachfolger heisst `apcu`; er stand hier nie in der Liste, obwohl der Bootstrap ihn
-     * seit jeher behandelte.
+     * `apc` was dropped with `010-002-0002` and is explicitly rejected instead of silently
+     * falling back to the default: the APC extension no longer exists for PHP 7 and 8 — the
+     * branch could not run on any supported version. Its successor is called `apcu`; it was
+     * never in the list here, even though the bootstrap had always handled it.
      *
      * @var string  filesystem | apcu | memcached
      */
     public $APP_CACHE_DRIVER = 'filesystem';
 
     /**
-     * Server fuer `APP_CACHE_DRIVER = 'memcached'`, als DSN.
+     * Server for `APP_CACHE_DRIVER = 'memcached'`, as a DSN.
      *
-     * NEU MIT 010-002-0002, und zwar aus einem Befund: Vorher baute der Bootstrap ein blankes
-     * `new Memcached()` — einen Client **ohne einen einzigen Server**. Ein solcher Client
-     * speichert nichts; der Zweig war also selbst dort wirkungslos, wo die Erweiterung
-     * vorhanden war.
+     * NEW WITH 010-002-0002, and specifically because of a finding: previously the bootstrap
+     * built a bare `new Memcached()` — a client **without a single server**. Such a client
+     * stores nothing; the branch was therefore ineffective even where the extension was
+     * installed.
      *
      * @var string
      */
@@ -138,12 +137,12 @@ class Config{
     public $APP_TIMEZONE = 'Europe/Berlin';
 
     /**
-     * @var array Sprachen
+     * @var array Languages
      */
     public $APP_LANGUAGES = array();
 
     /**
-     * @var string Art der Dateirückgabe über API /file/get: redirect, readfile, xsendfile
+     * @var string How files are returned via API /file/get: redirect, readfile, xsendfile
      */
     public $APP_FILE_MODE = 'redirect';
 
@@ -232,54 +231,54 @@ class Config{
     public $APP_MAX_AGE             = 0;
 
     /*
-     * APP_MASTER_PASSWORD IST ERSATZLOS ENTFALLEN (013-001-0002).
+     * APP_MASTER_PASSWORD HAS BEEN REMOVED WITHOUT REPLACEMENT (013-001-0002).
      *
-     * Ein hier gesetzter Wert akzeptierte den Login fuer JEDEN Benutzer — eine
-     * Konfigurationszeile mit Vollzugriff auf jedes Konto.
+     * A value set here accepted the login for EVERY user — a configuration line with full
+     * access to every account.
      *
-     * Nicht abschaltbar gemacht, sondern entfernt. Ein Schalter, der Vollzugriff gewaehrt, ist
-     * auch ausgeschaltet eine Hintertuer: Er kann versehentlich gesetzt werden, er steht in
-     * Konfigurationsbeispielen, und er laedt dazu ein, ihn "nur kurz" zu benutzen.
+     * Not made switchable, but removed. A switch that grants full access is a backdoor even
+     * when switched off: it can be set by accident, it appears in configuration examples, and
+     * it invites people to use it "just briefly".
      *
-     * DASS DAS PROBLEM BEKANNT WAR, IST AKTENKUNDIG: Das Kundenprojekt, aus dem dieses
-     * Framework herausgeschnitten wurde, setzte den Wert beim Bootstrap ausdruecklich auf null
-     * (siehe an_project/docs/technical.md). Man hat sich davor geschuetzt, statt ihn zu
-     * entfernen.
+     * THAT THE PROBLEM WAS KNOWN IS ON RECORD: the customer project from which this framework
+     * was carved out explicitly set the value to null during bootstrap
+     * (see an_project/docs/technical.md). People protected themselves against it instead of
+     * removing it.
      */
 
 
     /**
-     * Proxies, hinter denen die Anwendung steht.
+     * Proxies the application sits behind.
      *
-     * NEU MIT 013-001-0003, und zwar als Voraussetzung fuer die LoginThrottle: `setTrustedProxies()`
-     * wurde im ganzen Baum nirgends gerufen. Ohne diese Angabe liefert
-     * `Request::getClientIp()` die Adresse des naechsten Hops — hinter einem Loadbalancer also
-     * dessen eigene. Eine Begrenzung pro IP traefe dann ihn und damit alle Benutzer dahinter,
-     * waehrend der Angreifer ungebremst weiterraet.
+     * NEW WITH 013-001-0003, specifically as a prerequisite for the LoginThrottle:
+     * `setTrustedProxies()` was not called anywhere in the whole tree. Without this setting,
+     * `Request::getClientIp()` returns the address of the nearest hop — behind a load balancer,
+     * that is the balancer's own. A per-IP limit would then hit the balancer and with it all users
+     * behind it, while the attacker keeps guessing unhindered.
      *
-     * LEER HEISST: unveraendert. Wer keine Proxies eintraegt, betreibt die Anwendung direkt —
-     * dann stimmt die Adresse ohnehin, und `setTrustedProxies()` wird gar nicht erst gerufen.
+     * EMPTY MEANS: unchanged. Whoever enters no proxies runs the application directly — then the
+     * address is correct anyway, and `setTrustedProxies()` is not even called.
      *
-     * Erlaubt sind einzelne Adressen, CIDR-Netze und der Sonderwert 'REMOTE_ADDR' von
-     * HttpFoundation ("der unmittelbare Absender, wer immer das ist") — als Array oder als
-     * Zeichenkette mit Kommas, damit der Wert auch aus einer Umgebungsvariablen kommen kann.
+     * Allowed are single addresses, CIDR networks and HttpFoundation's special value
+     * 'REMOTE_ADDR' ("the immediate sender, whoever that is") — as an array or as a
+     * comma-separated string, so that the value can also come from an environment variable.
      *
-     * Beispiel: array('10.0.0.0/8', '192.168.1.5')
+     * Example: array('10.0.0.0/8', '192.168.1.5')
      *
      * @var array|string
      */
     public $APP_TRUSTED_PROXIES = array();
 
     /**
-     * Welchen Weiterleitungs-Headern dabei geglaubt wird.
+     * Which forwarding headers are trusted in the process.
      *
-     * Die Vorgabe ist die enge: nur die X-Forwarded-*-Header. `forwarded` schaltet stattdessen
-     * auf den standardisierten Einzelheader aus RFC 7239 um. BEIDE GLEICHZEITIG GIBT ES NICHT —
-     * sie transportieren dieselbe Angabe, und beiden zu glauben hiesse, dem Aufrufer die Wahl zu
-     * lassen, welche gilt.
+     * The default is the narrow one: only the X-Forwarded-* headers. `forwarded` switches instead
+     * to the standardised single header from RFC 7239. BOTH AT THE SAME TIME IS NOT AN OPTION —
+     * they carry the same information, and trusting both would mean letting the caller choose
+     * which one applies.
      *
-     * Ein unbekannter Wert wird abgewiesen statt stillschweigend auf die Vorgabe zurueckgefuehrt;
-     * ein Tippfehler waere sonst eine Konfiguration, die zu wirken scheint und nicht wirkt.
+     * An unknown value is rejected instead of silently being reset to the default; otherwise a
+     * typo would be a configuration that appears to work and does not.
      *
      * @var string  x-forwarded | forwarded
      */
@@ -301,39 +300,39 @@ class Config{
     public $APP_HTTP_AUTH_PASS = null;
 
     /*
-     * VON ZEHN FRONTEND_*-FELDERN SIND ACHT ENTFALLEN (000-000-0010).
+     * OF TEN FRONTEND_* FIELDS, EIGHT HAVE BEEN DROPPED (000-000-0010).
      *
-     * Epic 012 hat die PIM-Oberflaeche entfernt; 012-005-0004 zog nur die drei Felder mit,
-     * die es selbst verwaist hatte, und vermerkte den Rest als eigenen Task. Entfallen sind:
+     * Epic 012 removed the PIM user interface; 012-005-0004 only took along the three fields
+     * it had orphaned itself, and recorded the rest as a separate task. Dropped are:
      *
-     *   FRONTEND_UI, FRONTEND_URL, FRONTEND_CUSTOM_LOGIN_BG   niemand las sie
+     *   FRONTEND_UI, FRONTEND_URL, FRONTEND_CUSTOM_LOGIN_BG   nobody read them
      *   FRONTEND_TITLE, FRONTEND_WELCOME, FRONTEND_LOGIN_REDIRECT,
      *   FRONTEND_CUSTOM_LOGO, FRONTEND_FORM_IMAGE_SQUARE_PREVIEW
-     *                                                          nur der frontend-Block des
-     *                                                          Schemas las sie, und der
-     *                                                          bewarb damit Eigenschaften
-     *                                                          einer geloeschten Oberflaeche
+     *                                                          only the schema's frontend
+     *                                                          block read them, and it
+     *                                                          thereby advertised properties
+     *                                                          of a deleted user interface
      *
-     * Die beiden folgenden bleiben. Sie tragen "FRONTEND_" im Namen, steuern aber Verhalten
-     * der API — die Benennung ist ein Erbe, kein Hinweis auf ihren Zweck. Umbenennen waere
-     * ein Bruch fuer jedes Bestandsprojekt und gehoert, wenn ueberhaupt, zu Epic 007.
+     * The following two stay. They carry "FRONTEND_" in their name, but control behaviour of
+     * the API — the naming is a legacy, not a hint at their purpose. Renaming them would be a
+     * break for every existing project and belongs, if anywhere, to Epic 007.
      */
 
     /**
-     * @var boolean Schaltet die benutzerdefinierte Navigation im Schema frei.
+     * @var boolean Enables the custom navigation in the schema.
      *
-     * BLEIBT: Steuert einen datengetriebenen Zweig in Api::getExtendedSchema(), der die
-     * Entities PIM\Nav und PIM\NavItem ausliest. Beide existieren, sind Teil des
-     * Datenmodells und werden von der Suite beruehrt — das ist kein Rest der Oberflaeche.
+     * STAYS: controls a data-driven branch in Api::getExtendedSchema() that reads the
+     * entities PIM\Nav and PIM\NavItem. Both exist, are part of the data model and are
+     * exercised by the suite — this is not a leftover of the user interface.
      */
     public $FRONTEND_CUSTOM_NAVIGATION = false;
 
     /**
-     * @var integer Standard-Seitengroesse der Pagination von /api/list und /api/query
+     * @var integer Default page size of the pagination of /api/list and /api/query
      *
-     * BLEIBT: Wird in ApiController::listAction() als Vorgabe fuer itemsPerPage gelesen und
-     * bestimmt damit, wie viele Objekte ein Client ohne eigene Angabe bekommt. Reines
-     * API-Verhalten.
+     * STAYS: read in ApiController::listAction() as the default for itemsPerPage and thereby
+     * determines how many objects a client gets without specifying its own value. Pure
+     * API behaviour.
      */
     public $FRONTEND_ITEMS_PER_PAGE = 40;
 
@@ -350,17 +349,17 @@ class Config{
     public $FILE_HASH_MUST_UNIQUE = false;
 
     /**
-     * @var integer Qualität, 0..100 / 100 = keine Komprimierung
+     * @var integer Quality, 0..100 / 100 = no compression
      */
     public $FILE_IMAGE_QUALITY_JPEG = 90;
 
     /**
-     * @var integer Qualität, 0..9 / 0 = keine Komprimierung
+     * @var integer Quality, 0..9 / 0 = no compression
      */
     public $FILE_IMAGE_QUALITY_PNG = 0;
 
     /**
-     * @var boolean Lifetime for HTTP-File-Cache = 7 Tage
+     * @var boolean Lifetime for HTTP-File-Cache = 7 days
      */
     public $FILE_CACHE_LIFETIME = 604800;
 
@@ -574,18 +573,18 @@ class Config{
 
 
     /**
-     * Unter welchem Pfad die Anwendung im Web erreichbar ist.
+     * The path under which the application is reachable on the web.
      *
-     * Liegt sie im Wurzelverzeichnis des Hosts, bleibt es bei '/'. Liegt sie in einem
-     * Unterverzeichnis, gehoert hier '/unterverzeichnis/' hin — mit Schraegstrich am Ende.
+     * If it lives in the host's root directory, it stays '/'. If it lives in a subdirectory,
+     * '/subdirectory/' belongs here — with a trailing slash.
      *
-     * Bis 000-000-0006 hat `bootstrap-web.php` diesen Wert bei jedem Request aus
-     * `$_SERVER['PHP_SELF']` ueberschrieben. Das traf unter Apache mit der mitgelieferten
-     * .htaccess zu und sonst nirgends; unter dem eingebauten PHP-Server zeigte die
-     * Dateiauslieferung anschliessend auf `/index.php/file/get/data/files/…`. Der Mountpunkt
-     * ist eine Angabe des Betreibers, keine, die sich aus der Umgebung erraten laesst.
+     * Until 000-000-0006, `bootstrap-web.php` overwrote this value on every request from
+     * `$_SERVER['PHP_SELF']`. That was correct under Apache with the shipped .htaccess and
+     * nowhere else; under the built-in PHP server, file delivery then pointed to
+     * `/index.php/file/get/data/files/…`. The mount point is something the operator specifies,
+     * not something that can be guessed from the environment.
      *
-     * Benutzt von `FileController::getAction()` fuer den Redirect auf `data/files/…`.
+     * Used by `FileController::getAction()` for the redirect to `data/files/…`.
      *
      * @var string
      */

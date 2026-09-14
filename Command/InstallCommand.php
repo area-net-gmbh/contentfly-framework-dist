@@ -33,15 +33,15 @@ class InstallCommand extends Command
 
         $this
             ->setName('appcms:install')
-            ->setDescription('Installiert Contentfly: schreibt die Konfiguration, legt das Schema an und erzeugt die Basisdaten')
-            ->addOption('db-host', null, InputOption::VALUE_REQUIRED, 'Datenbank-Host (Env: APPCMS_DB_HOST)')
-            ->addOption('db-port', null, InputOption::VALUE_REQUIRED, 'Datenbank-Port (Env: APPCMS_DB_PORT)', '3306')
-            ->addOption('db-name', null, InputOption::VALUE_REQUIRED, 'Datenbank-Name (Env: APPCMS_DB_NAME)')
-            ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Datenbank-Benutzer (Env: APPCMS_DB_USER)')
-            ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Datenbank-Passwort (Env: APPCMS_DB_PASS)')
-            ->addOption('db-strategy', null, InputOption::VALUE_REQUIRED, 'ID-Strategie: guid oder auto (Env: APPCMS_DB_STRATEGY)', 'auto')
-            ->addOption('admin-password', null, InputOption::VALUE_REQUIRED, 'Passwort des Admin-Benutzers (Env: APPCMS_ADMIN_PASSWORD; Standard: admin)')
-            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Nur prüfen, nichts schreiben')
+            ->setDescription('Installs Contentfly: writes the configuration, creates the schema and seeds the base data')
+            ->addOption('db-host', null, InputOption::VALUE_REQUIRED, 'Database host (env: APPCMS_DB_HOST)')
+            ->addOption('db-port', null, InputOption::VALUE_REQUIRED, 'Database port (env: APPCMS_DB_PORT)', '3306')
+            ->addOption('db-name', null, InputOption::VALUE_REQUIRED, 'Database name (env: APPCMS_DB_NAME)')
+            ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Database user (env: APPCMS_DB_USER)')
+            ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Database password (env: APPCMS_DB_PASS)')
+            ->addOption('db-strategy', null, InputOption::VALUE_REQUIRED, 'ID strategy: guid or auto (env: APPCMS_DB_STRATEGY)', 'auto')
+            ->addOption('admin-password', null, InputOption::VALUE_REQUIRED, 'Password of the admin user (env: APPCMS_ADMIN_PASSWORD; default: admin)')
+            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Only check, write nothing')
         ;
     }
 
@@ -53,8 +53,8 @@ class InstallCommand extends Command
         // step 5 would overwrite the credentials in config.php and step 10 would
         // reset the admin password.
         if (Adapter::getConfig()->DB_HOST !== self::PLACEHOLDER_HOST) {
-            $output->writeln('<error>Contentfly ist bereits installiert (custom/config.php trägt einen DB-Host).</error>');
-            $output->writeln('Zum Neuaufsetzen die Platzhalter in custom/config.php wiederherstellen.');
+            $output->writeln('<error>Contentfly is already installed (custom/config.php contains a DB host).</error>');
+            $output->writeln('To set it up again, restore the placeholders in custom/config.php.');
 
             return 1;
         }
@@ -70,7 +70,7 @@ class InstallCommand extends Command
 
         $errors = $this->check($db, !$input->getOption('dry-run'));
         if (count($errors)) {
-            $output->writeln('<error>Die Installation kann nicht starten:</error>');
+            $output->writeln('<error>The installation cannot start:</error>');
             foreach ($errors as $context => $message) {
                 $output->writeln(sprintf('  - <comment>%s</comment>: %s', $context, $message));
             }
@@ -79,36 +79,36 @@ class InstallCommand extends Command
         }
 
         if ($input->getOption('dry-run')) {
-            $output->writeln('<info>Alle Prüfungen bestanden. Es wurde nichts geschrieben (--dry-run).</info>');
+            $output->writeln('<info>All checks passed. Nothing was written (--dry-run).</info>');
 
             return 0;
         }
 
         try {
             $this->writeConfig($db);
-            $output->writeln('custom/config.php geschrieben.');
+            $output->writeln('custom/config.php written.');
 
             $em = $this->bootDoctrine($app, $db);
-            $output->writeln('Doctrine mit den neuen Zugangsdaten verbunden.');
+            $output->writeln('Doctrine connected with the new credentials.');
 
             $schemaTool = new SchemaTool($em);
             $schemaTool->updateSchema($em->getMetadataFactory()->getAllMetadata());
-            $output->writeln('Datenbankschema angelegt.');
+            $output->writeln('Database schema created.');
 
             $app['helper']->install($em);
             $this->setAdminPassword($input, $em);
             $em->flush();
-            $output->writeln('Basisdaten angelegt.');
+            $output->writeln('Base data created.');
         } catch (\Exception $e) {
-            $output->writeln('<error>Die Installation ist fehlgeschlagen: '.$e->getMessage().'</error>');
-            $output->writeln('<comment>custom/config.php trägt jetzt möglicherweise Zugangsdaten, ohne dass das Schema steht.</comment>');
-            $output->writeln('<comment>Vor einem neuen Versuch die Platzhalter dort wiederherstellen.</comment>');
+            $output->writeln('<error>The installation failed: '.$e->getMessage().'</error>');
+            $output->writeln('<comment>custom/config.php may now contain credentials although the schema is not in place.</comment>');
+            $output->writeln('<comment>Restore the placeholders there before trying again.</comment>');
 
             return 1;
         }
 
         $password = $this->value($input, 'admin-password', 'APPCMS_ADMIN_PASSWORD') ?: 'admin';
-        $output->writeln('<info>Contentfly wurde installiert. Login: admin / '.($password === 'admin' ? 'admin (Standard — bitte ändern)' : '<das gesetzte Passwort>').'</info>');
+        $output->writeln('<info>Contentfly has been installed. Login: admin / '.($password === 'admin' ? 'admin (default — please change it)' : '<the password you set>').'</info>');
 
         return 0;
     }
@@ -143,20 +143,20 @@ class InstallCommand extends Command
 
         foreach (array('host' => 'db-host', 'name' => 'db-name', 'user' => 'db-user', 'pass' => 'db-pass') as $key => $option) {
             if ($db[$key] === null) {
-                $errors[$option] = 'fehlt (Option --'.$option.' oder Umgebungsvariable setzen)';
+                $errors[$option] = 'is missing (set option --'.$option.' or the environment variable)';
             }
         }
 
         if ($db['port'] < 1 || $db['port'] > 65535) {
-            $errors['db-port'] = 'ist kein gültiger Port: '.$db['port'];
+            $errors['db-port'] = 'is not a valid port: '.$db['port'];
         }
 
         if (!in_array($db['strategy'], array('guid', 'auto'), true)) {
-            $errors['db-strategy'] = 'muss "guid" oder "auto" sein, war: "'.$db['strategy'].'"';
+            $errors['db-strategy'] = 'must be "guid" or "auto", was: "'.$db['strategy'].'"';
         }
 
         if (!$this->isFunctionEnabled('chmod')) {
-            $errors['chmod'] = 'PHP-Funktion chmod() ist deaktiviert.';
+            $errors['chmod'] = 'PHP function chmod() is disabled.';
         }
 
         if ($mayChmod) {
@@ -167,8 +167,8 @@ class InstallCommand extends Command
 
         if (!is_writable(Paths::custom().'/config.php')) {
             $errors['custom/config.php'] = $mayChmod
-                ? 'ist nicht schreibbar.'
-                : 'ist nicht schreibbar (unter --dry-run werden die Rechte nicht gesetzt).';
+                ? 'is not writable.'
+                : 'is not writable (permissions are not set under --dry-run).';
         }
 
         if (!isset($errors['db-host']) && !isset($errors['db-name'])) {
@@ -197,7 +197,7 @@ class InstallCommand extends Command
         $data = str_replace("'\$SET_DB_GUID_STRATEGY'", $db['strategy'] === 'guid' ? 'true' : 'false', $data);
 
         if (file_put_contents($path, $data) === false) {
-            throw new \Exception($path.' konnte nicht geschrieben werden.');
+            throw new \Exception($path.' could not be written.');
         }
     }
 
@@ -240,9 +240,9 @@ class InstallCommand extends Command
         };
 
         $app['db'] = function ($app) {
-            $verbindungen = $app['dbs'];
+            $connections = $app['dbs'];
 
-            return reset($verbindungen);
+            return reset($connections);
         };
 
         // The same construction as in the regular bootstrap — see 006-002-0005.
