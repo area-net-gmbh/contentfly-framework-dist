@@ -11,7 +11,7 @@ use Doctrine\ORM\EntityManagerInterface;
  *
  * IN ONE PLACE AND IN THE CONFIGURATION. Before, `createManagedUser($alias, $group, $isAdmin)` took
  * group and admin flag as arguments — meaning every project decided on its own how to get from "the
- * external system says the user is in CN=Redaktion" to a Contentfly group. The result lived in project
+ * external system says the user is in CN=Editorial" to a Contentfly group. The result lived in project
  * code that nobody reads any more.
  *
  * WHAT IS NOT PART OF IT: rebuilding the Contentfly permission model. `Permission`, `I18nPermission`

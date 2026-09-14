@@ -82,7 +82,7 @@ class User extends Base implements UserInterface
      *
      * IT IS STORED IN READABLE FORM, and that is the point. Previously
      * `createManagedUser()` mangled the alias into `md5($class).'-'.$alias`: whoever looked in
-     * `pim_user` found `3f2a…-mmustermann` and did not know who that was. The prefix solved a
+     * `pim_user` found `3f2a…-jdoe` and did not know who that was. The prefix solved a
      * real problem — two external systems that deliver the same user name must not get the same
      * account —, but it solved it by making the answer unreadable.
      *
