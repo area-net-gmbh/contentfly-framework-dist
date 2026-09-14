@@ -16,13 +16,13 @@
  * `Classes\Kernel\Start`, das die Vorbedingungen prueft und das Projektverzeichnis gesetzt
  * hat. Steht es nicht, endet der Start hier — mit einer Meldung ueber genau das.
  */
-if (!\Areanet\PIM\Classes\Kernel\Pfade::istGesetzt()) {
+if (!\Areanet\PIM\Classes\Kernel\Paths::isSet()) {
     throw new \RuntimeException(
         "Contentfly kann nicht starten.\n\n"
         ."lib/contentfly/bootstrap.php ist kein Einstiegspunkt mehr (007-001-0003). Der\n"
         ."Einstiegspunkt laedt den Autoloader und ruft dann:\n\n"
         ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::web(\$projektverzeichnis);\n"
-        ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::konsole(\$projektverzeichnis);\n\n"
+        ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::console(\$projektverzeichnis);\n\n"
         ."Start prueft die Vorbedingungen und bindet diese Datei ein."
     );
 }
@@ -32,8 +32,8 @@ if (!\Areanet\PIM\Classes\Kernel\Pfade::istGesetzt()) {
  * unten, hinter den ersten `require`s — er kann hier oben also noch nicht gelesen werden, ohne
  * dass es jeder Leser (und PHPStan) erst nachschlagen muss.
  */
-$paketverzeichnis     = \Areanet\PIM\Classes\Kernel\Pfade::paket();
-$projektKonfiguration = \Areanet\PIM\Classes\Kernel\Pfade::custom();
+$paketverzeichnis     = \Areanet\PIM\Classes\Kernel\Paths::package();
+$projektKonfiguration = \Areanet\PIM\Classes\Kernel\Paths::custom();
 
 require_once $paketverzeichnis.'/version.php';
 /*
@@ -66,7 +66,7 @@ use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Auth;
 use Areanet\PIM\Classes\Mailer;
 use Areanet\PIM\Classes\Config\Adapter;
-use Areanet\PIM\Classes\Kernel\Pfade;
+use Areanet\PIM\Classes\Kernel\Paths;
 use Areanet\PIM\Classes\Helper;
 use Areanet\PIM\Classes\Manager\ConsoleManager;
 use Areanet\PIM\Classes\Manager\PluginManager;
@@ -266,7 +266,7 @@ if($app['is_installed']) {
  * Als faule Factory, wie vorher: bin/console.php holt sie ab, der Web-Einstieg nie.
  */
 $app['console'] = function ($app) {
-    return new Console($app, 'PIM', APP_VERSION, Pfade::projekt());
+    return new Console($app, 'PIM', APP_VERSION, Paths::project());
 };
 
 $app['helper'] = function () {
@@ -380,7 +380,7 @@ $app['anmeldeanbieter'] = function () {
 };
 
 $app['loginbremse'] = function () use ($cachePoolBauen) {
-    return new Anmeldebremse($cachePoolBauen('loginbremse', Pfade::daten() . '/cache/loginbremse'));
+    return new Anmeldebremse($cachePoolBauen('loginbremse', Paths::data() . '/cache/loginbremse'));
 };
 
 if($app['is_installed']) {
@@ -406,8 +406,8 @@ if($app['is_installed']) {
         }
 
         return array(
-            $cachePoolBauen('query',    Pfade::daten() . '/cache/query'),
-            $cachePoolBauen('metadata', Pfade::daten() . '/cache/metadata')
+            $cachePoolBauen('query',    Paths::data() . '/cache/query'),
+            $cachePoolBauen('metadata', Paths::data() . '/cache/metadata')
         );
     };
 
@@ -417,10 +417,10 @@ if($app['is_installed']) {
         return EntityManagerFactory::erzeugen(
             $app['dbs']['pim'],
             array(
-                array('namespace' => 'Areanet\PIM\Entity', 'path' => Pfade::entitiesDesFrameworks()),
-                array('namespace' => 'Custom\Entity',       'path' => Pfade::entitiesDesProjekts()),
+                array('namespace' => 'Areanet\PIM\Entity', 'path' => Paths::frameworkEntities()),
+                array('namespace' => 'Custom\Entity',       'path' => Paths::projectEntities()),
             ),
-            Pfade::daten() . '/cache/doctrine',
+            Paths::data() . '/cache/doctrine',
             (bool) Adapter::getConfig()->APP_AUTOGENERATE_PROXIES,
             array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet'),
             $abfrageCache,
@@ -590,6 +590,6 @@ if(Adapter::getConfig()->APP_FORCE_SSL && !defined('APPCMS_CONSOLE')){
     header("Strict-Transport-Security:max-age=63072000");
 }
 
-require_once Pfade::custom().'/app.php';
+require_once Paths::custom().'/app.php';
 
 $app['routeManager']->bindRoutes();

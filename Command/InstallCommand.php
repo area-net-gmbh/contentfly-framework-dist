@@ -4,7 +4,7 @@ namespace Areanet\PIM\Command;
 use Areanet\PIM\Classes\Config\Adapter;
 use Doctrine\ORM\Tools\SchemaTool;
 use Areanet\PIM\Classes\Kernel\Command;
-use Areanet\PIM\Classes\Kernel\Pfade;
+use Areanet\PIM\Classes\Kernel\Paths;
 use Doctrine\DBAL\DriverManager;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -159,12 +159,12 @@ class InstallCommand extends Command
         }
 
         if ($mayChmod) {
-            @chmod(Pfade::custom().'/config.php', 0775);
-            @chmod(Pfade::daten().'/files', 0775);
-            @chmod(Pfade::daten().'/cache', 0775);
+            @chmod(Paths::custom().'/config.php', 0775);
+            @chmod(Paths::data().'/files', 0775);
+            @chmod(Paths::data().'/cache', 0775);
         }
 
-        if (!is_writable(Pfade::custom().'/config.php')) {
+        if (!is_writable(Paths::custom().'/config.php')) {
             $errors['custom/config.php'] = $mayChmod
                 ? 'ist nicht schreibbar.'
                 : 'ist nicht schreibbar (unter --dry-run werden die Rechte nicht gesetzt).';
@@ -185,7 +185,7 @@ class InstallCommand extends Command
     /** Schritt 5: Platzhalter in custom/config.php durch die echten Werte ersetzen. */
     private function writeConfig(array $db): void
     {
-        $path = Pfade::custom().'/config.php';
+        $path = Paths::custom().'/config.php';
         $data = file_get_contents($path);
 
         $data = str_replace(self::PLACEHOLDER_HOST, $db['host'], $data);
@@ -250,10 +250,10 @@ class InstallCommand extends Command
             return \Areanet\PIM\Classes\ORM\EntityManagerFactory::erzeugen(
                 $app['dbs']['pim'],
                 array(
-                    array('namespace' => 'Areanet\PIM\Entity', 'path' => Pfade::entitiesDesFrameworks()),
-                    array('namespace' => 'Custom\Entity',       'path' => Pfade::entitiesDesProjekts()),
+                    array('namespace' => 'Areanet\PIM\Entity', 'path' => Paths::frameworkEntities()),
+                    array('namespace' => 'Custom\Entity',       'path' => Paths::projectEntities()),
                 ),
-                Pfade::daten().'/cache/doctrine',
+                Paths::data().'/cache/doctrine',
                 true,
                 array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet')
             );

@@ -3,7 +3,7 @@ namespace Areanet\PIM\Classes;
 
 
 use Areanet\PIM\Classes\Config\Adapter;
-use Areanet\PIM\Classes\Kernel\Pfade;
+use Areanet\PIM\Classes\Kernel\Paths;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\ContentflyI18NException;
 use Areanet\PIM\Classes\File\Backend;
@@ -1467,7 +1467,7 @@ class Api
      * @throws ContentflyException
      */
     public function getSchema(){
-        $cacheFile = Pfade::daten().'/cache/schema.cache';
+        $cacheFile = Paths::data().'/cache/schema.cache';
 
         if(Adapter::getConfig()->APP_ENABLE_SCHEMA_CACHE){
 
@@ -1479,7 +1479,7 @@ class Api
 
         $entities = [];
         $entityFolders = [];
-        $entityFolder = Pfade::entitiesDesProjekts().'/';
+        $entityFolder = Paths::projectEntities().'/';
 
         foreach (new DirectoryIterator($entityFolder) as $fileInfo) {
             if ($fileInfo->isDot()) continue;
