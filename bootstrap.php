@@ -1,64 +1,63 @@
 <?php
 /*
- * DAS PROJEKTVERZEICHNIS KOMMT VOM EINSTIEGSPUNKT (007-001-0002).
+ * THE PROJECT DIRECTORY COMES FROM THE ENTRY POINT (007-001-0002).
  *
- * Hier stand:
+ * This used to say:
  *
  *     const ROOT_DIR = __DIR__ . '/../..';
  *
- * Das Framework rechnete sich das Projektverzeichnis aus SEINER EIGENEN LAGE aus — richtig,
- * solange es unter `lib/contentfly/` im Projekt liegt, falsch in dem Moment, in dem es als
- * Paket unter `vendor/` liegt. Und falsch auf die stille Art: Der gerechnete Pfad existiert
- * dann nicht, aber es GIBT ihn, und die Folgemeldung handelt von einer fehlenden Datei statt
- * von einer falschen Wurzel.
+ * The framework computed the project directory from ITS OWN LOCATION — correct as long as it lives
+ * under `lib/contentfly/` inside the project, wrong the moment it lives as a package under
+ * `vendor/`. And wrong in the silent way: the computed path does not exist, but it IS a path, and
+ * the follow-up message is about a missing file instead of a wrong root.
  *
- * Seit 007-001-0003 bindet kein Einstiegspunkt diese Datei mehr direkt ein. Sie kommt ueber
- * `Classes\Kernel\Start`, das die Vorbedingungen prueft und das Projektverzeichnis gesetzt
- * hat. Steht es nicht, endet der Start hier — mit einer Meldung ueber genau das.
+ * Since 007-001-0003 no entry point includes this file directly. It is reached through
+ * `Classes\Kernel\Start`, which checks the preconditions and has set the project directory. If it
+ * is not set, startup ends here — with a message about exactly that.
  */
 if (!\Areanet\PIM\Classes\Kernel\Paths::isSet()) {
     throw new \RuntimeException(
-        "Contentfly kann nicht starten.\n\n"
-        ."lib/contentfly/bootstrap.php ist kein Einstiegspunkt mehr (007-001-0003). Der\n"
-        ."Einstiegspunkt laedt den Autoloader und ruft dann:\n\n"
-        ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::web(\$projektverzeichnis);\n"
-        ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::console(\$projektverzeichnis);\n\n"
-        ."Start prueft die Vorbedingungen und bindet diese Datei ein."
+        "Contentfly cannot start.\n\n"
+        ."lib/contentfly/bootstrap.php is no longer an entry point (007-001-0003). The\n"
+        ."entry point loads the autoloader and then calls:\n\n"
+        ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::web(\$projectDir);\n"
+        ."    \\Areanet\\PIM\\Classes\\Kernel\\Start::console(\$projectDir);\n\n"
+        ."Start checks the preconditions and includes this file."
     );
 }
 
 /*
- * Voll qualifiziert und in zwei lokale Werte gelegt: Der `use`-Block dieser Datei steht weiter
- * unten, hinter den ersten `require`s — er kann hier oben also noch nicht gelesen werden, ohne
- * dass es jeder Leser (und PHPStan) erst nachschlagen muss.
+ * Fully qualified and put into two local values: the `use` block of this file sits further down,
+ * behind the first `require`s — so up here it cannot be read yet without every reader (and
+ * PHPStan) having to look it up first.
  */
-$paketverzeichnis     = \Areanet\PIM\Classes\Kernel\Paths::package();
-$projektKonfiguration = \Areanet\PIM\Classes\Kernel\Paths::custom();
+$packageDir = \Areanet\PIM\Classes\Kernel\Paths::package();
+$customDir  = \Areanet\PIM\Classes\Kernel\Paths::custom();
 
-require_once $paketverzeichnis.'/version.php';
+require_once $packageDir.'/version.php';
 /*
- * HIER STANDEN ZWEI AUTOLOADER (bis 007-001-0003).
+ * THERE USED TO BE TWO AUTOLOADERS HERE (until 007-001-0003).
  *
- * Der Root-Baum zuerst, `custom/vendor/` ergaenzend — mit der Zusicherung aus `006-004-0001`,
- * dass bei einem gemeinsamen PSR-4-Praefix der Root gewinnt. Sie war noetig, solange Framework
- * und Projekt zwei getrennte Composer-Baeume im selben Prozess waren.
+ * The root tree first, `custom/vendor/` as a supplement — with the guarantee from `006-004-0001`
+ * that the root wins on a shared PSR-4 prefix. It was needed as long as framework and project were
+ * two separate Composer trees in the same process.
  *
- * Mit dem Bibliothekspaket faellt die Grundlage weg: Das Framework ist eine Abhaengigkeit IM
- * Baum des Projekts. Es gibt keine zwei Baeume mehr, zwischen denen eine Rangfolge zu regeln
- * waere — und Composer verweigert unvereinbare Constraints beim Aufloesen, statt zwei Staende
- * nebeneinander in den Prozess zu laden. Der Fall, an dem das jahrelang scheiterte (psr/log in
- * 1.1.3 und 3.0.2 gleichzeitig), kann nicht mehr entstehen.
+ * With the library package its basis disappears: the framework is a dependency INSIDE the
+ * project's tree. There are no longer two trees whose precedence would need settling — and
+ * Composer refuses incompatible constraints while resolving instead of loading two versions side by
+ * side into the process. The case this failed on for years (psr/log in 1.1.3 and 3.0.2 at the same
+ * time) can no longer occur.
  *
- * Der Autoloader selbst wird nicht mehr hier geladen, sondern vom Einstiegspunkt — siehe
- * `Classes\Kernel\Start`. Ein liegengebliebenes `custom/vendor/` weist Start ab, statt es
- * stillschweigend zu uebergehen.
+ * The autoloader itself is no longer loaded here but by the entry point — see
+ * `Classes\Kernel\Start`. Start rejects a leftover `custom/vendor/` instead of silently ignoring
+ * it.
  *
- * Entscheidung und verworfene Alternativen: an_project/docs/architecture.md, Key decisions,
- * 2026-09-11. `tests/Unit/AutoloaderUeberschneidungTest.php` ist umgedreht und prueft jetzt,
- * dass es bei einem Baum bleibt.
+ * Decision and rejected alternatives: an_project/docs/architecture.md, Key decisions, 2026-09-11.
+ * `tests/Unit/AutoloaderUeberschneidungTest.php` has been turned around and now checks that there
+ * stays one tree.
  */
-require_once $projektKonfiguration.'/config.php';
-require_once $projektKonfiguration.'/version.php';
+require_once $customDir.'/config.php';
+require_once $customDir.'/version.php';
 
 define('HOST', $_SERVER["SERVER_NAME"] ?? 'default');
 
@@ -97,59 +96,55 @@ use Areanet\PIM\Classes\Kernel\Console;
 use Areanet\PIM\Classes\Kernel\ConsoleInitEvent;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
-// DIE AnnotationRegistry IST WEG (010-001-0005).
+// THE AnnotationRegistry IS GONE (010-001-0005).
 //
-// Hier stand ein `AnnotationRegistry::registerLoader('class_exists')`. Er war noetig wegen
-// einer Falle in `loadAnnotationClass()`: Der moderne Fallback — "nimm einfach den
-// Composer-Autoloader" — griff nur, solange `registerFile()` nie benutzt wurde, und der
-// TypeManager tat genau das. Sobald ein Plugin einen eigenen Typ mitbrachte, fand Doctrine
-// seine eigenen Annotationen nicht mehr. Gefunden mit `006-002-0003`.
+// This used to hold an `AnnotationRegistry::registerLoader('class_exists')`. It was needed because
+// of a trap in `loadAnnotationClass()`: the modern fallback — "just use the Composer autoloader" —
+// only applied as long as `registerFile()` had never been used, and the TypeManager did exactly
+// that. As soon as a plugin brought its own type, Doctrine no longer found its own annotations.
+// Found with `006-002-0003`.
 //
-// Mit den Attributen aus `010-001` ist die ganze Mechanik gegenstandslos: Ein Attribut nennt
-// eine echte Klasse, die der Autoloader laedt. `doctrine/annotations` ist aus dem Manifest.
+// With the attributes from `010-001` the whole mechanism is moot: an attribute names a real class
+// that the autoloader loads. `doctrine/annotations` is out of the manifest.
 
 /*
- * FEHLERAUSGABE — BIS 000-000-0018 WAR SIE VERKEHRT HERUM VERDRAHTET.
+ * ERROR OUTPUT — UNTIL 000-000-0018 IT WAS WIRED THE WRONG WAY ROUND.
  *
- * Der Block hatte keinen else-Zweig: Im Debug-Modus wurde display_errors eingeschaltet, im
- * Produktionsbetrieb NICHTS gesetzt. Es galt, was die php.ini der Maschine sagte — und das
- * offizielle php:*-Image laedt keine. Dort gilt dann der Compile-Default display_errors=On,
- * und eine Produktionsinstanz liefert Deprecations, Warnings und Dateipfade an jeden
- * Aufrufer aus.
+ * The block had no else branch: in debug mode display_errors was switched on, in production
+ * NOTHING was set. Whatever the machine's php.ini said applied — and the official php:* image
+ * loads none. There the compile-time default display_errors=On applies, and a production instance
+ * delivers deprecations, warnings and file paths to every caller.
  *
- * Die Einstellung wurde also dort gesetzt, wo sie unkritisch ist, und dort weggelassen, wo
- * sie zaehlt.
+ * So the setting was made where it is harmless and left out where it matters.
  *
- * ── Warum das Framework es erzwingt und nicht dem Deployment ueberlaesst ───────────────
+ * ── Why the framework enforces it instead of leaving it to the deployment ────────────────
  *
- * Weil der Schaden eintritt, wenn NICHTS konfiguriert ist. Eine Anforderung an die
- * Zielumgebung waere nur so gut wie die Umgebung, die sie liest; hier ist der unsichere
- * Zustand der Standardzustand. Ein Framework, das Datenhaltung und API stellt, darf nicht
- * davon abhaengen, dass jemand daran gedacht hat.
+ * Because the damage happens when NOTHING is configured. A requirement on the target environment
+ * would only be as good as the environment reading it; here the insecure state is the default
+ * state. A framework that provides data storage and an API must not depend on someone having
+ * thought of it.
  *
- * log_errors bleibt an: Was nicht ausgeliefert wird, soll trotzdem auffindbar sein — und es
- * ist die Quelle, aus der das "0 Deprecations"-Gate aus 006-005 liest.
+ * log_errors stays on: whatever is not delivered should still be findable — and it is the source
+ * the "0 deprecations" gate from 006-005 reads.
  *
- * ── Warum im Debug-Modus jetzt E_ALL steht ────────────────────────────────────────────
+ * ── Why debug mode now uses E_ALL ─────────────────────────────────────────────────────
  *
- * Vorher: E_ALL ^E_NOTICE ^E_DEPRECATED. Deprecations wurden ausgerechnet dort unterdrueckt,
- * wo ein Entwickler sie sehen will. Das widerspricht der Vorgabe aus
- * an_project/docs/tech-stack.md, deprecation-frei zu bauen: Wer sie sehen soll, sah sie
- * nicht; wer sie nicht sehen soll, bekam sie.
+ * Before: E_ALL ^E_NOTICE ^E_DEPRECATED. Deprecations were suppressed exactly where a developer
+ * wants to see them. That contradicts the requirement in an_project/docs/tech-stack.md to build
+ * deprecation-free: whoever should see them did not; whoever should not got them.
  *
- * ── Was hiermit NICHT behoben ist ─────────────────────────────────────────────────────
+ * ── What this does NOT fix ────────────────────────────────────────────────────────────
  *
- * Die Kopplung selbst: PHP schreibt eine Deprecation direkt in den Antwortstrom, und wenn
- * das geschieht, bevor der Kernel den Statuscode setzt, sind die Header schon unterwegs — die
- * Antwort traegt dann 200, obwohl die Anwendung 405 oder 500 meint. Mit display_errors=Off
- * kann das im Produktionsbetrieb nicht mehr eintreten, weil nichts mehr in den Strom
- * geschrieben wird. Im Debug-Modus bleibt es moeglich.
+ * The coupling itself: PHP writes a deprecation directly into the response stream, and if that
+ * happens before the kernel sets the status code, the headers are already on their way — the
+ * response then carries 200 although the application means 405 or 500. With display_errors=Off
+ * this can no longer happen in production, because nothing is written into the stream any more.
+ * In debug mode it remains possible.
  *
- * Ein ob_start() hier wuerde es auch dort loesen und ist bewusst NICHT gesetzt: Die
- * Dateiauslieferung antwortet mit einer StreamedResponse (FileController::getAction()), und
- * ein Ausgabepuffer zoege jede ausgelieferte Datei durch den Speicher. Die strukturelle
- * Loesung kommt mit Epic 009 — Symfonys Fehlerbehandlung wandelt Fehler in Ausnahmen um,
- * statt sie auszugeben.
+ * An ob_start() here would solve it there as well and is deliberately NOT set: file delivery
+ * answers with a StreamedResponse (FileController::getAction()), and an output buffer would pull
+ * every delivered file through memory. The structural solution comes with Epic 009 — Symfony's
+ * error handling turns errors into exceptions instead of printing them.
  */
 if(Adapter::getConfig()->APP_DEBUG){
     ini_set('display_errors', 1);
@@ -163,16 +158,15 @@ if(Adapter::getConfig()->APP_DEBUG){
 }
 
 /*
- * Areanet\PIM\Classes\Kernel\Application statt Silex\Application (009-001-0001).
+ * Areanet\PIM\Classes\Kernel\Application instead of Silex\Application (009-001-0001).
  *
- * DER WECHSEL IST VOLLZOGEN (009-002). Die Klasse erbte zunaechst noch von Silex und sagte
- * ueber ApplicationInterface zu, was das Framework von ihr benutzt; genau diese Zusicherung
- * hat den Tausch des Unterbaus getragen. Heute erbt sie von Kernel\Container und setzt einen
- * Symfony-7.4-HttpKernel zusammen. Die Schnittstelle ist dieselbe geblieben, und kein
- * Aufrufer hat den Wechsel gemerkt.
+ * THE SWITCH IS COMPLETE (009-002). The class first still extended Silex and, through
+ * ApplicationInterface, guaranteed what the framework uses of it; exactly that guarantee carried
+ * the replacement of the foundation. Today it extends Kernel\Container and assembles a Symfony 7.4
+ * HttpKernel. The interface has stayed the same, and no caller noticed the switch.
  *
- * Dass Silex, Pimple und knplabs nirgends mehr im Baum vorkommen, haelt
- * tests/Unit/Kernel/KeineSilexTypenTest.php fest — mit leerer Ausnahmeliste, seit 009-002.
+ * tests/Unit/Kernel/KeineSilexTypenTest.php records that Silex, Pimple and knplabs no longer occur
+ * anywhere in the tree — with an empty exception list since 009-002.
  */
 $app = new Application();
 
@@ -183,11 +177,11 @@ Adapter::setHostname(HOST);
 date_default_timezone_set(Adapter::getConfig()->APP_TIMEZONE);
 
 /*
- * Der ServiceControllerServiceProvider ist mit Silex entfallen (009-002-0002).
+ * The ServiceControllerServiceProvider went away with Silex (009-002-0002).
  *
- * Er erlaubte, einen Controller als "dienst:methode" zu benennen — also als Container-Schluessel
- * plus Methodenname statt als Klasse. Genau davon lebt der RouteManager. Die Faehigkeit bleibt,
- * sie liegt jetzt im Controller-Resolver der Anwendung; gebaut wird sie in 009-002-0003.
+ * It allowed naming a controller as "service:method" — a container key plus a method name instead
+ * of a class. The RouteManager lives on exactly that. The capability remains; it now lives in the
+ * application's controller resolver and is built in 009-002-0003.
  */
 
 
@@ -207,24 +201,24 @@ if($app['is_installed']) {
     }
 
     /*
-     * Die Datenbankverbindung, selbst gebaut (009-002-0002).
+     * The database connection, built by the framework itself (009-002-0002).
      *
-     * Hier stand `$app->register(new Silex\Provider\DoctrineServiceProvider(), …)`. Der
-     * Provider legte `$app['dbs']` als Sammlung benannter Verbindungen an und `$app['db']` als
-     * Verweis auf die erste. Beide Schluessel werden im Baum gelesen — `bin/console.php` und
-     * `EntityManagerFactory` — und bleiben deshalb genau so bestehen.
+     * This used to say `$app->register(new Silex\Provider\DoctrineServiceProvider(), …)`. The
+     * provider created `$app['dbs']` as a collection of named connections and `$app['db']` as a
+     * reference to the first one. Both keys are read in the tree — `bin/console.php` and
+     * `EntityManagerFactory` — and therefore stay exactly as they are.
      *
-     * Gebaut wird die Verbindung mit `DriverManager`, wie es `$app['database']` weiter unten
-     * seit jeher tut. Der Unterschied zwischen den beiden: `$app['db']` ist die Verbindung, die
-     * der EntityManager benutzt, `$app['database']` eine zweite fuer direktes SQL. Dass es zwei
-     * sind, ist aelter als dieser Task und wird hier nicht angefasst.
+     * The connection is built with `DriverManager`, as `$app['database']` further down has always
+     * done. The difference between the two: `$app['db']` is the connection the EntityManager uses,
+     * `$app['database']` a second one for direct SQL. That there are two is older than this task
+     * and is not touched here.
      */
     $app['dbs.options'] = array(
         'pim' => array(
             'driver'   => 'pdo_mysql',
             'host'     => Adapter::getConfig()->DB_HOST,
-            // Ohne den Port landet die Verbindung immer auf 3306 - und zwar still,
-            // also auf irgendeiner MySQL, die dort zufaellig lauscht (Task 000-000-0004).
+            // Without the port the connection always ends up on 3306 - silently, that is, on
+            // whatever MySQL happens to listen there (task 000-000-0004).
             'port'     => Adapter::getConfig()->DB_PORT,
             'dbname'   => Adapter::getConfig()->DB_NAME,
             'user'     => Adapter::getConfig()->DB_USER,
@@ -238,32 +232,32 @@ if($app['is_installed']) {
     );
 
     $app['dbs'] = function ($app) {
-        $verbindungen = array();
+        $connections = array();
 
-        foreach ($app['dbs.options'] as $name => $optionen) {
-            $verbindungen[$name] = DriverManager::getConnection($optionen);
+        foreach ($app['dbs.options'] as $name => $options) {
+            $connections[$name] = DriverManager::getConnection($options);
         }
 
-        return $verbindungen;
+        return $connections;
     };
 
-    // Die erste benannte Verbindung, wie sie der Provider ausgewiesen hat.
+    // The first named connection, as the provider exposed it.
     $app['db'] = function ($app) {
-        $verbindungen = $app['dbs'];
+        $connections = $app['dbs'];
 
-        return reset($verbindungen);
+        return reset($connections);
     };
 }
 
 /*
- * Die Console, selbst gebaut (009-002-0005).
+ * The console, built by the framework itself (009-002-0005).
  *
- * Hier stand `$app->register(new ConsoleServiceProvider(), …)`. Das Paket deckelte
- * symfony/console auf ^4 und ist mit 009-002-0001 weg; was es lieferte, waren drei Dinge — eine
- * Console mit Namen und Version, ein Zugriff auf die Anwendung und das Ereignis console.init.
- * Alle drei stehen jetzt in Areanet\PIM\Classes\Kernel\Console.
+ * This used to say `$app->register(new ConsoleServiceProvider(), …)`. The package capped
+ * symfony/console at ^4 and is gone since 009-002-0001; what it provided was three things — a
+ * console with name and version, access to the application and the console.init event. All three
+ * now live in Areanet\PIM\Classes\Kernel\Console.
  *
- * Als faule Factory, wie vorher: bin/console.php holt sie ab, der Web-Einstieg nie.
+ * As a lazy factory, as before: bin/console.php fetches it, the web entry never does.
  */
 $app['console'] = function ($app) {
     return new Console($app, 'PIM', APP_VERSION, Paths::project());
@@ -284,135 +278,131 @@ $app['mailer'] = function ($app) {
 };
 
 /**
- * Baut EINEN Cache-Pool nach `APP_CACHE_DRIVER`.
+ * Builds ONE cache pool according to `APP_CACHE_DRIVER`.
  *
- * Herausgezogen mit 013-001-0003: Der Treiber wird jetzt an drei Stellen gebraucht — die
- * beiden Doctrine-Caches und der Speicher der Anmeldebremse. Die Auswahl steht deshalb
- * einmal hier statt dreimal nebeneinander.
+ * Extracted with 013-001-0003: the driver is now needed in three places — the two Doctrine caches
+ * and the storage of the login throttle. The selection therefore lives here once instead of three
+ * times side by side.
  *
- * Der Namensraum trennt die Poolinhalte, das Verzeichnis tut dasselbe fuer `filesystem`.
+ * The namespace separates the pool contents; the directory does the same for `filesystem`.
  */
-$cachePoolBauen = static function (string $namensraum, string $verzeichnis): \Psr\Cache\CacheItemPoolInterface {
+$buildCachePool = static function (string $namespace, string $directory): \Psr\Cache\CacheItemPoolInterface {
     static $memcached = null;
 
     switch (Adapter::getConfig()->APP_CACHE_DRIVER) {
         case 'apc':
-            // ENTFALLEN MIT 010-002-0002 — und ausdruecklich abgewiesen, nicht
-            // stillschweigend auf die Vorgabe zurueckgefallen.
+            // REMOVED WITH 010-002-0002 — and explicitly rejected, not silently falling back
+            // to the default.
             //
-            // Der Zweig benutzte `Doctrine\Common\Cache\ApcCache`, und die ruft
-            // `apc_fetch()`. Die APC-Erweiterung gibt es fuer PHP 7 und 8 nicht mehr;
-            // gemessen ist `function_exists('apc_fetch')` false. Er konnte auf keiner
-            // unterstuetzten Version laufen — eine Falle, keine Einstellung.
+            // The branch used `Doctrine\Common\Cache\ApcCache`, which calls `apc_fetch()`.
+            // The APC extension no longer exists for PHP 7 and 8; measured,
+            // `function_exists('apc_fetch')` is false. It could not run on any supported
+            // version — a trap, not a setting.
             //
-            // Ein stiller Rueckfall auf `filesystem` waere bequemer und falsch: Der
-            // Betreiber haette weiter geglaubt, sein Cache liege im geteilten Speicher.
+            // A silent fallback to `filesystem` would be more convenient and wrong: the
+            // operator would keep believing their cache lives in shared memory.
             throw new \RuntimeException(
-                'APP_CACHE_DRIVER = "apc" gibt es nicht mehr. Die APC-Erweiterung ist mit '
-                .'PHP 7 entfallen; der Nachfolger heisst "apcu". Siehe '
+                'APP_CACHE_DRIVER = "apc" no longer exists. The APC extension was dropped with '
+                .'PHP 7; its successor is called "apcu". See '
                 .'an_project/docs/breaking-changes.md.'
             );
         case 'apcu':
-            // Die Pruefung ist der Unterschied zwischen einer Meldung und einem Fatal
-            // beim ersten Zugriff.
+            // The check is the difference between a message and a fatal error on first
+            // access.
             if (!ApcuAdapter::isSupported()) {
                 throw new \RuntimeException(
-                    'APP_CACHE_DRIVER = "apcu" verlangt die Erweiterung apcu; sie ist in '
-                    .'diesem PHP nicht geladen.'
+                    'APP_CACHE_DRIVER = "apcu" requires the apcu extension; it is not loaded in '
+                    .'this PHP.'
                 );
             }
 
-            return new ApcuAdapter($namensraum);
+            return new ApcuAdapter($namespace);
         case 'memcached':
             if (!MemcachedAdapter::isSupported()) {
                 throw new \RuntimeException(
-                    'APP_CACHE_DRIVER = "memcached" verlangt die Erweiterung memcached; sie '
-                    .'ist in diesem PHP nicht geladen.'
+                    'APP_CACHE_DRIVER = "memcached" requires the memcached extension; it is '
+                    .'not loaded in this PHP.'
                 );
             }
 
-            // EIN SERVER STEHT JETZT IN DER KONFIGURATION (010-002-0002).
+            // A SERVER NOW COMES FROM THE CONFIGURATION (010-002-0002).
             //
-            // Vorher: `new Memcached()` ohne einen einzigen `addServer()`. Ein solcher
-            // Client speichert nichts — der Zweig war selbst mit vorhandener Erweiterung
-            // wirkungslos, und zwar lautlos.
+            // Before: `new Memcached()` without a single `addServer()`. Such a client stores
+            // nothing — the branch was ineffective even with the extension present, and
+            // silently so.
             //
-            // Und er teilte sich EINE Instanz fuer beide Caches, waehrend die anderen
-            // Zweige trennen. Hier trennen jetzt die Namensraeume, wie bei apcu. Die
-            // Verbindung selbst wird geteilt — sie ist der Kanal, nicht der Inhalt.
+            // And it shared ONE instance for both caches, while the other branches separate
+            // them. Here the namespaces now separate them, as with apcu. The connection itself
+            // is shared — it is the channel, not the content.
             $memcached ??= MemcachedAdapter::createConnection(
                 Adapter::getConfig()->APP_CACHE_MEMCACHED_DSN
             );
 
-            return new MemcachedAdapter($memcached, $namensraum);
+            return new MemcachedAdapter($memcached, $namespace);
         case 'filesystem':
         default:
-            // Namensraum leer, Verzeichnis ausdruecklich: Die Trennung liegt hier in den
-            // Pfaden, wie bisher. Ein zusaetzlicher Namensraum wuerde nur eine weitere
-            // Ebene darunter anlegen.
-            return new FilesystemAdapter('', 0, $verzeichnis);
+            // Empty namespace, explicit directory: separation lives in the paths here, as
+            // before. An additional namespace would only create another level below.
+            return new FilesystemAdapter('', 0, $directory);
     }
 };
 
 /**
- * Die Anmeldebremse (013-001-0003).
+ * The login throttle (013-001-0003).
  *
- * SIE BEKOMMT IMMER EINEN SPEICHER — anders als die Doctrine-Caches, die im Debug-Modus und
- * auf der Konsole abgeschaltet sind. Eine Bremse gegen das Durchprobieren von Passwoertern,
- * die sich mit `APP_DEBUG` selbst abschaltet, waere keine: Der Debug-Modus ist eine
- * Bequemlichkeit fuer den Entwickler, kein Grund, die Anwendung offen stehen zu lassen. Und
- * ein Zaehler, der ueber Requests hinweg nicht ueberlebt, zaehlt nichts.
+ * IT ALWAYS GETS A STORAGE — unlike the Doctrine caches, which are switched off in debug mode and
+ * on the console. A throttle against password guessing that switches itself off with `APP_DEBUG`
+ * would be no throttle: debug mode is a convenience for the developer, not a reason to leave the
+ * application open. And a counter that does not survive across requests counts nothing.
  */
 /**
- * Die Allowlist der Anmeldeprovider (013-004-0001).
+ * The allowlist of login providers (013-004-0001).
  *
- * LEER, UND DAS IST DER VORGABEZUSTAND. Ein Projekt traegt seine Provider in `custom/app.php`
- * ein; das Framework bringt keinen mit. Solange nichts eingetragen ist, gibt es keinen Weg an
- * der Passwortpruefung vorbei — die Anmeldung ueber ein Fremdsystem ist eine Entscheidung, die
- * jemand treffen muss, nicht eine, die man erbt.
+ * EMPTY, AND THAT IS THE DEFAULT STATE. A project registers its providers in `custom/app.php`; the
+ * framework ships none. As long as nothing is registered, there is no way around the password
+ * check — logging in through an external system is a decision someone has to make, not one that
+ * is inherited.
  *
- * Sie steht ausserhalb von `is_installed`: Ein Projekt registriert seine Provider, bevor
- * irgendetwas geprueft wird, und eine Registrierung, die von der Installation abhinge, waere
- * eine Falle.
+ * It lives outside `is_installed`: a project registers its providers before anything is checked,
+ * and a registration that depended on the installation would be a trap.
  */
 $app['anmeldeanbieter'] = function () {
     return new Anbieterverzeichnis();
 };
 
-$app['loginbremse'] = function () use ($cachePoolBauen) {
-    return new Anmeldebremse($cachePoolBauen('loginbremse', Paths::data() . '/cache/loginbremse'));
+$app['loginbremse'] = function () use ($buildCachePool) {
+    return new Anmeldebremse($buildCachePool('loginbremse', Paths::data() . '/cache/loginbremse'));
 };
 
 if($app['is_installed']) {
-    // Ersetzt dflydev/doctrine-orm-service-provider (006-002-0005). Der Provider ist seit
-    // 2018 unverändert und benutzt einen Namensraum, den doctrine/persistence 2.0 verschoben
-    // hat — er blockierte damit jedes PHP-8-taugliche ORM. Uebergangsloesung bis Epic 009.
+    // Replaces dflydev/doctrine-orm-service-provider (006-002-0005). The provider has been
+    // unchanged since 2018 and uses a namespace that doctrine/persistence 2.0 moved — it thereby
+    // blocked every PHP-8-capable ORM. Interim solution until Epic 009.
     /**
-     * Waehlt die beiden Doctrine-Caches — oder keine.
+     * Selects the two Doctrine caches — or none.
      *
-     * Sie werden der Factory UEBERGEBEN statt hinterher auf der Konfiguration gesetzt: Der
-     * Metadaten-Cache wird in `EntityManager::__construct()` genau einmal gelesen, alles
-     * danach sieht die ClassMetadataFactory nie (010-002-0005).
+     * They are PASSED to the factory instead of being set on the configuration afterwards: the
+     * metadata cache is read exactly once in `EntityManager::__construct()`; the
+     * ClassMetadataFactory never sees anything set after that (010-002-0005).
      *
-     * Kein Cache im Debug-Modus und nicht auf der Konsole: Dort soll ein Entwickler nicht
-     * gegen veraltete Metadaten arbeiten. Diese Bedingung stand vorher weiter unten und ist
-     * unveraendert.
+     * No cache in debug mode and not on the console: a developer should not work against stale
+     * metadata there. This condition used to sit further down and is unchanged.
      *
      * @return array{0: ?\Psr\Cache\CacheItemPoolInterface, 1: ?\Psr\Cache\CacheItemPoolInterface}
      */
-    $cachesWaehlen = static function () use ($cachePoolBauen): array {
+    $selectCaches = static function () use ($buildCachePool): array {
         if (Adapter::getConfig()->APP_DEBUG || defined('APPCMS_CONSOLE')) {
             return array(null, null);
         }
 
         return array(
-            $cachePoolBauen('query',    Paths::data() . '/cache/query'),
-            $cachePoolBauen('metadata', Paths::data() . '/cache/metadata')
+            $buildCachePool('query',    Paths::data() . '/cache/query'),
+            $buildCachePool('metadata', Paths::data() . '/cache/metadata')
         );
     };
 
-    $app['orm.em'] = function ($app) use ($cachesWaehlen) {
-        [$abfrageCache, $metadatenCache] = $cachesWaehlen();
+    $app['orm.em'] = function ($app) use ($selectCaches) {
+        [$queryCache, $metadataCache] = $selectCaches();
 
         return EntityManagerFactory::erzeugen(
             $app['dbs']['pim'],
@@ -423,8 +413,8 @@ if($app['is_installed']) {
             Paths::data() . '/cache/doctrine',
             (bool) Adapter::getConfig()->APP_AUTOGENERATE_PROXIES,
             array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet'),
-            $abfrageCache,
-            $metadatenCache
+            $queryCache,
+            $metadataCache
         );
     };
 
@@ -432,23 +422,22 @@ if($app['is_installed']) {
     $config->setQuoteStrategy(new ContentflyQuoteStrategy());
 
     /*
-     * DIE ANMELDUNG (013-002-0004).
+     * AUTHENTICATION (013-002-0004).
      *
-     * Hier wird der Schalter umgelegt: `BaseControllerProvider::checkToken()` ist entfallen,
-     * an seine Stelle tritt Symfonys `access_token`-Authenticator, gefahren vom
-     * `Anmeldetreiber`.
+     * This is where the switch is flipped: `BaseControllerProvider::checkToken()` is gone, and
+     * Symfony's `access_token` authenticator takes its place, driven by the `Anmeldetreiber`.
      *
-     * DER HANDLER STEHT ALS EIGENER SCHLUESSEL, nicht anonym im Treiber: Der Aufrufer braucht
-     * nach der Anmeldung `letzterToken()` fuer `$app['auth.token']`. Der Container merkt sich
-     * beide Ergebnisse, es gibt also je Request genau eine Instanz — worauf die
-     * Zustandsfuehrung im Handler beruht.
+     * THE HANDLER HAS ITS OWN KEY, not anonymous inside the driver: after authentication the
+     * caller needs `letzterToken()` for `$app['auth.token']`. The container remembers both
+     * results, so there is exactly one instance per request — which the state kept in the handler
+     * relies on.
      */
-    // Legt Benutzer an, die ein Fremdsystem erkannt hat (013-004-0002).
+    // Creates users that an external system has recognised (013-004-0002).
     $app['benutzerbereitstellung'] = function ($app) {
         return new Benutzerbereitstellung($app['orm.em']);
     };
 
-    // Bildet ab, was ein Fremdsystem an Gruppen liefert (013-004-0003).
+    // Maps the groups an external system reports (013-004-0003).
     $app['gruppenabbildung'] = function ($app) {
         return new Gruppenabbildung($app['orm.em']);
     };
@@ -522,10 +511,10 @@ $app['routeManager'] = function ($app) {
 };
 
 $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app) {
-    // console() statt getApplication() seit 009-002-0005: Das Ereignis liefert die Console,
-    // und "Application" waere in diesem Baum doppeldeutig — es gibt auch die Anwendung.
+    // console() instead of getApplication() since 009-002-0005: the event returns the console,
+    // and "Application" would be ambiguous in this tree — there is also the application.
     $dispatcher->addListener(ConsoleEvents::INIT, function (ConsoleInitEvent $event) {
-        // addCommand() statt add(): Letzteres ist seit Symfony 7.4 deprecated (009-003-0002).
+        // addCommand() instead of add(): the latter is deprecated since Symfony 7.4 (009-003-0002).
         $console = $event->console();
         $console->addCommand(new InstallCommand());
         $console->addCommand(new SetupCommand());
@@ -558,21 +547,21 @@ $app['database'] = function ($app){
 };
 
 /*
- * DER LoadMetadata-LISTENER STAND HIER (bis 010-005-0002).
+ * THE LoadMetadata LISTENER USED TO BE HERE (until 010-005-0002).
  *
- * Und griff beim Installieren nicht: Der Block lag in `if($app['is_installed'])`,
- * `appcms:install` laeuft aber genau dann, wenn das falsch ist. Der Index `modified_index`
- * wurde deshalb nie angelegt, und `orm:validate-schema` meldete bei jeder Installation, dass
- * Schema und Mapping nicht deckungsgleich sind.
+ * And did not apply during installation: the block lived inside `if($app['is_installed'])`, but
+ * `appcms:install` runs exactly when that is false. The `modified_index` index was therefore never
+ * created, and `orm:validate-schema` reported on every installation that schema and mapping did
+ * not match.
  *
- * Registriert wird er jetzt in `EntityManagerFactory::erzeugen()` — dort, wo jeder
- * EntityManager vorbeikommt, der des Installers eingeschlossen.
+ * It is now registered in `EntityManagerFactory::erzeugen()` — where every EntityManager passes,
+ * the installer's included.
  */
 
 /*
- * Der ValidatorServiceProvider ist mit symfony/validator entfallen (009-002-0001). Er wurde
- * registriert, und `$app['validator']` hat ihn nie jemand abgeholt — im ganzen Baum keine
- * Fundstelle, keine @Assert-Annotation, kein anderes Paket, das ihn anfordert.
+ * The ValidatorServiceProvider went away with symfony/validator (009-002-0001). It was registered,
+ * and nobody ever fetched `$app['validator']` — no occurrence in the whole tree, no @Assert
+ * annotation, no other package requesting it.
  */
 
 if(Adapter::getConfig()->APP_FORCE_SSL && !defined('APPCMS_CONSOLE')){

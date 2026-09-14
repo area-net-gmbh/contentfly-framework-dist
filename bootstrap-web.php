@@ -18,29 +18,30 @@ use Areanet\PIM\Classes\Security\VertrauteProxies;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /*
- * `$app['request']` ist entfallen (009-002-0004).
+ * `$app['request']` is gone (009-002-0004).
  *
- * Der Schluessel lieferte den aktuellen Request aus dem Stack — und war genau deshalb eine
- * Falle: Der Container merkt sich das Ergebnis einer Factory, also haette er ab dem ersten
- * Zugriff **denselben** Request geliefert, auch nachdem der Kernel ihn abgeraeumt hat. Unter
- * Pimple war es dasselbe, und es hat den Fehlerhandler aus 000-000-0006 sterben lassen.
+ * The key returned the current request from the stack — and was a trap for exactly that reason:
+ * the container remembers a factory's result, so from the first access on it would have returned
+ * **the same** request, even after the kernel had cleared it. Under Pimple it was the same, and it
+ * killed the error handler in 000-000-0006.
  *
- * Gelesen hat ihn zuletzt niemand mehr: Der Fehlerhandler holt sich den Request seit
- * 000-000-0006 direkt aus `$app['request_stack']`, und das ist auch der Weg fuer jeden anderen.
+ * In the end nobody read it any more: since 000-000-0006 the error handler takes the request
+ * directly from `$app['request_stack']`, and that is the way for everyone else too.
  */
 
 /*
- * VERTRAUTE PROXIES — VOR ALLEM ANDEREN (013-001-0003).
+ * TRUSTED PROXIES — BEFORE ANYTHING ELSE (013-001-0003).
  *
- * `setTrustedProxies()` wurde bis hierhin im ganzen Baum nirgends gerufen. Das war folgenlos,
- * solange niemand die Adresse des Aufrufers auswertete; mit der Anmeldebremse pro IP ist es
- * die Voraussetzung dafuer, dass sie den Richtigen trifft.
+ * Up to here `setTrustedProxies()` was not called anywhere in the tree. That had no consequences
+ * as long as nobody evaluated the caller's address; with the per-IP login throttle it is the
+ * precondition for hitting the right party.
  *
- * Es steht ganz oben, weil die Angabe global auf `Request` gesetzt wird und gelten muss, bevor
- * irgendein Request entsteht — `Application::run()` baut ihn erst am Ende dieser Datei.
+ * It sits at the very top because the setting is applied globally on `Request` and has to be in
+ * effect before any request is created — `Application::run()` only builds it at the end of this
+ * file.
  *
- * Ohne Eintrag in `APP_TRUSTED_PROXIES` passiert hier nichts, und die Anwendung verhaelt sich
- * wie bisher.
+ * Without an entry in `APP_TRUSTED_PROXIES` nothing happens here, and the application behaves as
+ * before.
  */
 VertrauteProxies::anwenden(
     Config\Adapter::getConfig()->APP_TRUSTED_PROXIES,
@@ -72,74 +73,73 @@ if(Config\Adapter::getConfig()->APP_HTTP_AUTH_USER) {
 }
 
 /*
- * WEB_ROOT kommt aus der Konfiguration, nicht mehr aus $_SERVER['PHP_SELF'] (000-000-0006).
+ * WEB_ROOT comes from the configuration, no longer from $_SERVER['PHP_SELF'] (000-000-0006).
  *
- * Die Ableitung aus PHP_SELF stimmte unter Apache mit der .htaccess-Rewrite und sonst nirgends.
- * Unter dem eingebauten PHP-Server ergab sie einen Redirect auf
- * `/index.php/file/get/data/files/…` — einen Pfad, der ins Leere zeigt. Damit war die
- * Dateiauslieferung ueberall dort kaputt, wo die Anwendung nicht hinter genau dieser
- * .htaccess laeuft, und in den Tests nicht end-to-end pruefbar.
+ * Deriving it from PHP_SELF was correct under Apache with the .htaccess rewrite and nowhere else.
+ * Under PHP's built-in server it produced a redirect to `/index.php/file/get/data/files/…` — a
+ * path pointing nowhere. File delivery was therefore broken wherever the application did not run
+ * behind exactly this .htaccess, and it could not be tested end to end.
  *
- * Der Vorgabewert ist '/'. Ein Projekt, das die Anwendung in einem Unterverzeichnis mountet,
- * setzt WEB_ROOT in custom/config.php auf '/unterverzeichnis/'. Das ist eine Angabe, die der
- * Betreiber kennt und der Server nur raten kann.
+ * The default is '/'. A project that mounts the application in a subdirectory sets WEB_ROOT in
+ * custom/config.php to '/subdirectory/'. That is something the operator knows and the server can
+ * only guess.
  */
 
 /*
- * DER NOTHELFER IST WEG, UND ZWAR GEMESSEN (009-002-0004).
+ * THE FALLBACK HANDLER IS GONE, AND MEASURABLY SO (009-002-0004).
  *
- * Hier standen `Symfony\Component\Debug\ErrorHandler::register()` und eine Closure an
- * `ExceptionHandler::setHandler()`, die einsprang, wenn ein Fehler die Anwendung gar nicht mehr
- * erreichte. Sie war noetig, weil Silex' ExceptionListenerWrapper `\Exception` typisiert
- * entgegennahm: Ein TypeError fiel durch die ganze Kette hindurch bis zum globalen Handler
- * (000-000-0006). Und weil sie ihr Ereignis mit `$app['request']` baute, starb sie dort selbst,
- * wenn der Kernel den Request schon abgeraeumt hatte.
+ * This used to hold `Symfony\Component\Debug\ErrorHandler::register()` and a closure on
+ * `ExceptionHandler::setHandler()` that stepped in when an error no longer reached the application
+ * at all. It was needed because Silex's ExceptionListenerWrapper accepted `\Exception` as a typed
+ * parameter: a TypeError fell through the whole chain down to the global handler (000-000-0006).
+ * And because it built its event with `$app['request']`, it died there itself whenever the kernel
+ * had already cleared the request.
  *
- * Symfonys HttpKernel faengt `\Throwable` und schickt jeden davon durch `kernel.exception`.
- * Damit hat die Closure keinen Fall mehr, in dem sie einspringen koennte. Das Paket
- * symfony/debug, aus dem beide Klassen stammen, ist mit 009-002-0001 ohnehin aus dem Baum —
- * ein Nachbau mit symfony/error-handler waere eine Mechanik ohne Anlass.
+ * Symfony's HttpKernel catches `\Throwable` and sends every one of them through
+ * `kernel.exception`. That leaves the closure no case in which it could step in. The symfony/debug
+ * package both classes came from left the tree with 009-002-0001 anyway — rebuilding it with
+ * symfony/error-handler would be machinery without a reason.
  *
- * Nachgewiesen wird das von FehlerantwortApiTest: Ein absichtlich ausgeloester TypeError muss
- * als JSON dieser Anwendung ankommen, nicht als HTML-Seite.
+ * FehlerantwortApiTest proves it: a deliberately triggered TypeError has to arrive as this
+ * application's JSON, not as an HTML page.
  */
 
 /*
- * \Throwable, nicht \Exception (009-002-0004).
+ * \Throwable, not \Exception (009-002-0004).
  *
- * Silex reichte dem Handler eine `\Exception` — es hatte einen Nicht-Exception vorher selbst
- * verpackt. Symfonys ExceptionEvent liefert den Throwable, wie er geworfen wurde. Bliebe die
- * Angabe auf `Exception`, wuerde ein TypeError den Handler mit einem TypeError erschlagen —
- * genau der Ausfall, den 000-000-0006 behoben hat, nur an anderer Stelle.
+ * Silex passed the handler an `\Exception` — it had wrapped any non-exception itself beforehand.
+ * Symfony's ExceptionEvent delivers the throwable as it was thrown. If the declaration stayed at
+ * `Exception`, a TypeError would strike down the handler with a TypeError — exactly the failure
+ * 000-000-0006 fixed, just in a different place.
  */
 $app->error(function (\Throwable $e) use($app) {
 
     if($e instanceof FileNotFoundException){
         return new Response($e->getMessage(), 404, array('X-Status-Code' => 404));
     }else{
-        // Nicht $app['request']: Das ist ein Pimple-Service, der beim ersten Zugriff einfriert
-        // und null bleibt, wenn der Kernel den Request zu diesem Zeitpunkt schon abgeraeumt
-        // hat — und dann stirbt der Fehlerhandler an dem Fehler, den er melden soll. Genau
-        // dieser Weg hat einen TypeError als Symfonys "Whoops"-Seite enden lassen statt als
-        // JSON-Antwort dieser Anwendung (000-000-0006). Ohne Request wird von JSON
-        // ausgegangen: Dies ist eine API, die HTML-Zweige unten sind der Sonderfall.
+        // Not $app['request']: that is a Pimple service that freezes on first access and stays
+        // null if the kernel has already cleared the request at this point — and then the error
+        // handler dies of the very error it is supposed to report. Exactly this path let a
+        // TypeError end as Symfony's "Whoops" page instead of this application's JSON response
+        // (000-000-0006). Without a request JSON is assumed: this is an API, the HTML branches
+        // below are the special case.
         $request      = (isset($app['request_stack']) && $app['request_stack']) ? $app['request_stack']->getCurrentRequest() : null;
         $contentType  = $request ? (string) $request->headers->get('Content-Type') : 'application/json';
 
         $accept = AcceptHeader::fromString($contentType);
 
         /**
-         * Ohne JSON-Content-Type: im Debug-Modus die Ausnahme im Klartext, sonst dieselbe
-         * JSON-Antwort wie sonst auch (000-000-0006).
+         * Without a JSON content type: in debug mode the exception in plain text, otherwise the
+         * same JSON response as always (000-000-0006).
          *
-         * VORHER STAND HIER `return $app->redirect('/')`. Das stammt aus der Zeit, als unter
-         * `/` die PIM-Oberflaeche lag: Ein Browser, der irgendwo einen Fehler ausloeste, wurde
-         * nach Hause geschickt. Die Oberflaeche ist mit Epic 012 entfallen, und damit war es
-         * eine Umleitung auf sich selbst — `GET /` beantwortete die Anwendung mit `302` nach
-         * `/`, endlos. Nachgemessen und im Runbook als erwartetes Verhalten beschrieben.
+         * THIS USED TO SAY `return $app->redirect('/')`. That dates from the time when the PIM UI
+         * lived under `/`: a browser that triggered an error somewhere was sent home. The UI went
+         * away with Epic 012, which made it a redirect to itself — the application answered
+         * `GET /` with a `302` to `/`, endlessly. Measured again and described as expected
+         * behaviour in the runbook.
          *
-         * Es gibt kein Zuhause mehr, in das man einen Browser schicken koennte. Contentfly ist
-         * eine API; wer ohne Content-Type anfragt, bekommt die Antwort der API.
+         * There is no home left to send a browser to. Contentfly is an API; whoever sends a
+         * request without a content type gets the API's response.
          */
         if(!$accept->has('application/json') && !$accept->has('multipart/form-data')){
             if(Config\Adapter::getConfig()->APP_DEBUG){
@@ -149,24 +149,21 @@ $app->error(function (\Throwable $e) use($app) {
         }
 
         /**
-         * Der Statuscode (000-000-0006).
+         * The status code (000-000-0006).
          *
-         * Erst `getCode()`, dann `getStatusCode()` — in dieser Reihenfolge, und das ist keine
-         * Geschmacksfrage: `SystemControllerProvider` wirft
-         * `new AccessDeniedHttpException('Zugriff verweigert', null, 401)`. Die 401 im dritten
-         * Argument ist der Code, den der Autor gemeint hat; `getStatusCode()` liefert dort die
-         * 403 der Klasse. Wer zuerst nach getStatusCode() greift, ueberschreibt eine
-         * ausdrueckliche Angabe mit einer allgemeinen — vier Charakterisierungstests haben das
-         * bemerkt.
+         * First `getCode()`, then `getStatusCode()` — in that order, and that is not a matter of
+         * taste: `SystemControllerProvider` throws `new AccessDeniedHttpException(…, null, 401)`.
+         * The 401 in the third argument is the code the author meant; `getStatusCode()` returns
+         * the class's 403 there. Whoever reaches for getStatusCode() first overwrites an explicit
+         * value with a generic one — four characterization tests noticed.
          *
-         * `getStatusCode()` greift, wo `getCode()` nichts hergibt: Die HTTP-Ausnahmen von
-         * Symfony haben dort 0. `GET /` traf den OPTIONS-Catch-All und loeste eine
-         * MethodNotAllowedHttpException aus; im Rumpf stand "Method Not Allowed", der
-         * Statuscode war 500. Jetzt 405.
+         * `getStatusCode()` applies where `getCode()` yields nothing: Symfony's HTTP exceptions have
+         * 0 there. `GET /` hit the OPTIONS catch-all and raised a MethodNotAllowedHttpException;
+         * the body said "Method Not Allowed", the status code was 500. Now 405.
          *
-         * Die Bereichspruefung ist nicht nur Vorsicht: Doctrine setzt in `getCode()`
-         * SQLSTATE-Werte wie '42S02', und JsonResponse weist alles zurueck, was kein gueltiger
-         * HTTP-Code ist — die Fehlerantwort waere dann selbst ein Fehler.
+         * The range check is not just caution: Doctrine puts SQLSTATE values such as '42S02' into
+         * `getCode()`, and JsonResponse rejects anything that is not a valid HTTP code — the error
+         * response would then be an error itself.
          */
         $code   = $e->getCode();
         $status = (is_int($code) && $code >= 100 && $code <= 599)
@@ -178,11 +175,11 @@ $app->error(function (\Throwable $e) use($app) {
         }elseif($e instanceof ContentflyI18NException){
             $data = array('message' => $e->getMessage(), 'type' => get_class($e), 'message_entity' => $e->getEntity(), 'message_lang' => $e->getLang(), 'status' => $e->getCode());
         }else{
-            // "status" => ..., nicht $e->getCode() ?: 500 als schluessellosen dritten Eintrag:
-            // Der stand vorher da und landete als "0": 500 in der Antwort. Fuer alles, was
-            // weder ContentflyException noch ContentflyI18NException ist — also fuer jeden
-            // PHP-Fehler — hiess der Statuscode im Rumpf anders als in den beiden Zweigen
-            // darueber (000-000-0006).
+            // "status" => ..., not $e->getCode() ?: 500 as a keyless third entry: that used to be
+            // here and ended up as "0": 500 in the response. For everything that is neither a
+            // ContentflyException nor a ContentflyI18NException — i.e. for every PHP error — the
+            // status code in the body was named differently than in the two branches above
+            // (000-000-0006).
             $data = array("message" => $e->getMessage(), "type" => get_class($e), "status" => $status);
         }
 
@@ -207,21 +204,20 @@ $app->after(function (Request $request, Response $response) {
 });
 
 /*
- * Der CORS-Preflight — und der Grund, warum `GET /` mit 405 antwortet.
+ * The CORS preflight — and the reason `GET /` answers with 405.
  *
- * Ein Browser schickt vor einem Cross-Origin-Request ein OPTIONS und erwartet die
- * Access-Control-Header, die der after-Hook oben setzt. Dieser Catch-All beantwortet jedes
- * OPTIONS mit 204.
+ * Before a cross-origin request a browser sends an OPTIONS and expects the Access-Control headers
+ * the after hook above sets. This catch-all answers every OPTIONS with 204.
  *
- * Er faengt **jeden Pfad**, aber nur die Methode OPTIONS. Ein `GET /` trifft ihn damit im Pfad
- * und nicht in der Methode — der Router meldet MethodNotAllowed, die Anwendung antwortet mit
- * 405. Das ist im Runbook als erwartetes Verhalten beschrieben und wird von
- * SystemControllerApiTest geprueft.
+ * It catches **every path**, but only the OPTIONS method. A `GET /` therefore matches it on the
+ * path and not on the method — the router reports MethodNotAllowed, the application answers with
+ * 405. That is described as expected behaviour in the runbook and checked by
+ * SystemControllerApiTest.
  *
- * BIS 009-002-0004 STAND ER HIER ZWEIMAL, wortgleich. Unter Silex war die zweite Registrierung
- * folgenlos — sie ueberschrieb die erste. Beim Umstellen fiel sie auf; eine Route doppelt
- * anzulegen ergibt jetzt zwei Eintraege in der RouteCollection, von denen der zweite nie
- * erreicht wird.
+ * UNTIL 009-002-0004 IT WAS REGISTERED HERE TWICE, word for word. Under Silex the second
+ * registration had no effect — it overwrote the first. It surfaced during the switch; registering a
+ * route twice now produces two entries in the RouteCollection, the second of which is never
+ * reached.
  */
 $app->options("{anything}", function () {
     return new JsonResponse(null, 204);
@@ -229,9 +225,9 @@ $app->options("{anything}", function () {
 
 
 /*
- * connect() wird selbst gerufen (009-001-0003) — dieselbe Aenderung wie im RouteManager.
- * Die Provider implementieren nicht mehr Silex' ControllerProviderInterface, also erkennt
- * mount() sie nicht mehr als solche; uebergeben wird die fertige Sammlung.
+ * connect() is called here directly (009-001-0003) — the same change as in the RouteManager. The
+ * providers no longer implement Silex's ControllerProviderInterface, so mount() no longer
+ * recognises them as such; the finished collection is passed in.
  */
 $app->mount('/api',    (new ApiControllerProvider('/api'))->connect($app));
 $app->mount('/auth',   (new AuthControllerProvider('/auth'))->connect($app));
