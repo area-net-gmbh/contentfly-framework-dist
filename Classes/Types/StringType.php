@@ -1,6 +1,6 @@
 <?php
 namespace Areanet\PIM\Classes\Types;
-use Areanet\PIM\Classes\Security\Feldverschluesselung;
+use Areanet\PIM\Classes\Security\FieldEncryption;
 use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Type;
@@ -42,9 +42,9 @@ class StringType extends Type
             return '';
         }
 
-        // Seit 010-004-0001 an einer Stelle: Classes/Security/Feldverschluesselung.
+        // Seit 010-004-0001 an einer Stelle: Classes/Security/FieldEncryption.
         // Die Ausnahme bei fehlendem SECURITY_CIPHER_KEY wirft jetzt sie.
-        return (new Feldverschluesselung())->entschluesseln($encryptedValue);
+        return (new FieldEncryption())->decrypt($encryptedValue);
     }
 
     public function toDatabase(Api $api, Base $object, $property, $value, $entityName, $schema, $user, $data = null, $lang = null): void
@@ -62,7 +62,7 @@ class StringType extends Type
             return;
         }
 
-        $object->$setter((new Feldverschluesselung())->verschluesseln($value));
+        $object->$setter((new FieldEncryption())->encrypt($value));
 
     }
 

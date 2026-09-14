@@ -251,7 +251,7 @@ class Config{
     /**
      * Proxies, hinter denen die Anwendung steht.
      *
-     * NEU MIT 013-001-0003, und zwar als Voraussetzung fuer die Anmeldebremse: `setTrustedProxies()`
+     * NEU MIT 013-001-0003, und zwar als Voraussetzung fuer die LoginThrottle: `setTrustedProxies()`
      * wurde im ganzen Baum nirgends gerufen. Ohne diese Angabe liefert
      * `Request::getClientIp()` die Adresse des naechsten Hops — hinter einem Loadbalancer also
      * dessen eigene. Eine Begrenzung pro IP traefe dann ihn und damit alle Benutzer dahinter,

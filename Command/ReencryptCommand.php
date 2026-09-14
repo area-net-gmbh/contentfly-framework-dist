@@ -2,7 +2,7 @@
 namespace Areanet\PIM\Command;
 
 use Areanet\PIM\Classes\Kernel\Command;
-use Areanet\PIM\Classes\Security\Feldverschluesselung;
+use Areanet\PIM\Classes\Security\FieldEncryption;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Input\InputInterface;
@@ -180,7 +180,7 @@ class ReencryptCommand extends Command
         bool $trocken,
         int $stapel
     ): array {
-        $krypto  = new Feldverschluesselung();
+        $krypto  = new FieldEncryption();
         $zaehler = array('geprueft' => 0, 'umgeschluesselt' => 0, 'uebersprungen' => 0);
         $letzte  = null;
 
@@ -207,12 +207,12 @@ class ReencryptCommand extends Command
                     $letzte = $zeile['pk'];
                     $zaehler['geprueft']++;
 
-                    if ($krypto->istNeuesFormat((string) $zeile['wert'])) {
+                    if ($krypto->isNewFormat((string) $zeile['wert'])) {
                         $zaehler['uebersprungen']++;
                         continue;
                     }
 
-                    $klartext = $krypto->entschluesseln((string) $zeile['wert']);
+                    $klartext = $krypto->decrypt((string) $zeile['wert']);
 
                     if ($klartext === false) {
                         throw new \RuntimeException(sprintf(
@@ -230,7 +230,7 @@ class ReencryptCommand extends Command
                     if (!$trocken) {
                         $db->update(
                             $tabelle,
-                            array($spalte => $krypto->verschluesseln($klartext)),
+                            array($spalte => $krypto->encrypt($klartext)),
                             array($schluesselspalte => $zeile['pk'])
                         );
                     }

@@ -82,7 +82,7 @@ use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Areanet\PIM\Classes\Security\LoginProviderRegistry;
-use Areanet\PIM\Classes\Security\Anmeldebremse;
+use Areanet\PIM\Classes\Security\LoginThrottle;
 use Areanet\PIM\Classes\Security\UserProvisioning;
 use Areanet\PIM\Classes\Security\GroupMapping;
 use Areanet\PIM\Classes\Security\TokenAuthenticator;
@@ -370,8 +370,8 @@ $app['loginProviders'] = function () {
     return new LoginProviderRegistry();
 };
 
-$app['loginbremse'] = function () use ($buildCachePool) {
-    return new Anmeldebremse($buildCachePool('loginbremse', Paths::data() . '/cache/loginbremse'));
+$app['loginThrottle'] = function () use ($buildCachePool) {
+    return new LoginThrottle($buildCachePool('login-throttle', Paths::data() . '/cache/login-throttle'));
 };
 
 if($app['is_installed']) {

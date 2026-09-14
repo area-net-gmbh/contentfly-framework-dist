@@ -28,7 +28,7 @@ class AuthController extends BaseController
      * Passwoerter zu EINEM Konto nur dann, wenn zwischendurch ein Token entstand. Ein
      * Angreifer, der nie richtig raet, stellt nie einen Token aus.
      *
-     * An die Stelle tritt `Areanet\PIM\Classes\Security\Anmeldebremse`: pro Kennung UND pro
+     * An die Stelle tritt `Areanet\PIM\Classes\Security\LoginThrottle`: pro Kennung UND pro
      * IP, mit ansteigender Verzoegerung, und ohne Schalter, der sie ausknipst.
      */
 
@@ -71,8 +71,8 @@ class AuthController extends BaseController
         $kennung = ($request->request->all()['alias'] ?? null);
         $ip      = $request->getClientIp();
 
-        /** @var \Areanet\PIM\Classes\Security\Anmeldebremse $bremse */
-        $bremse = $this->app['loginbremse'];
+        /** @var \Areanet\PIM\Classes\Security\LoginThrottle $bremse */
+        $bremse = $this->app['loginThrottle'];
 
         /*
          * ERST BREMSEN, DANN PRUEFEN (013-001-0003).
@@ -87,7 +87,7 @@ class AuthController extends BaseController
          * welche Konten es gibt. `Retry-After` nennt nur, wie lange zu warten ist — das steht
          * dem legitimen Benutzer zu, der sich dreimal vertippt hat.
          */
-        if (($wartezeit = $bremse->wartezeit($kennung, $ip)) !== null) {
+        if (($wartezeit = $bremse->retryAfter($kennung, $ip)) !== null) {
             return new JsonResponse(
                 array('message' => 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.'),
                 429,
@@ -99,12 +99,12 @@ class AuthController extends BaseController
          * JEDER FEHLSCHLAG GEHT DURCH DIESE EINE STELLE.
          *
          * Vorher standen fuenf `return new JsonResponse(..., 401)` nebeneinander. Wer der Reihe
-         * nach jedem einzelnen ein `$bremse->fehlversuch(...)` voranstellt, vergisst
+         * nach jedem einzelnen ein `$bremse->recordFailure(...)` voranstellt, vergisst
          * irgendwann eines — und ein einziger ungezaehlter Zweig ist der Weg, an der Bremse
          * vorbeizuraten.
          */
         $abweisen = function ($meldung) use ($bremse, $kennung, $ip) {
-            $bremse->fehlversuch($kennung, $ip);
+            $bremse->recordFailure($kennung, $ip);
 
             return new JsonResponse(array('message' => $meldung), 401);
         };
@@ -234,7 +234,7 @@ class AuthController extends BaseController
          * Nur den der Kennung, nicht den der IP: Sonst genuegte einem Angreifer ein einziges
          * gueltiges Konto — sein eigenes —, um sich nach jedem Block wieder freizuschalten.
          */
-        $bremse->entsperren($kennung);
+        $bremse->reset($kennung);
 
         /*
          * WELCHEN TOKENTYP DER LOGIN AUSGIBT (013-003-0001).
@@ -331,7 +331,7 @@ class AuthController extends BaseController
     public function refreshAction(Request $request)
     {
         $ip     = $request->getClientIp();
-        $bremse = $this->app['loginbremse'];
+        $bremse = $this->app['loginThrottle'];
 
         /*
          * DIE BREMSE GILT AUCH HIER (013-003-0002).
@@ -344,7 +344,7 @@ class AuthController extends BaseController
          * keine mit. Das ist auch die richtige Achse — ein Refresh-Token laesst sich nicht ueber
          * einen Benutzernamen erraten, sondern nur durch Durchprobieren von einer Stelle aus.
          */
-        if (($wartezeit = $bremse->wartezeit(null, $ip)) !== null) {
+        if (($wartezeit = $bremse->retryAfter(null, $ip)) !== null) {
             return new JsonResponse(
                 array('message' => 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.'),
                 429,
@@ -360,7 +360,7 @@ class AuthController extends BaseController
          * unterscheidet, sagt einem Angreifer, welcher seiner Versuche naeher dran war.
          */
         $abweisen = function () use ($bremse, $ip) {
-            $bremse->fehlversuch(null, $ip);
+            $bremse->recordFailure(null, $ip);
 
             return new JsonResponse(array('message' => 'Ungültiges Refresh-Token.'), 401);
         };

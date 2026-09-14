@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\AcceptHeader;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Areanet\PIM\Classes\Security\VertrauteProxies;
+use Areanet\PIM\Classes\Security\TrustedProxies;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /*
@@ -43,7 +43,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  * Without an entry in `APP_TRUSTED_PROXIES` nothing happens here, and the application behaves as
  * before.
  */
-VertrauteProxies::anwenden(
+TrustedProxies::apply(
     Config\Adapter::getConfig()->APP_TRUSTED_PROXIES,
     (string) Config\Adapter::getConfig()->APP_TRUSTED_HEADERS
 );
