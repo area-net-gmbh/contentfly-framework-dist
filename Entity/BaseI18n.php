@@ -9,15 +9,15 @@ class BaseI18n extends Base
 {
 
     /*
-     * DIE SPALTE KOMMT AUS `Base`, HIER STEHT NUR DIE ABWEICHUNG (010-003-0002).
+     * THE COLUMN COMES FROM `Base`, ONLY THE DEVIATION IS STATED HERE (010-003-0002).
      *
-     * Bis ORM 3 stand hier zusaetzlich `#[ORM\Column(type: APPCMS_ID_TYPE)]` — eine wortgleiche
-     * Wiederholung der Spalte aus `Entity\Base`. ORM 2 hat sie stillschweigend ueberschrieben,
-     * ORM 3 lehnt sie ab („Duplicate definition of column 'id'").
+     * Until ORM 3 there was additionally `#[ORM\Column(type: APPCMS_ID_TYPE)]` here — a verbatim
+     * repetition of the column from `Entity\Base`. ORM 2 silently overwrote it, ORM 3 rejects
+     * it ("Duplicate definition of column 'id'").
      *
-     * Was hier bleiben MUSS, ist die Strategie: `Base` erzeugt eine UUID, eine i18n-Zeile
-     * bekommt ihre Id dagegen von der Hauptzeile zugewiesen. Zusammen mit `lang` bildet sie
-     * einen zusammengesetzten Schluessel, und ein solcher vertraegt keinen Generator.
+     * What MUST stay here is the strategy: `Base` generates a UUID, whereas an i18n row gets its
+     * id assigned from the main row. Together with `lang` it forms a composite key, and such a
+     * key does not tolerate a generator.
      */
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'NONE')]

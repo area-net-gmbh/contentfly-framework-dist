@@ -16,23 +16,23 @@ class BaseI18nTree extends BaseI18nSortable
     protected $treeParent;
 
     /*
-     * ZIELKLASSE RICHTIGGESTELLT (010-005-0003).
+     * TARGET CLASS CORRECTED (010-005-0003).
      *
-     * Hier stand `targetEntity: 'Areanet\PIM\Entity\BaseTree'` — die Klasse nebenan, aus der
-     * diese hier kopiert wurde. `orm:validate-schema` nannte es beim Namen:
+     * This used to say `targetEntity: 'Areanet\PIM\Entity\BaseTree'` — the neighbouring class
+     * this one was copied from. `orm:validate-schema` called it out by name:
      *
      *     The association BaseI18nTree#treeParent refers to the inverse side
      *     BaseI18nTree#treeChilds which targets a different entity (BaseTree).
      *
-     * OFFEN BLEIBT DER ZWEITE FEHLER DERSELBEN MELDUNG: `treeParent` verweist mit EINER
-     * Join-Spalte (`parent_id`) auf `BaseI18nTree`, deren Schluessel aber aus `id` UND `lang`
-     * besteht. Doctrine verlangt eine Join-Spalte je Schluesselspalte.
+     * THE SECOND ERROR OF THE SAME MESSAGE REMAINS OPEN: `treeParent` references `BaseI18nTree`
+     * with ONE join column (`parent_id`), but its key consists of `id` AND `lang`. Doctrine
+     * requires one join column per key column.
      *
-     * Er wird hier NICHT behoben, und das ist eine Entscheidung: Ob ein Kindknoten auf einen
-     * Elternknoten DERSELBEN Sprache zeigen soll, steht nirgends — und niemand erbt von dieser
-     * Klasse, die Absicht ist also an nichts zu pruefen. Eine zweite Join-Spalte zu erfinden
-     * hiesse, Semantik fuer unbenutzten Code festzulegen und dabei das Schema von
-     * `pim_i18n_tree` zu aendern. Der Befund verlaesst Epic 010 als eigener Task.
+     * It is NOT fixed here, and that is a decision: whether a child node is supposed to point to
+     * a parent node of the SAME language is written down nowhere — and nobody extends this
+     * class, so the intent cannot be checked against anything. Inventing a second join column
+     * would mean defining semantics for unused code and changing the schema of `pim_i18n_tree`
+     * in the process. The finding leaves Epic 010 as a task of its own.
      */
     #[ORM\OneToMany(targetEntity: 'Areanet\\PIM\\Entity\\BaseI18nTree', mappedBy: 'treeParent')]
     protected $treeChilds;

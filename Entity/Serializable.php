@@ -6,17 +6,17 @@ use Areanet\PIM\Classes\Permission;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 /**
- * Die Basis fuer alles, was die API als Objekt ausliefert.
+ * The base for everything the API delivers as an object.
  *
- * `getId()` ist hier nicht deklariert, wird aber benutzt — PHPStan meldet das zu Recht
- * (009-003-0002). Die Methode kommt aus `Base`, `BaseI18n` und `Log`, also aus jeder Klasse,
- * die tatsaechlich von hier erbt. Statt sie hier zu erfinden, ist sie als abstrakt
- * deklariert: Damit steht die Bedingung im Code, unter der diese Klasse funktioniert, und
- * eine Ableitung ohne Id faellt beim Laden auf statt bei der ersten Auslieferung.
+ * `getId()` is not declared here, but it is used — PHPStan rightly reports that
+ * (009-003-0002). The method comes from `Base`, `BaseI18n` and `Log`, i.e. from every class
+ * that actually extends this one. Instead of inventing it here, it is declared abstract: that
+ * puts the condition under which this class works into the code, and a subclass without an id
+ * fails at load time instead of at its first delivery.
  */
 abstract class Serializable implements \JsonSerializable{
 
-    /** Die Id des Objekts. Jede erbende Entity bringt sie mit. */
+    /** The id of the object. Every inheriting entity provides it. */
     abstract public function getId();
 
 
@@ -44,11 +44,10 @@ abstract class Serializable implements \JsonSerializable{
         }
 
         /*
-         * Verschachtelte Objekte waren hier auf die Listenspalten der Oberfläche
-         * beschränkt (`schema[...]['list']`, gespeist aus `showInList`). Der Schlüssel ist
-         * mit den UI-Annotationen entfallen; sie liefern jetzt alle Eigenschaften. Für
-         * Clients ist das additiv, die Verschachtelungstiefe begrenzt weiterhin
-         * `DB_NESTED_LEVELS`.
+         * Nested objects used to be restricted here to the list columns of the user interface
+         * (`schema[...]['list']`, fed from `showInList`). The key was removed together with
+         * the UI annotations; they now deliver all properties. For clients this is additive;
+         * the nesting depth is still limited by `DB_NESTED_LEVELS`.
          */
 
         foreach ($this as $property => $value) {

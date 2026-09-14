@@ -260,6 +260,6 @@ class SystemController extends BaseController
 
         // Hier der KLARTEXT: Es ist der Wert, den der Aufrufer selbst mitgebracht hat, und der
         // einzige Zeitpunkt, an dem er zurueckgegeben werden kann.
-        return array('id' => $token->getId(), 'token' => $token->getKlartext(), 'referrer' => $token->getReferrer(), 'user' => $userData);
+        return array('id' => $token->getId(), 'token' => $token->getPlaintext(), 'referrer' => $token->getReferrer(), 'user' => $userData);
     }
 }

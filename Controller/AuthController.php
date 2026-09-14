@@ -215,7 +215,7 @@ class AuthController extends BaseController
          * The login-provider path is excluded — an external system verifies there, and
          * `$user->getPass()` has no relation to the word that was entered.
          */
-        if (!$loginProvider && $user->brauchtNeuenHash()) {
+        if (!$loginProvider && $user->needsRehash()) {
             $user->setPass(($request->request->all()['pass'] ?? null));
             $this->em->flush();
         }
@@ -256,7 +256,7 @@ class AuthController extends BaseController
         if ($wantsJwt) {
             // The row becomes the refresh token. That makes it useless as an access token — the opaque
             // branch of the TokenHandler rejects it.
-            $token->setPurpose(Token::ZWECK_REFRESH);
+            $token->setPurpose(Token::PURPOSE_REFRESH);
         }
 
         $this->em->persist($token);
@@ -266,10 +266,10 @@ class AuthController extends BaseController
 
         $response = array(
             'message' => 'Login successful',
-            // getKlartext(), not getToken(): since 013-001-0004 the column only holds the hash. This is
+            // getPlaintext(), not getToken(): since 013-001-0004 the column only holds the hash. This is
             // the only place and the only moment at which the token itself leaves the system — after
             // that it only exists at the client.
-            'token' => $token->getKlartext(),
+            'token' => $token->getPlaintext(),
             'user' => $user->toValueObject($this->app, 'PIM\User', false)
         );
 
@@ -282,7 +282,7 @@ class AuthController extends BaseController
              * next to it; it can be redeemed from 013-003-0002 on.
              */
             $response['token']        = $access['token'];
-            $response['refreshToken'] = $token->getKlartext();
+            $response['refreshToken'] = $token->getPlaintext();
             $response['expiresIn']    = $access['exp'] - time();
         }
 
@@ -362,12 +362,12 @@ class AuthController extends BaseController
         }
 
         $row = $this->em->getRepository('Areanet\PIM\Entity\Token')->findOneBy(
-            array('token' => Token::hashen($presented))
+            array('token' => Token::hash($presented))
         );
 
         // No match — or a match that is not a refresh token. An access token does not work here:
         // otherwise the separation from 013-003-0001 would be open again in one direction.
-        if (!$row instanceof Token || !$row->istRefreshToken()) {
+        if (!$row instanceof Token || !$row->isRefreshToken()) {
             return $reject();
         }
 
@@ -406,7 +406,7 @@ class AuthController extends BaseController
 
         $new = new Token();
         $new->setUser($user);
-        $new->setPurpose(Token::ZWECK_REFRESH);
+        $new->setPurpose(Token::PURPOSE_REFRESH);
 
         $this->em->persist($new);
         $this->em->flush();
@@ -418,7 +418,7 @@ class AuthController extends BaseController
         return new JsonResponse(array(
             'message'      => 'Refresh successful',
             'token'        => $access['token'],
-            'refreshToken' => $new->getKlartext(),
+            'refreshToken' => $new->getPlaintext(),
             'expiresIn'    => $access['exp'] - time(),
         ));
     }
@@ -475,7 +475,7 @@ class AuthController extends BaseController
 
         if (is_string($sentAlong) && $sentAlong !== '') {
             $row = $this->em->getRepository('Areanet\PIM\Entity\Token')->findOneBy(
-                array('token' => Token::hashen($sentAlong))
+                array('token' => Token::hash($sentAlong))
             );
 
             /*
@@ -484,7 +484,7 @@ class AuthController extends BaseController
              * refresh token.
              */
             if ($row instanceof Token
-                && $row->istRefreshToken()
+                && $row->isRefreshToken()
                 && $row->getUser() === $this->app['auth.user']) {
                 $this->em->remove($row);
             }

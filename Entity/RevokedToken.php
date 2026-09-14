@@ -4,29 +4,29 @@ namespace Areanet\PIM\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Ein widerrufenes Access-JWT, bis es ohnehin abgelaufen waere (013-003-0003).
+ * A revoked access JWT, until it would have expired anyway (013-003-0003).
  *
- * DAS RESTFENSTER, MEHR NICHT. Der Hauptteil des Widerrufs sitzt im Refresh-Modell: Logout
- * loescht die Refresh-Zeile, und damit bekommt niemand mehr ein neues Access-JWT. Was bleibt,
- * ist das eine Token, das der Client gerade in der Hand haelt — es gilt bis zu seinem `exp`,
- * und genau dafuer gibt es diese Tabelle.
+ * THE REMAINING WINDOW, NOTHING MORE. The main part of revocation lives in the refresh model:
+ * logout deletes the refresh row, and after that nobody gets a new access JWT any more. What
+ * remains is the one token the client is currently holding — it is valid until its `exp`, and
+ * that is exactly what this table is for.
  *
- * SIE BLEIBT KLEIN, weil ein Eintrag mit dem Token verfaellt. Das Kundenprojekt hatte eine
- * solche Liste gebaut, aber OHNE das Refresh-Modell daneben — dort musste sie ueber die volle
- * Tokenlaufzeit tragen und wuchs unbegrenzt.
+ * IT STAYS SMALL, because an entry expires together with the token. The customer project had
+ * built such a list, but WITHOUT the refresh model alongside it — there it had to cover the full
+ * token lifetime and grew without bound.
  *
- * WOFUER SIE NICHT GEBRAUCHT WIRD, ist nachgemessen: Eine Benutzersperrung wirkt seit
- * `013-002-0001` sofort. Der JWT-Zweig gibt sein `UserBadge` ohne eigenen Lader zurueck, also
- * laedt der `UserLoader` den Benutzer aus `pim_user` und weist einen gesperrten mit derselben
- * Ausnahme ab wie einen unbekannten. Wer diese Liste fuer die Sperrung baute, baute etwas, das
- * schon steht.
+ * WHAT IT IS NOT NEEDED FOR has been verified: since `013-002-0001` a user lock takes effect
+ * immediately. The JWT branch returns its `UserBadge` without a loader of its own, so the
+ * `UserLoader` loads the user from `pim_user` and rejects a locked one with the same exception
+ * as an unknown one. Anyone who built this list for locking built something that already
+ * exists.
  *
- * SIE LIEGT IN DER DATENBANK UND NICHT IM CACHE. Ein geleerter Cache darf keinen Widerruf
- * aufheben — und der Cache ist genau das, was man leert, wenn etwas klemmt.
+ * IT LIVES IN THE DATABASE AND NOT IN THE CACHE. A cleared cache must not undo a revocation —
+ * and the cache is exactly what people clear when something is stuck.
  *
- * Sie erbt NICHT von `Base`: Die dortigen Felder (`userCreated`, `isIntern`, GUID-Schluessel)
- * beschreiben Inhaltsobjekte der API. Diese Tabelle ist Infrastruktur, wie `pim_token`, und
- * folgt derselben schlanken Form.
+ * It does NOT extend `Base`: the fields there (`userCreated`, `isIntern`, GUID key) describe
+ * content objects of the API. This table is infrastructure, like `pim_token`, and follows the
+ * same lean form.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'pim_revoked_token')]
@@ -39,19 +39,19 @@ class RevokedToken
     protected $id;
 
     /**
-     * Die `jti` des widerrufenen Tokens.
+     * The `jti` of the revoked token.
      *
-     * Im Klartext, und das ist hier richtig: Anders als ein Token ist eine `jti` kein Geheimnis
-     * — sie oeffnet nichts. Wer sie liest, erfaehrt, dass irgendein Token widerrufen wurde, und
-     * sonst nichts. Ein Hash brauchte einen Grund, und es gibt keinen.
+     * In plain text, and that is correct here: unlike a token, a `jti` is not a secret — it
+     * opens nothing. Anyone who reads it learns that some token was revoked, and nothing else.
+     * A hash would need a reason, and there is none.
      */
     #[ORM\Column(type: 'string', length: 64, unique: true)]
     protected $jti;
 
     /**
-     * Wann das widerrufene Token ohnehin abgelaufen waere.
+     * When the revoked token would have expired anyway.
      *
-     * Ab da ist der Eintrag gegenstandslos; `appcms:token:cleanup` raeumt ihn weg.
+     * From then on the entry is moot; `appcms:token:cleanup` clears it away.
      *
      * @var \DateTime
      */
@@ -63,15 +63,14 @@ class RevokedToken
     protected $created;
 
     /*
-     * HIER STAND EIN `modified`, DAS NICHTS TAT (bis 000-000-0028).
+     * THERE USED TO BE A `modified` HERE THAT DID NOTHING (until 000-000-0028).
      *
-     * `Classes/Events/LoadMetadata` haengte an JEDE Entity einen Index auf diese Spalte, und
-     * ohne sie scheiterte die Installation — mit einer Meldung, die den Grund nicht nannte.
-     * Diese Zeile erfuellte also eine Anforderung, die niemand aufgeschrieben hatte, und
-     * beschrieb nichts an der Sache: Eine Sperrliste wird angelegt und verfaellt; sie aendert
-     * sich nie.
+     * `Classes/Events/LoadMetadata` attached an index on this column to EVERY entity, and
+     * without it the installation failed — with a message that did not name the reason.
+     * So this line fulfilled a requirement nobody had written down, and described nothing about
+     * the subject: a revocation list is created and expires; it never changes.
      *
-     * Der Listener ueberspringt jetzt Entities ohne `modified`, und damit faellt die Spalte.
+     * The listener now skips entities without `modified`, and so the column goes away.
      */
 
     public function __construct()

@@ -20,55 +20,55 @@ class Token
     protected $user;
 
     /**
-     * DER HASH DES TOKENS, NICHT DER TOKEN (013-001-0004).
+     * THE HASH OF THE TOKEN, NOT THE TOKEN (013-001-0004).
      *
-     * Vorher standen hier 128 Hex aus 64 Zufallsbytes im Klartext. Ein Lesezugriff auf die
-     * Datenbank — ein Backup, eine SQL-Injection, ein Dump im Ticketsystem — uebergab damit
-     * SAEMTLICHE laufenden Sitzungen, sofort verwendbar. Jetzt steht hier ein SHA-256, und
-     * beim Pruefen wird der vorgezeigte Token gehasht und der Hash nachgeschlagen.
+     * Previously this held 128 hex characters from 64 random bytes in plain text. Any read
+     * access to the database — a backup, an SQL injection, a dump in the ticket system — thereby
+     * handed over ALL active sessions, usable immediately. Now this holds a SHA-256, and on
+     * verification the presented token is hashed and the hash is looked up.
      *
-     * EIN SCHNELLER HASH, UND ZWAR BEGRUENDET. Ein Token ist kein Passwort: 64 zufaellige
-     * Bytes lassen sich nicht raten, es gibt also nichts, wogegen ein Arbeitsfaktor schuetzen
-     * wuerde — er verteuerte nur jeden authentifizierten Request. Kein Salt, weil das
-     * Nachschlagen sonst nicht ginge; ohne Salt ist der Hash deterministisch und die Spalte
-     * bleibt durchsuchbar und unique.
+     * A FAST HASH, AND FOR A REASON. A token is not a password: 64 random bytes cannot be
+     * guessed, so there is nothing a work factor would protect against — it would only make
+     * every authenticated request more expensive. No salt, because otherwise the lookup would
+     * not work; without a salt the hash is deterministic and the column stays searchable and
+     * unique.
      *
-     * DIE LAENGE BLEIBT 128, obwohl ein SHA-256 als Hex nur 64 Zeichen braucht. Die Spalte auf
-     * 64 zu kuerzen haette einen Bestand aus 128 Zeichen beim ALTER abgeschnitten — auf einer
-     * UNIQUE-Spalte ein Fehlschlag mitten in der Migration. Und Platz zu haben heisst, ein
-     * spaeterer Wechsel des Verfahrens braucht keine Schemaaenderung.
+     * THE LENGTH STAYS 128, even though a SHA-256 in hex needs only 64 characters. Shortening the
+     * column to 64 would have truncated existing 128-character values during the ALTER — on a
+     * UNIQUE column, a failure in the middle of the migration. And having room means a later
+     * change of the algorithm needs no schema change.
      */
     #[ORM\Column(type: 'string', length: 128, unique: true)]
     protected $token;
 
     /**
-     * Der Klartext — NICHT gemappt und nur in dem Request vorhanden, in dem der Token entstand.
+     * The plain text — NOT mapped and only present in the request in which the token was created.
      *
-     * Er wird dem Client genau einmal ausgeliefert, bei der Anmeldung. Danach existiert er
-     * ausschliesslich beim Client; auch der Betreiber kann ihn nicht mehr nachschlagen.
+     * It is delivered to the client exactly once, at login. After that it exists exclusively on
+     * the client; not even the operator can look it up any more.
      */
-    private $klartext = null;
+    private $plaintext = null;
 
     #[ORM\Column(type: 'string', length: 128, nullable: true)]
     protected $referrer;
 
     /**
-     * Wozu diese Zeile da ist (013-003-0001).
+     * What this row is for (013-003-0001).
      *
-     * `null` heisst: ein gewoehnlicher JwtAccessToken, wie bisher. `refresh` heisst: ein
-     * Refresh-Token, das genau eine Sache darf — ein neues Access-JWT holen.
+     * `null` means: an ordinary JwtAccessToken, as before. `refresh` means: a refresh token that
+     * is allowed exactly one thing — fetching a new access JWT.
      *
-     * DIE SPALTE IST NICHT KOSMETIK. Der opaque Zweig des `TokenHandler` nahm bis hierhin JEDE
-     * Zeile aus `pim_token` als JwtAccessToken an. Ein Refresh-Token ist aber laenger gueltig als
-     * ein Access-JWT — das ist sein Zweck —, und ohne diesen Vermerk waere es damit ein
-     * langlebiger Generalschluessel fuer die ganze API. Genau das soll das Refresh-Modell
-     * verhindern.
+     * THE COLUMN IS NOT COSMETIC. Up to this point the opaque branch of the `TokenHandler`
+     * accepted EVERY row from `pim_token` as a JwtAccessToken. A refresh token, however, is valid
+     * longer than an access JWT — that is its purpose — and without this marker it would thus be
+     * a long-lived master key for the entire API. That is exactly what the refresh model is meant
+     * to prevent.
      */
     #[ORM\Column(type: 'string', length: 20, nullable: true)]
     protected $purpose;
 
-    /** Der Wert von `$purpose` fuer ein Refresh-Token. */
-    public const ZWECK_REFRESH = 'refresh';
+    /** The value of `$purpose` for a refresh token. */
+    public const PURPOSE_REFRESH = 'refresh';
 
     /**
      * @var \DateTime
@@ -88,9 +88,9 @@ class Token
         $this->modified = new \DateTime();
 
         /*
-         * `random_bytes()` statt `openssl_random_pseudo_bytes()`: Die zweite meldet ueber einen
-         * Ausgabeparameter, ob das Ergebnis kryptographisch stark ist — niemand hat ihn je
-         * gelesen. `random_bytes()` liefert entweder starke Bytes oder wirft.
+         * `random_bytes()` instead of `openssl_random_pseudo_bytes()`: the latter reports via an
+         * output parameter whether the result is cryptographically strong — nobody ever read
+         * it. `random_bytes()` either returns strong bytes or throws.
          */
         $this->setToken(bin2hex(random_bytes(64)));
     }
@@ -128,11 +128,11 @@ class Token
     }
 
     /**
-     * Liefert den gespeicherten HASH — nicht den Token.
+     * Returns the stored HASH — not the token.
      *
-     * Der Klartext steht nur in `getKlartext()` und nur in dem Request, in dem er entstand.
-     * Wer hier den Token erwartet, bekommt einen Wert, mit dem sich niemand anmelden kann; das
-     * ist der Sinn der Sache.
+     * The plain text is only available in `getPlaintext()` and only in the request in which it
+     * was created. Anyone expecting the token here gets a value nobody can log in with; that is
+     * the whole point.
      *
      * @return mixed
      */
@@ -142,37 +142,37 @@ class Token
     }
 
     /**
-     * Nimmt den KLARTEXT entgegen und legt seinen Hash ab.
+     * Accepts the PLAIN TEXT and stores its hash.
      *
-     * Die Signatur ist absichtlich geblieben: `SystemController::addToken()` und der Code von
-     * Bestandsprojekten uebergeben hier einen selbstgewaehlten Token-String, und der soll
-     * gehasht werden, ohne dass jede Aufrufstelle daran denken muss.
+     * The signature was kept deliberately: `SystemController::addToken()` and the code of
+     * existing projects pass a self-chosen token string here, and it is supposed to be hashed
+     * without every call site having to remember to do so.
      *
      * @param mixed $token
      */
     public function setToken($token): void
     {
-        $this->klartext = ($token === null) ? null : (string) $token;
-        $this->token    = ($token === null) ? null : self::hashen((string) $token);
+        $this->plaintext = ($token === null) ? null : (string) $token;
+        $this->token    = ($token === null) ? null : self::hash((string) $token);
     }
 
     /**
-     * Der Klartext — oder null, wenn dieser Token aus der Datenbank kommt.
+     * The plain text — or null if this token comes from the database.
      */
-    public function getKlartext(): ?string
+    public function getPlaintext(): ?string
     {
-        return $this->klartext;
+        return $this->plaintext;
     }
 
     /**
-     * Das Verfahren, an einer Stelle.
+     * The algorithm, in one place.
      *
-     * Es steht als Methode und nicht als Aufruf an fuenf Orten da, damit ein spaeterer Wechsel
-     * nicht die Frage aufwirft, ob man alle erwischt hat.
+     * It exists as a method and not as a call in five places, so that a later change does not
+     * raise the question of whether all of them were caught.
      */
-    public static function hashen(string $klartext): string
+    public static function hash(string $plaintext): string
     {
-        return hash('sha256', $klartext);
+        return hash('sha256', $plaintext);
     }
 
     /**
@@ -236,10 +236,10 @@ class Token
         $this->purpose = $purpose;
     }
 
-    /** Ob diese Zeile ein Refresh-Token ist — und damit KEIN JwtAccessToken. */
-    public function istRefreshToken(): bool
+    /** Whether this row is a refresh token — and therefore NOT a JwtAccessToken. */
+    public function isRefreshToken(): bool
     {
-        return $this->purpose === self::ZWECK_REFRESH;
+        return $this->purpose === self::PURPOSE_REFRESH;
     }
 
     

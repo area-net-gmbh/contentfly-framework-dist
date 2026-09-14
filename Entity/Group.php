@@ -8,9 +8,9 @@ use Areanet\PIM\Classes\Annotations as PIM;
 
 /**
  *
- * excludeFromSync: Rechteverwaltung — ein Sync-Client hat damit nichts zu tun und soll sie nicht spiegeln.
- * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
- * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
+ * excludeFromSync: permission management — a sync client has nothing to do with it and should not mirror it.
+ * Moved here from the hard-wired list in Api.php with 000-000-0013 —
+ * an exclusion list that is not written in any annotation cannot be seen by a project.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'pim_group')]
@@ -26,19 +26,18 @@ class Group extends Base
     protected $tokenTimeout = 30;
 
     /**
-     * Der frueher hier stehende `options="{'default' : 'disabled'}"` ist entfallen: Der Wert
-     * war eine **Zeichenkette**, wo Doctrine ein Array erwartet. Bis Doctrine 2.6 wurde das
-     * stillschweigend angenommen und ignoriert — der Default hat also nie gewirkt, und die
-     * Spalte in `pim_group` traegt keinen. Ab Doctrine 2.20 ist der Konstruktor typisiert und
-     * wirft einen TypeError; gefunden mit `006-002-0003`.
+     * The `options="{'default' : 'disabled'}"` that used to be here has been dropped: the value
+     * was a **string** where Doctrine expects an array. Up to Doctrine 2.6 this was silently
+     * accepted and ignored — so the default never took effect, and the column in `pim_group`
+     * carries none. From Doctrine 2.20 on, the constructor is typed and throws a TypeError;
+     * found with `006-002-0003`.
      *
-     * Entfernt statt korrigiert, weil das verhaltensneutral ist: Ein `options={"default":
-     * "disabled"}` wuerde erstmals einen DEFAULT ins Schema schreiben und damit eine
-     * Datenbankaenderung ausloesen, die niemand angefordert hat. Der Vorgabewert steht
-     * ohnehin im Property.
+     * Removed rather than corrected, because that is behaviour-neutral: an `options={"default":
+     * "disabled"}` would write a DEFAULT into the schema for the first time and thereby trigger
+     * a database change that nobody asked for. The default value is in the property anyway.
      */
     #[ORM\Column(type: 'string')]
-    #[PIM\Select(options: 'disabled=nicht erlaubt, enabled=erlaubt')]
+    #[PIM\Select(options: 'disabled=not allowed, enabled=allowed')]
     protected $apiQueryEnabled = 'disabled';
 
 

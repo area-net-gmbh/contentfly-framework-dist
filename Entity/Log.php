@@ -6,9 +6,9 @@ use Areanet\PIM\Classes\Annotations as PIM;
 
 /**
  *
- * excludeFromSync: Das Protokoll ist die QUELLE der Sync-API. Es mitzusynchronisieren hiesse, die Buchfuehrung ueber die Synchronisation zu synchronisieren.
- * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
- * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
+ * excludeFromSync: The log is the SOURCE of the sync API. Syncing it as well would mean syncing the bookkeeping about the synchronisation.
+ * Moved here with 000-000-0013 from the hard-wired list in Api.php —
+ * an exclusion list that is not written in any annotation cannot be seen by a project.
  */
 #[ORM\Entity]
 #[PIM\Config(excludeFromSync: true)]
@@ -22,16 +22,16 @@ class Log extends Base
     const USERDEL   = 'USERDEL';
 
     /*
-     * `$id` IST HIER ENTFALLEN (010-003-0002).
+     * `$id` HAS BEEN REMOVED HERE (010-003-0002).
      *
-     * Die Deklaration wiederholte die aus `Entity\Base` Zeichen fuer Zeichen — dieselbe
-     * Spalte, dieselbe Strategie, derselbe CustomIdGenerator. ORM 2 hat die Wiederholung
-     * stillschweigend ueberschrieben; ORM 3 lehnt sie ab:
+     * The declaration repeated the one from `Entity\Base` character for character — the same
+     * column, the same strategy, the same CustomIdGenerator. ORM 2 silently overrode the
+     * repetition; ORM 3 rejects it:
      *
      *     Duplicate definition of column 'id' on entity 'Areanet\PIM\Entity\Log'
      *     in a field or discriminator column mapping.
      *
-     * Geerbt wird sie aus `Base`, samt der Begruendung, die dort steht.
+     * It is inherited from `Base`, together with the rationale written there.
      */
 
     #[ORM\Column(type: 'boolean', nullable: true)]
@@ -49,19 +49,19 @@ class Log extends Base
 
     #[ORM\Column(type: 'string', length: 100, nullable: false)]
     #[PIM\Config(isFilterable: true)]
-    #[PIM\Select(options: 'UPT=Geändert, DEL=Gelöscht, INS=Erstellt, USERDEL=Gelöscht für')]
+    #[PIM\Select(options: 'UPT=Modified, DEL=Deleted, INS=Created, USERDEL=Deleted for')]
     protected $mode;
 
     /*
-     * `$users`, `$created` UND `$userCreated` SIND HIER ENTFALLEN (010-003-0002).
+     * `$users`, `$created` AND `$userCreated` HAVE BEEN REMOVED HERE (010-003-0002).
      *
-     * Alle drei wiederholten die Deklaration aus `Entity\Base`. ORM 2 hat die Wiederholung
-     * stillschweigend ueberschrieben, ORM 3 lehnt sie ab („Duplicate definition of column").
+     * All three repeated the declaration from `Entity\Base`. ORM 2 silently overrode the
+     * repetition, ORM 3 rejects it ("Duplicate definition of column").
      *
-     * EINE DER DREI WAR NICHT WORTGLEICH: `$created` stand hier ohne
-     * `options: ['default' => 'CURRENT_TIMESTAMP']`, das `Base` setzt. Die Abweichung war
-     * nirgends begruendet und sieht nach einer unvollstaendigen Kopie aus; ihre Wirkung auf
-     * das erzeugte Schema ist mit dem Datenbankvergleich dieses Tasks nachgemessen.
+     * ONE OF THE THREE WAS NOT IDENTICAL: `$created` was declared here without the
+     * `options: ['default' => 'CURRENT_TIMESTAMP']` that `Base` sets. The deviation was
+     * justified nowhere and looks like an incomplete copy; its effect on the generated schema
+     * has been verified with this task's database comparison.
      */
 
     #[ORM\Column(type: 'text', nullable: true)]

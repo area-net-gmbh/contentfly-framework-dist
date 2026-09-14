@@ -7,25 +7,25 @@ use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * DER BENUTZER IST SEIT 013-002-0001 AUCH EIN SYMFONY-BENUTZER.
+ * SINCE 013-002-0001 THE USER IS ALSO A SYMFONY USER.
  *
- * `UserInterface` verlangt drei Methoden, und mehr wird hier auch nicht abgebildet. Das ist die
- * Grenze, die die Story ausdruecklich zieht: Das Contentfly-eigene Berechtigungsmodell —
- * `Permission`, `I18nPermission`, `Group`, `isAdmin` — wird NICHT durch Symfony-Rollen ersetzt.
- * Abgebildet wird nur, was der Zugriffsschutz braucht, um einen Benutzer zu identifizieren.
+ * `UserInterface` requires three methods, and nothing more is mapped here either. That is the
+ * boundary the story explicitly draws: Contentfly's own permission model —
+ * `Permission`, `I18nPermission`, `Group`, `isAdmin` — is NOT replaced by Symfony roles.
+ * Only what access control needs in order to identify a user is mapped.
  *
- * Wer hier anfaengt, Berechtigungen in Rollen zu uebersetzen, baut ein zweites
- * Berechtigungsmodell neben dem vorhandenen — und zwei Modelle, die dasselbe sagen sollen,
- * laufen auseinander.
+ * Whoever starts translating permissions into roles here builds a second permission model
+ * next to the existing one — and two models that are supposed to say the same thing drift
+ * apart.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'pim_user')]
 /*
- * EIN FREMDSYSTEM, EINE KENNUNG, EIN KONTO (013-004-0002).
+ * ONE EXTERNAL SYSTEM, ONE IDENTIFIER, ONE ACCOUNT (013-004-0002).
  *
- * Zwei Provider, die denselben Benutzernamen liefern, ergeben zwei Konten — und derselbe
- * Provider mit derselben Kennung findet immer dasselbe wieder. Genau das leistete frueher der
- * MD5-Praefix im Alias, nur unleserlich.
+ * Two providers that deliver the same user name result in two accounts — and the same
+ * provider with the same identifier always finds the same account again. That is exactly what
+ * the MD5 prefix in the alias used to achieve, only unreadably.
  */
 #[ORM\UniqueConstraint(name: 'uniq_user_fremdkennung', columns: ['loginManager', 'externalId'])]
 #[PIM\Config(labelProperty: 'alias')]
@@ -47,12 +47,12 @@ class User extends Base implements UserInterface
     protected $alias;
 
     /**
-     * Der Passwort-Hash. 255 Zeichen seit 013-001-0001.
+     * The password hash. 255 characters since 013-001-0001.
      *
-     * Vorher 100. Ein Argon2id-Hash ist rund 96 Zeichen — es haette knapp gepasst und war
-     * trotzdem zu eng: PHP darf Vorgabe-Algorithmus und -Parameter zwischen Versionen aendern,
-     * und die Laenge ist keine Zusicherung. Ein abgeschnittener Hash faellt nicht beim
-     * Speichern auf, sondern erst beim naechsten Login — als „Passwort falsch".
+     * Previously 100. An Argon2id hash is about 96 characters — it would just have fit and was
+     * still too tight: PHP may change the default algorithm and parameters between versions,
+     * and the length is not a guarantee. A truncated hash does not show up when saving, but
+     * only at the next login — as "wrong password".
      */
     #[ORM\Column(type: 'string', length: 255)]
     protected $pass;
@@ -64,30 +64,30 @@ class User extends Base implements UserInterface
     protected $salt;
 
     /**
-     * Der NAME des Anmeldeproviders, ueber den dieser Benutzer kommt (013-004-0002).
+     * The NAME of the login provider through which this user comes in (013-004-0002).
      *
-     * Bis dahin stand hier der Klassenname aus `get_class($this)`. Seit `013-004-0001` waehlt
-     * kein Klassenname mehr etwas aus; was hier steht, ist der Name aus dem
-     * `LoginProviderRegistry` — `ldap`, `saml`, was ein Projekt eingetragen hat.
+     * Until then, this held the class name from `get_class($this)`. Since `013-004-0001` no
+     * class name selects anything any more; what is stored here is the name from the
+     * `LoginProviderRegistry` — `ldap`, `saml`, whatever a project has registered.
      *
-     * Ist er gesetzt, ist der Benutzer NUR ueber diesen Weg anmeldbar. Das war schon vorher so
-     * und bleibt — es ist jetzt aber die zweite Sicherung und nicht mehr die einzige: Sein
-     * Passwort ist gesperrt.
+     * If it is set, the user can log in ONLY via this route. That was already the case before
+     * and remains so — but it is now the second safeguard and no longer the only one: their
+     * password is locked.
      */
     #[ORM\Column(type: 'string', length: 100, nullable: true)]
     protected $loginManager;
 
     /**
-     * Die Kennung dieses Benutzers IM FREMDSYSTEM (013-004-0002).
+     * The identifier of this user IN THE EXTERNAL SYSTEM (013-004-0002).
      *
-     * SIE STEHT LESBAR DA, und das ist der Punkt. Vorher verfremdete
-     * `createManagedUser()` den Alias zu `md5($klasse).'-'.$alias`: Wer in `pim_user` nachsah,
-     * fand `3f2a…-mmustermann` und wusste nicht, wer das ist. Der Praefix loeste ein echtes
-     * Problem — zwei Fremdsysteme, die denselben Benutzernamen liefern, duerfen nicht dasselbe
-     * Konto bekommen —, aber er loeste es, indem er die Antwort unleserlich machte.
+     * IT IS STORED IN READABLE FORM, and that is the point. Previously
+     * `createManagedUser()` mangled the alias into `md5($class).'-'.$alias`: whoever looked in
+     * `pim_user` found `3f2a…-mmustermann` and did not know who that was. The prefix solved a
+     * real problem — two external systems that deliver the same user name must not get the same
+     * account —, but it solved it by making the answer unreadable.
      *
-     * Die Eindeutigkeit gilt jetzt ueber `loginManager` UND `externalId` zusammen; der Alias
-     * traegt beide sichtbar als `<provider>:<kennung>`.
+     * Uniqueness now applies to `loginManager` AND `externalId` together; the alias carries
+     * both visibly as `<provider>:<kennung>`.
      */
     #[ORM\Column(type: 'string', length: 190, nullable: true)]
     protected $externalId;
@@ -148,55 +148,54 @@ class User extends Base implements UserInterface
     }
 
     /**
-     * Setzt das Passwort — mit `password_hash()` (013-001-0001).
+     * Sets the password — with `password_hash()` (013-001-0001).
      *
-     * BIS HIERHER STAND HIER `hash('sha256', $pass.$this->salt)`. Der Salt war in Ordnung —
-     * 64 Hex je Benutzer, im Konstruktor erzeugt —, aber SHA-256 hat **keinen Arbeitsfaktor**.
-     * Eine GPU prueft Milliarden Kandidaten pro Sekunde; ein Passwort aus einer Wortliste
-     * faellt in Sekunden.
+     * UNTIL NOW THIS SAID `hash('sha256', $pass.$this->salt)`. The salt was fine —
+     * 64 hex per user, generated in the constructor —, but SHA-256 has **no work factor**.
+     * A GPU checks billions of candidates per second; a password from a word list falls
+     * within seconds.
      *
-     * `password_hash()` bringt seinen Salt selbst mit und traegt Algorithmus und Parameter im
-     * Ergebnis. Der eigene `$salt` wird fuer neue Hashes nicht mehr gebraucht — er BLEIBT
-     * trotzdem, solange Bestandsdaten mit ihm geprueft werden (siehe `isPass()`).
+     * `password_hash()` brings its own salt and carries algorithm and parameters in the
+     * result. The separate `$salt` is no longer needed for new hashes — it STAYS
+     * nevertheless, as long as existing data is verified with it (see `isPass()`).
      *
      * @param mixed $pass
      */
     public function setPass($pass): void
     {
-        $this->pass = password_hash((string) $pass, self::verfahren());
+        $this->pass = password_hash((string) $pass, self::algorithm());
     }
 
     /**
-     * Prueft das Passwort — neues Format oder altes.
+     * Checks the password — new format or old.
      *
-     * ALTE HASHES BLEIBEN LESBAR, damit kein Bestandsprojekt seine Benutzer aussperrt. Erkannt
-     * werden sie am Format: Ein `password_hash()`-Ergebnis beginnt mit `$` (`$argon2id$…`,
-     * `$2y$…`), ein SHA-256-Hex nie.
+     * OLD HASHES REMAIN READABLE, so that no existing project locks out its users. They are
+     * recognised by their format: a `password_hash()` result starts with `$` (`$argon2id$…`,
+     * `$2y$…`), a SHA-256 hex never does.
      *
-     * Umgeschluesselt wird beim Login, nicht hier — `isPass()` darf nichts schreiben, sonst
-     * haette eine Pruefung eine Nebenwirkung. Siehe `AuthController::loginAction()`.
+     * Rehashing happens at login, not here — `isPass()` must not write anything, otherwise
+     * a check would have a side effect. See `AuthController::loginAction()`.
      *
-     * `hash_equals()` statt `==` auch fuer den alten Zweig: Der Vergleich ist damit
-     * zeitkonstant. Beim neuen Format erledigt `password_verify()` das von sich aus.
+     * `hash_equals()` instead of `==` for the old branch as well: this makes the comparison
+     * constant-time. For the new format, `password_verify()` takes care of that on its own.
      *
      * @return boolean
      */
     public function isPass($pass)
     {
         /*
-         * EIN GESPERRTES PASSWORT PASST AUF NICHTS (013-004-0002).
+         * A LOCKED PASSWORD MATCHES NOTHING (013-004-0002).
          *
-         * Ausdruecklich geprueft und nicht dem Zufall ueberlassen: `PASSWORT_GESPERRT` ist kein
-         * gueltiger Hash, weshalb schon die beiden Zweige darunter jede Eingabe abweisen
-         * wuerden. Sich darauf zu verlassen hiesse, eine Sicherheitszusicherung aus einer
-         * Nebenwirkung zu beziehen — und die naechste Aenderung an der Hashform nimmt sie
-         * mit, ohne dass jemand es bemerkt.
+         * Checked explicitly and not left to chance: `PASSWORD_LOCKED` is not a valid hash,
+         * which is why the two branches below would already reject any input. Relying on that
+         * would mean deriving a security guarantee from a side effect — and the next change
+         * to the hash format takes it away without anyone noticing.
          */
-        if ($this->istPasswortGesperrt()) {
+        if ($this->isPasswordLocked()) {
             return false;
         }
 
-        if ($this->istAltformat()) {
+        if ($this->isLegacyFormat()) {
             return hash_equals((string) $this->pass, hash('sha256', $pass.$this->salt));
         }
 
@@ -204,66 +203,66 @@ class User extends Base implements UserInterface
     }
 
     /**
-     * Das Hash-Verfahren fuer neue Passwoerter.
+     * The hashing algorithm for new passwords.
      *
-     * Argon2id ist die Empfehlung fuer neue Anwendungen: speicherhart, damit sich der Vorteil
-     * spezialisierter Hardware nicht beliebig skalieren laesst. Lokal und in beiden
-     * Pipeline-Images vorhanden — nachgemessen mit 013-001-0001.
+     * Argon2id is the recommendation for new applications: memory-hard, so that the advantage
+     * of specialised hardware cannot be scaled arbitrarily. Available locally and in both
+     * pipeline images — verified with 013-001-0001.
      *
-     * ZUR LAUFZEIT ENTSCHIEDEN, NICHT ALS KONSTANTE: `PASSWORD_ARGON2ID` gibt es nur, wenn PHP
-     * mit libargon2 gebaut wurde. Als Klassenkonstante wuerde die Klasse auf einem Build ohne
-     * libargon2 gar nicht mehr laden — ein Rueckfall, der die Anwendung umbringt, ist keiner.
+     * DECIDED AT RUNTIME, NOT AS A CONSTANT: `PASSWORD_ARGON2ID` only exists if PHP was built
+     * with libargon2. As a class constant, the class would not even load on a build without
+     * libargon2 — a fallback that kills the application is no fallback.
      *
-     * `PASSWORD_DEFAULT` ist dann der zweitbeste Stand (heute bcrypt) und kein Sicherheitsloch.
-     * Weil das Verfahren im Hash steht, laufen beide Formen nebeneinander, und
-     * `password_needs_rehash()` holt einen bcrypt-Hash spaeter nach, wenn Argon2id verfuegbar
-     * wird.
+     * `PASSWORD_DEFAULT` is then the second-best option (bcrypt today) and not a security hole.
+     * Because the algorithm is stored in the hash, both forms run side by side, and
+     * `password_needs_rehash()` upgrades a bcrypt hash later once Argon2id becomes
+     * available.
      *
      * @return string|int
      */
-    private static function verfahren()
+    private static function algorithm()
     {
         return defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT;
     }
 
     /**
-     * Liegt der gespeicherte Hash noch im alten SHA-256-Format?
+     * Is the stored hash still in the old SHA-256 format?
      *
-     * Gebraucht vom Login, um nach erfolgreicher Pruefung umzuschluesseln.
+     * Used by the login to rehash after a successful check.
      */
-    public function istAltformat(): bool
+    public function isLegacyFormat(): bool
     {
         return !str_starts_with((string) $this->pass, '$');
     }
 
     /**
-     * Der Wert, der ein Passwort sperrt.
+     * The value that locks a password.
      *
-     * Ein Stern, wie in `/etc/shadow` seit jeher: kein gueltiger Hash, keiner Eingabe
-     * zuzuordnen, und man sieht der Zeile an, dass es Absicht war. Ein Zufallswert taete
-     * dasselbe, aber niemand koennte ihn von einem echten Hash unterscheiden.
+     * An asterisk, as in `/etc/shadow` since time immemorial: not a valid hash, not matchable
+     * to any input, and the row shows that it was intentional. A random value would do the
+     * same, but nobody could tell it apart from a real hash.
      */
-    public const PASSWORT_GESPERRT = '*';
+    public const PASSWORD_LOCKED = '*';
 
     /**
-     * Sperrt das Passwort dieses Benutzers (013-004-0002).
+     * Locks this user's password (013-004-0002).
      *
-     * BEFUND A-6 IST DAS, WOGEGEN ES GEHT: `createManagedUser()` setzte
-     * `setPass($alias)` — das Passwort war der Benutzername. Entschaerft war das allein durch
-     * den Riegel „nur ueber LoginManager authorisierbar"; jeder Pfad, der ihn umging, war eine
-     * triviale Kontouebernahme. Eine Sicherung, die aus einem einzigen `if` besteht, ist keine.
+     * FINDING A-6 IS WHAT THIS IS ABOUT: `createManagedUser()` called
+     * `setPass($alias)` — the password was the user name. The only thing defusing that was the
+     * bolt "only authorisable via LoginManager"; every path that bypassed it was a trivial
+     * account takeover. A safeguard that consists of a single `if` is no safeguard.
      *
-     * Ein ueber ein Fremdsystem angelegter Benutzer hat jetzt KEIN Passwort — nicht ein
-     * zufaelliges, sondern gar keines.
+     * A user created via an external system now has NO password — not a random one, but none
+     * at all.
      */
-    public function passwortSperren(): void
+    public function lockPassword(): void
     {
-        $this->pass = self::PASSWORT_GESPERRT;
+        $this->pass = self::PASSWORD_LOCKED;
     }
 
-    public function istPasswortGesperrt(): bool
+    public function isPasswordLocked(): bool
     {
-        return $this->pass === self::PASSWORT_GESPERRT;
+        return $this->pass === self::PASSWORD_LOCKED;
     }
 
     /**
@@ -280,20 +279,20 @@ class User extends Base implements UserInterface
     }
 
     /**
-     * Muss der Hash erneuert werden — altes Format oder veraltete Parameter?
+     * Does the hash need to be renewed — old format or outdated parameters?
      *
-     * PHP darf Vorgabe-Algorithmus und -Parameter zwischen Versionen aendern; `password_hash()`
-     * schreibt sie in den Hash, und `password_needs_rehash()` vergleicht. Damit wandern
-     * Bestandsdaten nicht nur einmal mit, sondern bleiben auf dem jeweils aktuellen Stand.
+     * PHP may change the default algorithm and parameters between versions; `password_hash()`
+     * writes them into the hash, and `password_needs_rehash()` compares them. This way existing
+     * data does not just migrate once, but stays at the current state at all times.
      */
-    public function brauchtNeuenHash(): bool
+    public function needsRehash(): bool
     {
-        // Ein gesperrtes Passwort wird nicht umgeschluesselt — es soll ja keines werden.
-        if ($this->istPasswortGesperrt()) {
+        // A locked password is not rehashed — after all, it is not supposed to become one.
+        if ($this->isPasswordLocked()) {
             return false;
         }
 
-        return $this->istAltformat() || password_needs_rehash((string) $this->pass, self::verfahren());
+        return $this->isLegacyFormat() || password_needs_rehash((string) $this->pass, self::algorithm());
     }
 
     /**
@@ -398,13 +397,13 @@ class User extends Base implements UserInterface
         return $data;
     }
 
-    // ── Symfony-Benutzer (013-002-0001) ────────────────────────────────────────────────
+    // ── Symfony user (013-002-0001) ────────────────────────────────────────────────────
 
     /**
-     * Die Kennung, unter der dieser Benutzer nachgeladen wird.
+     * The identifier under which this user is reloaded.
      *
-     * Der `alias` und nicht die Id: Er ist unique, er steht in jedem Token-Zusammenhang, und er
-     * ist das, was ein Mensch als Benutzernamen kennt.
+     * The `alias` and not the id: it is unique, it appears in every token context, and it is
+     * what a human knows as the user name.
      */
     public function getUserIdentifier(): string
     {
@@ -412,35 +411,35 @@ class User extends Base implements UserInterface
     }
 
     /**
-     * Nur was der Zugriffsschutz braucht — siehe Klassenkommentar.
+     * Only what access control needs — see the class comment.
      *
-     * `ROLE_USER` fuer jeden angemeldeten Benutzer, `ROLE_ADMIN` zusaetzlich fuer einen
-     * Administrator. Die feinen Rechte bleiben, wo sie sind: in `Permission` und
-     * `I18nPermission`, gelesen vom Contentfly-eigenen Modell.
+     * `ROLE_USER` for every logged-in user, `ROLE_ADMIN` additionally for an administrator.
+     * The fine-grained permissions stay where they are: in `Permission` and
+     * `I18nPermission`, read by Contentfly's own model.
      *
      * @return string[]
      */
     public function getRoles(): array
     {
-        $rollen = array('ROLE_USER');
+        $roles = array('ROLE_USER');
 
         if ($this->isAdmin) {
-            $rollen[] = 'ROLE_ADMIN';
+            $roles[] = 'ROLE_ADMIN';
         }
 
-        return $rollen;
+        return $roles;
     }
 
     /**
-     * Absichtlich leer.
+     * Intentionally empty.
      *
-     * Die Methode soll fluechtige Zugangsdaten vom Objekt raeumen — ein Klartextpasswort etwa,
-     * das waehrend der Anmeldung daran haengt. Hier haengt keines: `$pass` ist der gespeicherte
-     * Argon2id-Hash (013-001-0001), kein fluechtiger Wert, und er wird nirgends serialisiert.
+     * The method is meant to clear volatile credentials from the object — a plain-text password,
+     * for instance, that is attached to it during login. None is attached here: `$pass` is the
+     * stored Argon2id hash (013-001-0001), not a volatile value, and it is serialised nowhere.
      *
-     * Symfony hat die Methode mit 7.3 als deprecated markiert; sie steht aber weiter im
-     * Interface und muss deshalb deklariert werden. Gerufen wird sie in diesem Baum von
-     * niemandem — das Deprecation-Gate der CI wuerde es melden.
+     * Symfony marked the method as deprecated with 7.3; it is still part of the interface,
+     * however, and therefore has to be declared. Nobody in this tree calls it — the CI's
+     * deprecation gate would report it.
      */
     public function eraseCredentials(): void
     {

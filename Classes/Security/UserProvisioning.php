@@ -55,7 +55,7 @@ final class UserProvisioning
          * today, maybe tomorrow — would otherwise leave behind a row with the column's default value
          * and an account someone can take over.
          */
-        $user->passwortSperren();
+        $user->lockPassword();
 
         $user->setIsAdmin(false);
         $user->setIsActive(true);

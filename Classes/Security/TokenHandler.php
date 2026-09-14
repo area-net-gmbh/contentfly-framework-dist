@@ -230,7 +230,7 @@ final class TokenHandler implements AccessTokenHandlerInterface
     private function fromDatabase(string $token): UserBadge
     {
         $row = $this->em->getRepository(Token::class)->findOneBy(
-            array('token' => Token::hashen($token))
+            array('token' => Token::hash($token))
         );
 
         if (!$row instanceof Token) {
@@ -248,7 +248,7 @@ final class TokenHandler implements AccessTokenHandlerInterface
          * It is rejected like everything else: whoever presents a refresh token at the wrong door does
          * not learn that it would fit another one.
          */
-        if ($row->istRefreshToken()) {
+        if ($row->isRefreshToken()) {
             $this->reject();
         }
 

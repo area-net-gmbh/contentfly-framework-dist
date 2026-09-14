@@ -7,9 +7,9 @@ use Areanet\PIM\Classes\Annotations as PIM;
 
 /**
  *
- * excludeFromSync: Konfiguration der Bildgroessen, gehoert zur Installation und nicht zum Datenbestand.
- * Mit 000-000-0013 aus der fest verdrahteten Liste in Api.php hierher geholt —
- * eine Ausschlussliste, die in keiner Annotation steht, kann ein Projekt nicht sehen.
+ * excludeFromSync: Configuration of the image sizes, belongs to the installation and not to the data.
+ * Moved here with 000-000-0013 from the hard-wired list in Api.php —
+ * an exclusion list that is not written in any annotation cannot be seen by a project.
  */
 #[ORM\Entity]
 #[PIM\Config(excludeFromSync: true)]

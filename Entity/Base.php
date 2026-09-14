@@ -14,16 +14,16 @@ class Base extends Serializable
 {
 
     /**
-     * Die Id.
+     * The id.
      *
-     * `CUSTOM` statt `UUID` seit 009-005-0002: Doctrines `ORM\Id\UuidGenerator` liess die
-     * Datenbank die GUID erzeugen (`SELECT UUID()`) und stuetzte sich dafuer auf
-     * `AbstractPlatform::getGuidExpression()` — die Methode gibt es in DBAL 3 nicht mehr.
-     * Erzeugt wird sie jetzt in PHP, siehe Areanet\PIM\Classes\ORM\Id\UuidGenerator.
+     * `CUSTOM` instead of `UUID` since 009-005-0002: Doctrine's `ORM\Id\UuidGenerator` let the
+     * database generate the GUID (`SELECT UUID()`) and relied on
+     * `AbstractPlatform::getGuidExpression()` for that — the method no longer exists in DBAL 3.
+     * It is now generated in PHP, see Areanet\PIM\Classes\ORM\Id\UuidGenerator.
      *
-     * `@ORM\CustomIdGenerator` steht auch dann hier, wenn die Integer-Strategie laeuft
-     * (APPCMS_ID_STRATEGY = 'AUTO'). Doctrine liest die Angabe nur bei `CUSTOM` aus; sie
-     * bedingt zu setzen ginge in einer Annotation nicht, ohne die Konstante zu verdoppeln.
+     * `@ORM\CustomIdGenerator` is present here even when the integer strategy is in use
+     * (APPCMS_ID_STRATEGY = 'AUTO'). Doctrine only reads the setting for `CUSTOM`; setting it
+     * conditionally would not be possible in an annotation without duplicating the constant.
      */
     #[ORM\Column(type: APPCMS_ID_TYPE)]
     #[ORM\Id]
@@ -274,9 +274,9 @@ class Base extends Serializable
     public function hasUserId($id)
     {
         /*
-         * `users` ist eine nullable Spalte: Kein Eintrag heisst keine Treffer. Bis PHP 8.0
-         * ergab explode(',', null) still array(""), seit 8.1 ist es eine Deprecation
-         * (000-000-0023). Das Ergebnis bleibt dasselbe — der leere Fall steht jetzt da.
+         * `users` is a nullable column: no entry means no matches. Up to PHP 8.0,
+         * explode(',', null) silently returned array(""); since 8.1 it is a deprecation
+         * (000-000-0023). The result stays the same — the empty case is now spelled out.
          */
         $ids = $this->users !== null ? explode(',', $this->users) : array();
 
@@ -323,9 +323,9 @@ class Base extends Serializable
     public function hasGroupId($id)
     {
         /*
-         * `groups` ist eine nullable Spalte: Kein Eintrag heisst keine Treffer. Bis PHP 8.0
-         * ergab explode(',', null) still array(""), seit 8.1 ist es eine Deprecation
-         * (000-000-0023). Das Ergebnis bleibt dasselbe — der leere Fall steht jetzt da.
+         * `groups` is a nullable column: no entry means no matches. Up to PHP 8.0,
+         * explode(',', null) silently returned array(""); since 8.1 it is a deprecation
+         * (000-000-0023). The result stays the same — the empty case is now spelled out.
          */
         $ids = $this->groups !== null ? explode(',', $this->groups) : array();
 
