@@ -4,31 +4,29 @@ namespace Areanet\PIM\Classes\Kernel;
 use Symfony\Component\Routing\RouteCollection;
 
 /**
- * Ein Bündel Routen, das sich unter einen Pfad hängen lässt (009-001-0003).
+ * A bundle of routes that can be mounted under a path (009-001-0003).
  *
- * Der eigene Ersatz für `Silex\Api\ControllerProviderInterface`. Warum ein eigener, obwohl
- * die Signatur dieselbe ist: Silex' Fassung schreibt `connect(Silex\Application $app)` vor.
- * PHP erlaubt einer Implementierung nur, den Parametertyp zu **erweitern**, nicht ihn zu
- * ersetzen — und `Silex\Application` erfüllt `ApplicationInterface` nicht. Solange die fünf
- * Provider Silex' Schnittstelle implementieren, müssen sie Silex im Kopf nennen. Also eine
- * eigene.
+ * The framework's own replacement for `Silex\Api\ControllerProviderInterface`. Why its own,
+ * although the signature is the same: Silex's version prescribes `connect(Silex\Application
+ * $app)`. PHP only allows an implementation to **widen** the parameter type, not to replace it —
+ * and `Silex\Application` does not satisfy `ApplicationInterface`. As long as the five providers
+ * implement Silex's interface, they have to name Silex in their signature. Hence an own one.
  *
- * DER RÜCKGABETYP IST SEIT `009-002-0003` DA. `009-001-0003` hatte ihn bewusst offengelassen:
- * Damals lieferte `connect()` eine `Silex\ControllerCollection`, und einen Typ zu setzen hätte
- * Silex an genau der Stelle festgeschrieben, an der er als Nächstes verschwand. Jetzt ist es
- * eine `RouteCollection` von Symfony — genau das, was `Application::mount()` entgegennimmt.
+ * THE RETURN TYPE HAS BEEN THERE SINCE `009-002-0003`. `009-001-0003` deliberately left it open:
+ * back then `connect()` returned a `Silex\ControllerCollection`, and declaring a type would have
+ * pinned Silex down exactly where it was about to disappear next. Now it is a Symfony
+ * `RouteCollection` — exactly what `Application::mount()` accepts.
  *
- * In der Praxis geben die Provider eine `Routing\Routensammlung` zurück, die davon erbt und
- * `get()`, `post()` und `match()` mitbringt. Der Typ hier bleibt die allgemeinere
- * `RouteCollection`, damit ein Projekt seine Routen auch anders bauen kann.
+ * In practice the providers return a `Routing\Routensammlung`, which extends it and adds `get()`,
+ * `post()` and `match()`. The type here stays the more general `RouteCollection` so that a project
+ * can build its routes differently as well.
  *
- * FOLGE FÜR DAS MOUNTEN. Der `RouteManager` ruft `connect()` selbst auf und übergibt die
- * fertige Sammlung an `mount()` — seit `009-001-0003`, wo die Provider Silex' Schnittstelle
- * verloren haben und dessen `mount()` sie deshalb nicht mehr als Provider erkannte. Am Ablauf
- * ändert sich hier nichts.
+ * CONSEQUENCE FOR MOUNTING. The `RouteManager` calls `connect()` itself and passes the finished
+ * collection to `mount()` — since `009-001-0003`, where the providers lost Silex's interface and
+ * its `mount()` therefore no longer recognised them as providers. The flow does not change here.
  */
 interface ControllerProviderInterface
 {
-    /** Baut die Routen dieses Providers und gibt sie gebündelt zurück. */
+    /** Builds this provider's routes and returns them as a bundle. */
     public function connect(ApplicationInterface $app): RouteCollection;
 }

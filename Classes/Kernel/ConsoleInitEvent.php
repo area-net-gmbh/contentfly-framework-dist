@@ -4,11 +4,11 @@ namespace Areanet\PIM\Classes\Kernel;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
- * Das Ereignis, mit dem die Console ihre Commands einsammelt (009-002-0005).
+ * The event the console uses to collect its commands (009-002-0005).
  *
- * Ersetzt `Knp\Console\ConsoleEvent`. Die Vorgängerklasse hiess `getApplication()` für das,
- * was hier `console()` heisst — die Console selbst, nicht die Anwendung des Frameworks. Der
- * alte Name war doppeldeutig, weil `Application` in diesem Baum beides bedeuten kann.
+ * Replaces `Knp\Console\ConsoleEvent`. The predecessor class used `getApplication()` for what is
+ * called `console()` here — the console itself, not the framework's application. The old name was
+ * ambiguous because `Application` can mean either in this tree.
  */
 class ConsoleInitEvent extends Event
 {

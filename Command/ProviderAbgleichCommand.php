@@ -66,7 +66,7 @@ class ProviderAbgleichCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $app         = $this->anwendung();
+        $app         = $this->application();
         $em          = $app['orm.em'];
         $verzeichnis = $app['anmeldeanbieter'];
         $trocken     = (bool) $input->getOption('dry-run');

@@ -4,40 +4,39 @@ namespace Areanet\PIM\Classes\Kernel;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 /**
- * Die Basisklasse der Console-Commands (009-002-0005).
+ * The base class of console commands (009-002-0005).
  *
- * Erbt seit dem Kernel-Schnitt direkt von Symfonys `Command`. Bis dahin war sie die Fuge zu
- * `Knp\Command\Command` — dieselbe Konstruktion, die `Kernel\Application` gegenüber Silex
- * hatte, und aus demselben Grund: `knplabs/console-service-provider` deckelte
- * `symfony/console` auf `^4`. Das Paket ist mit `009-002-0001` aus dem Baum, und mit ihm die
- * Vererbung.
+ * Since the kernel cut it extends Symfony's `Command` directly. Until then it was the seam to
+ * `Knp\Command\Command` — the same construction `Kernel\Application` had towards Silex, and for
+ * the same reason: `knplabs/console-service-provider` capped `symfony/console` at `^4`. The
+ * package left the tree with `009-002-0001`, and the inheritance went with it.
  *
- * **`getSilexApplication()` gibt es nicht mehr.** Sie war geerbt und ist mit dem Paket
- * gefallen; ein Bestandsprojekt, das sie ruft, bekommt einen Fehler. Das steht als Bruchstelle
- * im Migrationsleitfaden — laut ist besser als still. Der Ersatz heisst `anwendung()` und
- * beschreibt, was er liefert.
+ * **`getSilexApplication()` no longer exists.** It was inherited and went away with the package;
+ * an existing project that calls it gets an error. That is listed as a breaking change in the
+ * migration guide — loud is better than silent. Its replacement is called `application()` and
+ * describes what it returns.
  */
 abstract class Command extends SymfonyCommand
 {
     /**
-     * Die Anwendung, in der dieser Command läuft.
+     * The application this command runs in.
      *
-     * Console-Commands bekommen sie nicht im Konstruktor: Sie werden registriert, bevor die
-     * Anwendung steht (siehe `ConsoleManager`), und holen sie sich erst beim Ausführen.
+     * Console commands do not receive it in their constructor: they are registered before the
+     * application is ready (see `ConsoleManager`) and only fetch it when they execute.
      */
-    protected function anwendung(): ApplicationInterface
+    protected function application(): ApplicationInterface
     {
         $console = $this->getApplication();
 
         if (!$console instanceof Console) {
             throw new \LogicException(sprintf(
-                'Dieser Command laeuft in "%s" statt in Areanet\PIM\Classes\Kernel\Console '
-                .'und kommt deshalb nicht an die Anwendung. Registriert wird ueber den '
-                .'ConsoleManager oder ueber bin/console.php.',
-                $console === null ? 'keiner Console' : get_class($console)
+                'This command runs in "%s" instead of Areanet\PIM\Classes\Kernel\Console '
+                .'and therefore cannot reach the application. Register it through the '
+                .'ConsoleManager or through bin/console.php.',
+                $console === null ? 'no console' : get_class($console)
             ));
         }
 
-        return $console->anwendung();
+        return $console->application();
     }
 }

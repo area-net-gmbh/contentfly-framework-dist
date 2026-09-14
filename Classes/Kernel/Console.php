@@ -4,55 +4,54 @@ namespace Areanet\PIM\Classes\Kernel;
 use Symfony\Component\Console\Application as SymfonyConsole;
 
 /**
- * Die Console des Frameworks (009-002-0005).
+ * The framework's console (009-002-0005).
  *
- * ERSETZT `Knp\Console\Application` aus `knplabs/console-service-provider`. Das Paket deckelte
- * `symfony/console` auf `^4` und ist mit `009-002-0001` aus dem Baum. Was es lieferte, war
- * dünn: eine Symfony-Console, die die Anwendung kennt und ein Ereignis auslöst, sobald sie
- * steht.
+ * REPLACES `Knp\Console\Application` from `knplabs/console-service-provider`. That package capped
+ * `symfony/console` at `^4` and left the tree with `009-002-0001`. What it provided was thin: a
+ * Symfony console that knows the application and dispatches an event once it is ready.
  *
- * Beides steht hier, in vierzig Zeilen statt in einem Paket.
+ * Both live here, in forty lines instead of a package.
  */
 class Console extends SymfonyConsole
 {
     public function __construct(
-        private readonly ApplicationInterface $anwendung,
+        private readonly ApplicationInterface $application,
         string $name,
         string $version,
-        private readonly string $projektverzeichnis
+        private readonly string $projectDir
     ) {
         parent::__construct($name, $version);
     }
 
     /**
-     * Die Anwendung, in der die Commands laufen.
+     * The application the commands run in.
      *
-     * `Kernel\Command::anwendung()` holt sie hier ab. Der Name der Vorgängermethode lautete
-     * `getSilexApplication()` und beschrieb nach dem Kernel-Wechsel das Falsche.
+     * `Kernel\Command::application()` fetches it here. The predecessor method was called
+     * `getSilexApplication()` and described the wrong thing after the kernel switch.
      */
-    public function anwendung(): ApplicationInterface
+    public function application(): ApplicationInterface
     {
-        return $this->anwendung;
+        return $this->application;
     }
 
-    public function projektverzeichnis(): string
+    public function projectDir(): string
     {
-        return $this->projektverzeichnis;
+        return $this->projectDir;
     }
 
     /**
-     * Löst `ConsoleEvents::INIT` aus, bevor der erste Command läuft.
+     * Dispatches `ConsoleEvents::INIT` before the first command runs.
      *
-     * **Der Zeitpunkt ist der Punkt.** Der `ConsoleManager` registriert Commands nicht direkt,
-     * sondern hängt einen Listener auf dieses Ereignis — Projekte melden ihre Commands in
-     * `custom/app.php` an, also lange bevor die Console existiert. Ausgelöst wird es beim
-     * ersten `run()`, wenn alles steht und noch nichts gelaufen ist.
+     * **The timing is the point.** The `ConsoleManager` does not register commands directly but
+     * attaches a listener to this event — projects announce their commands in `custom/app.php`,
+     * long before the console exists. It is dispatched on the first `run()`, when everything is in
+     * place and nothing has run yet.
      */
     public function run(
         ?\Symfony\Component\Console\Input\InputInterface $input = null,
         ?\Symfony\Component\Console\Output\OutputInterface $output = null
     ): int {
-        $this->anwendung['dispatcher']->dispatch(new ConsoleInitEvent($this), ConsoleEvents::INIT);
+        $this->application['dispatcher']->dispatch(new ConsoleInitEvent($this), ConsoleEvents::INIT);
 
         return parent::run($input, $output);
     }

@@ -2,83 +2,82 @@
 namespace Areanet\PIM\Classes\Kernel;
 
 /**
- * Der Container des Frameworks — String-Schlüssel und faule Factories (009-002-0002).
+ * The framework's container — string keys and lazy factories (009-002-0002).
  *
- * ER BILDET PIMPLES VERTRAG NACH, UND ZWAR ABSICHTLICH. `custom/app.php` registriert die
- * Dienste eines Projekts so:
+ * IT REPRODUCES PIMPLE'S CONTRACT, AND DOES SO ON PURPOSE. `custom/app.php` registers a
+ * project's services like this:
  *
- *     $app['meine.service'] = function ($app) { return new MeinService($app['orm.em']); };
+ *     $app['my.service'] = function ($app) { return new MyService($app['orm.em']); };
  *
- * Das ist eine **faule Factory**: Sie läuft beim ersten Zugriff, nicht beim Registrieren, und
- * bekommt den Container als Argument, um ihre Abhängigkeiten aufzulösen. Symfonys
- * DI-Container nimmt zur Laufzeit nur fertige Objekte entgegen; eine Brücke davor müsste die
- * Closures ohnehin selbst halten und wäre am Ende dieser Container. Entschieden am 2026-09-09.
+ * That is a **lazy factory**: it runs on first access, not on registration, and receives the
+ * container as its argument to resolve its dependencies. Symfony's DI container only accepts
+ * finished objects at runtime; a bridge in front of it would have to hold the closures itself
+ * and would end up being this container. Decided on 2026-09-09.
  *
- * WAS ER NICHT IST: eine vollständige Pimple-Nachbildung. `share()`, `protect()`, `raw()`,
- * `factory()` und `register()` fehlen — sie kommen im Baum nicht vor. Was fehlt, kommt dazu,
- * wenn ein Aufrufer es braucht, nicht auf Verdacht.
+ * WHAT IT IS NOT: a complete Pimple replica. `share()`, `protect()`, `raw()`, `factory()` and
+ * `register()` are missing — they do not occur in the tree. Whatever is missing is added when a
+ * caller needs it, not on speculation.
  *
- * DAS EINFRIEREN IST NACHGEBAUT, WEIL EINE ZUSICHERUNG DARAN HÄNGT. Sobald eine Definition
- * einmal ausgelesen wurde, gilt sie als eingefroren, und `extend()` wirft. Der `ConsoleManager`
- * hängt genau an dieser Reihenfolge: Er ergänzt den Dispatcher über `extend()` und muss das
- * tun, bevor jemand ihn ausliest. `tests/Unit/Manager/RouteAndConsoleManagerTest.php` prüft es
- * seit `008-004`, und `000-000-0006` ist einmal darüber gestolpert. Ein Container, der das
- * stillschweigend erlaubt, würde den Fehler verstecken statt ihn zu melden.
+ * FREEZING IS REPRODUCED BECAUSE A GUARANTEE DEPENDS ON IT. As soon as a definition has been read
+ * once, it counts as frozen, and `extend()` throws. The `ConsoleManager` depends on exactly this
+ * order: it extends the dispatcher through `extend()` and has to do so before anyone reads it.
+ * `tests/Unit/Manager/RouteAndConsoleManagerTest.php` has checked this since `008-004`, and
+ * `000-000-0006` once tripped over it. A container that silently allowed it would hide the
+ * mistake instead of reporting it.
  */
 class Container implements \ArrayAccess
 {
-    /** @var array<string,mixed> Werte und noch nicht aufgelöste Factories. */
-    private array $eintraege = array();
+    /** @var array<string,mixed> Values and factories not yet resolved. */
+    private array $entries = array();
 
-    /** @var array<string,true> Schlüssel, deren Definition ausgelesen und damit eingefroren ist. */
-    private array $eingefroren = array();
+    /** @var array<string,true> Keys whose definition has been read and is therefore frozen. */
+    private array $frozen = array();
 
-    /** @var array<string,true> Schlüssel, deren Wert eine Factory ist. */
+    /** @var array<string,true> Keys whose value is a factory. */
     private array $factories = array();
 
     public function offsetExists(mixed $offset): bool
     {
-        return array_key_exists($offset, $this->eintraege);
+        return array_key_exists($offset, $this->entries);
     }
 
     /**
-     * Liest einen Eintrag und löst eine Factory beim ersten Mal auf.
+     * Reads an entry and resolves a factory the first time.
      *
-     * Das Ergebnis wird gemerkt: Eine Factory läuft genau einmal, und jeder weitere Zugriff
-     * bekommt dasselbe Objekt. Genau darauf beruht, dass `$app['orm.em']` überall derselbe
-     * EntityManager ist.
+     * The result is kept: a factory runs exactly once, and every further access gets the same
+     * object. That is what makes `$app['orm.em']` the same EntityManager everywhere.
      */
     public function offsetGet(mixed $offset): mixed
     {
-        if (!array_key_exists($offset, $this->eintraege)) {
-            throw new \InvalidArgumentException(sprintf('Der Container kennt "%s" nicht.', $offset));
+        if (!array_key_exists($offset, $this->entries)) {
+            throw new \InvalidArgumentException(sprintf('The container does not know "%s".', $offset));
         }
 
-        $this->eingefroren[$offset] = true;
+        $this->frozen[$offset] = true;
 
         if (!isset($this->factories[$offset])) {
-            return $this->eintraege[$offset];
+            return $this->entries[$offset];
         }
 
-        $factory = $this->eintraege[$offset];
+        $factory = $this->entries[$offset];
         unset($this->factories[$offset]);
 
-        return $this->eintraege[$offset] = $factory($this);
+        return $this->entries[$offset] = $factory($this);
     }
 
     /**
-     * Setzt einen Wert oder eine Factory.
+     * Sets a value or a factory.
      *
-     * Eine Closure gilt als Factory. Das ist Pimples Regel, und sie hat eine Kehrseite: Wer
-     * eine Closure als *Wert* ablegen will — einen Callback, den jemand später aufruft —
-     * bekommt sie stattdessen aufgelöst. Pimple hat dafür `protect()`; hier fehlt es, weil im
-     * Baum niemand eine Closure als Wert ablegt. Fällt das jemandem auf die Füsse, ist der
-     * Fehler laut: Der Aufrufer bekommt den Rückgabewert statt der Closure.
+     * A closure counts as a factory. That is Pimple's rule, and it has a downside: whoever wants
+     * to store a closure as a *value* — a callback someone calls later — gets it resolved
+     * instead. Pimple has `protect()` for that; it is missing here because nobody in the tree
+     * stores a closure as a value. If it ever bites someone, the failure is loud: the caller gets
+     * the return value instead of the closure.
      */
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        $this->eintraege[$offset] = $value;
-        unset($this->eingefroren[$offset]);
+        $this->entries[$offset] = $value;
+        unset($this->frozen[$offset]);
 
         if ($value instanceof \Closure) {
             $this->factories[$offset] = true;
@@ -89,62 +88,62 @@ class Container implements \ArrayAccess
 
     public function offsetUnset(mixed $offset): void
     {
-        unset($this->eintraege[$offset], $this->eingefroren[$offset], $this->factories[$offset]);
+        unset($this->entries[$offset], $this->frozen[$offset], $this->factories[$offset]);
     }
 
     /**
-     * Ersetzt eine registrierte Factory durch eine, die die alte umschliesst.
+     * Replaces a registered factory with one that wraps the previous one.
      *
-     * Die neue Closure bekommt das Ergebnis der alten und den Container. So hängt der
-     * `ConsoleManager` seine Listener an den Dispatcher, ohne ihn selbst zu bauen.
+     * The new closure receives the result of the previous one and the container. That is how the
+     * `ConsoleManager` attaches its listeners to the dispatcher without building it itself.
      *
-     * OHNE TYPANGABEN, UND DAS IST EINE ENTSCHEIDUNG. `ApplicationInterface::extend($id,
-     * $callable)` deklariert sie nicht — die Schnittstelle hat Pimples Signatur übernommen, als
-     * Pimple noch darunter lag. Eine typisierte Implementierung erfüllt sie damit nicht: PHP
-     * erlaubt einer Implementierung nicht, Parametertypen hinzuzufügen.
+     * WITHOUT TYPE DECLARATIONS, AND THAT IS A DECISION. `ApplicationInterface::extend($id,
+     * $callable)` does not declare them — the interface adopted Pimple's signature while Pimple
+     * was still underneath. A typed implementation would therefore not satisfy it: PHP does not
+     * allow an implementation to add parameter types.
      *
-     * Die Schnittstelle nachzuziehen wäre technisch kein Bruch — jeder Aufrufer übergibt
-     * ohnehin `(string, callable)`. Sie bleibt trotzdem unverändert: `009-002-0002` hat als
-     * Kriterium, dass sie Wort für Wort steht, und dieses Kriterium ist eine Stolperdraht gegen
-     * das stille Umformen des Vertrags beim Kernel-Wechsel. Der Gewinn aus zwei Typangaben
-     * wiegt das nicht auf. Die Angaben stehen deshalb im `@param`.
+     * Updating the interface would technically not break anything — every caller passes
+     * `(string, callable)` anyway. It stays unchanged nonetheless: `009-002-0002` has the
+     * criterion that it stays word for word, and that criterion is a tripwire against quietly
+     * reshaping the contract during the kernel switch. The gain from two type declarations does
+     * not outweigh that. The types are therefore given in `@param`.
      *
      * @param string   $id
      * @param callable $callable
      *
-     * @throws \RuntimeException wenn der Schlüssel bereits ausgelesen wurde
+     * @throws \RuntimeException if the key has already been read
      */
     public function extend($id, $callable)
     {
-        if (!array_key_exists($id, $this->eintraege)) {
-            throw new \InvalidArgumentException(sprintf('Der Container kennt "%s" nicht.', $id));
+        if (!array_key_exists($id, $this->entries)) {
+            throw new \InvalidArgumentException(sprintf('The container does not know "%s".', $id));
         }
 
-        if (isset($this->eingefroren[$id])) {
+        if (isset($this->frozen[$id])) {
             throw new \RuntimeException(sprintf(
-                'Der Dienst "%s" ist bereits ausgelesen und laesst sich nicht mehr erweitern. '
-                .'Wer extend() benutzt, muss es tun, bevor jemand den Dienst anfasst.',
+                'The service "%s" has already been read and can no longer be extended. '
+                .'Whoever uses extend() has to do so before anyone touches the service.',
                 $id
             ));
         }
 
         if (!isset($this->factories[$id])) {
             throw new \InvalidArgumentException(sprintf(
-                'Der Eintrag "%s" ist ein Wert, keine Factory — es gibt nichts zu erweitern.',
+                'The entry "%s" is a value, not a factory — there is nothing to extend.',
                 $id
             ));
         }
 
-        $alt = $this->eintraege[$id];
+        $previous = $this->entries[$id];
 
-        $this->eintraege[$id] = static function (Container $container) use ($alt, $callable) {
-            return $callable($alt($container), $container);
+        $this->entries[$id] = static function (Container $container) use ($previous, $callable) {
+            return $callable($previous($container), $container);
         };
     }
 
-    /** @return array<int,string> Alle bekannten Schlüssel, in Registrierungsreihenfolge. */
+    /** @return array<int,string> All known keys, in registration order. */
     public function keys(): array
     {
-        return array_keys($this->eintraege);
+        return array_keys($this->entries);
     }
 }

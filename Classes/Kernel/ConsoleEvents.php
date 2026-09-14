@@ -2,16 +2,16 @@
 namespace Areanet\PIM\Classes\Kernel;
 
 /**
- * Die Ereignisse der Console (009-001-0003).
+ * The console's events (009-001-0003).
  *
- * `INIT` trägt denselben Wert wie `Knp\Console\ConsoleEvents::INIT` — `'console.init'`. Das ist
- * kein Zufall, sondern der Zweck: Solange `knplabs/console-service-provider` die Console
- * startet, hört sie auf diesen Namen. Der eigene Ort dafür sorgt dafür, dass `ConsoleManager`
- * das Paket nicht mehr nennen muss, und `009-002` kann den Wert ändern, ohne die Aufrufer
- * anzufassen — dort fällt das Paket weg, weil es `symfony/console` auf `^4` deckelt.
+ * `INIT` carries the same value as `Knp\Console\ConsoleEvents::INIT` — `'console.init'`. That is
+ * no coincidence but the purpose: as long as `knplabs/console-service-provider` starts the
+ * console, it listens to this name. Having its own place means `ConsoleManager` no longer has to
+ * name the package, and `009-002` can change the value without touching the callers — the package
+ * goes away there because it caps `symfony/console` at `^4`.
  */
 final class ConsoleEvents
 {
-    /** Wird ausgelöst, wenn die Console-Anwendung steht und Commands entgegennimmt. */
+    /** Dispatched once the console application is ready and accepts commands. */
     const INIT = 'console.init';
 }

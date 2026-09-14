@@ -66,7 +66,7 @@ class ReencryptCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $app     = $this->anwendung();
+        $app     = $this->application();
         $trocken = (bool) $input->getOption('dry-run');
         $stapel  = max(1, (int) $input->getOption('batch'));
 

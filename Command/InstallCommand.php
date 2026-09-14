@@ -47,7 +47,7 @@ class InstallCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $app = $this->anwendung();
+        $app = $this->application();
 
         // Schritt 0 — Guard. Ein installiertes System wird nicht erneut installiert:
         // Schritt 5 würde die Zugangsdaten in config.php überschreiben und Schritt 10

@@ -23,39 +23,39 @@ use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
 /**
- * Die Anwendung des Frameworks auf einem Symfony-7.4-Kernel (009-002-0002).
+ * The framework's application on a Symfony 7.4 kernel (009-002-0002).
  *
- * SIE **IST** DER CONTAINER, wie `Silex\Application` es war: Sie erbt von `Container` und
- * bringt darüber `$app['orm.em']`, `$app['schema']` und die Dienste eines Projekts mit. Das ist
- * keine Bequemlichkeit, sondern der Vertrag, an dem `custom/app.php` hängt — und die
- * Schnittstelle `ApplicationInterface` aus `009-001-0001` hat ihn deshalb schon vorher
- * beschrieben. **Sie ist mit diesem Task Wort für Wort unverändert geblieben.**
+ * IT **IS** THE CONTAINER, as `Silex\Application` was: it extends `Container` and thereby brings
+ * `$app['orm.em']`, `$app['schema']` and a project's services along. That is not a convenience but
+ * the contract `custom/app.php` depends on — which is why the `ApplicationInterface` from
+ * `009-001-0001` already described it beforehand. **It has stayed unchanged word for word with
+ * this task.**
  *
- * WAS UNTER DER OBERFLÄCHE STEHT, IST NEU. Statt Silex' Kernel:
+ * WHAT SITS BENEATH THE SURFACE IS NEW. Instead of Silex's kernel:
  *
- * - `Symfony\Component\HttpKernel\HttpKernel` — nimmt einen Request entgegen und liefert eine
- *   Response, über `kernel.request`, `kernel.controller`, `kernel.view`, `kernel.response`.
- * - `RouterListener` — setzt `_controller` und die Pfadplatzhalter aus der `RouteCollection`
- *   auf den Request. Das übernimmt in Silex die `ControllerCollection`.
- * - `ControllerResolver` und `ArgumentResolver` — machen aus `_controller` eine aufrufbare
- *   Methode und füllen ihre Argumente.
+ * - `Symfony\Component\HttpKernel\HttpKernel` — accepts a request and returns a response, via
+ *   `kernel.request`, `kernel.controller`, `kernel.view`, `kernel.response`.
+ * - `RouterListener` — sets `_controller` and the path placeholders from the `RouteCollection` on
+ *   the request. In Silex the `ControllerCollection` did that.
+ * - `ControllerResolver` and `ArgumentResolver` — turn `_controller` into a callable method and
+ *   fill in its arguments.
  *
- * `before()`, `after()` und `error()` bleiben als Aufrufe erhalten, weil `custom/app.php` sie
- * benutzt; darunter sind es Listener auf `kernel.request`, `kernel.response` und
- * `kernel.exception`. **Ihre Feinheiten — die Reihenfolge mit Prioritäten und die Form der
- * Fehlerantwort — gehören `009-002-0004`**, das sie gegen die Charakterisierungstests
- * nachweist. Hier stehen sie, damit der Kernel überhaupt läuft.
+ * `before()`, `after()` and `error()` remain as calls because `custom/app.php` uses them;
+ * underneath they are listeners on `kernel.request`, `kernel.response` and `kernel.exception`.
+ * **Their finer points — ordering by priority and the shape of the error response — belong to
+ * `009-002-0004`**, which proves them against the characterization tests. They live here so that
+ * the kernel runs at all.
  */
 class Application extends Container implements ApplicationInterface
 {
-    /** Die gesammelten Routen. `mount()` füllt sie, der Matcher liest sie. */
-    private RouteCollection $routen;
+    /** The collected routes. `mount()` fills them, the matcher reads them. */
+    private RouteCollection $routes;
 
-    private bool $gebootet = false;
+    private bool $booted = false;
 
     public function __construct(bool $debug = false)
     {
-        $this->routen = new RouteCollection();
+        $this->routes = new RouteCollection();
 
         $this['debug'] = $debug;
 
@@ -68,8 +68,8 @@ class Application extends Container implements ApplicationInterface
         };
 
         /*
-         * Der Resolver kennt die Form `dienst:methode` — das, was der
-         * ServiceControllerServiceProvider von Silex geliefert hat (009-002-0003).
+         * The resolver understands the form `service:method` — what Silex's
+         * ServiceControllerServiceProvider used to provide (009-002-0003).
          */
         $this['resolver'] = static function (Container $app): ControllerResolver {
             return new ControllerResolver($app);
@@ -86,93 +86,92 @@ class Application extends Container implements ApplicationInterface
                 $app['request_stack'],
                 $app['argument_resolver'],
                 /*
-                 * handleAllThrowables: true — und das ist kein Detail (009-002-0004).
+                 * handleAllThrowables: true — and that is not a detail (009-002-0004).
                  *
-                 * Symfonys HttpKernel faengt in der Vorgabe nur `\Exception`. Ein TypeError
-                 * faellt damit durch den ganzen Kernel hindurch, und der Aufrufer bekommt eine
-                 * leere 500 — **exakt der Befund aus 000-000-0006**, nur mit Symfonys Kernel
-                 * statt mit Silex' ExceptionListenerWrapper.
+                 * By default Symfony's HttpKernel only catches `\Exception`. A TypeError then
+                 * falls through the whole kernel, and the caller gets an empty 500 — **exactly
+                 * the finding from 000-000-0006**, just with Symfony's kernel instead of Silex's
+                 * ExceptionListenerWrapper.
                  *
-                 * Gemessen: Mit der Vorgabe liefert `POST /api/update` mit `data` als
-                 * Zeichenkette einen Rumpf von 0 Byte; mit `true` die JSON-Antwort der
-                 * Anwendung. FehlerantwortApiTest prueft beide Haelften.
+                 * Measured: with the default, `POST /api/update` with `data` as a string returns
+                 * a body of 0 bytes; with `true`, the application's JSON response.
+                 * FehlerantwortApiTest checks both halves.
                  */
                 true
             );
         };
     }
 
-    // ── Routen ─────────────────────────────────────────────────────────────────────────
+    // ── Routes ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Hängt ein Bündel Routen unter einen Pfad.
+     * Mounts a bundle of routes under a path.
      *
-     * Erwartet eine `RouteCollection` — was `Kernel\ControllerProviderInterface::connect()`
-     * liefert. Bis `009-002-0003` gab es dort noch eine `Silex\ControllerCollection`; die
-     * Umstellung ist genau der Inhalt jenes Tasks.
+     * Expects a `RouteCollection` — what `Kernel\ControllerProviderInterface::connect()`
+     * returns. Until `009-002-0003` that was still a `Silex\ControllerCollection`; the switch is
+     * exactly what that task was about.
      */
     public function mount($prefix, $controllers)
     {
         if (!$controllers instanceof RouteCollection) {
             throw new \LogicException(sprintf(
-                'mount() erwartet eine RouteCollection, bekommen: %s. '
-                .'Ein Controller-Provider liefert sie ueber connect().',
+                'mount() expects a RouteCollection, got: %s. '
+                .'A controller provider returns one from connect().',
                 get_debug_type($controllers)
             ));
         }
 
         /*
-         * Der Praefix wird normalisiert, weil die Aufrufer ihn verschieden schreiben:
-         * bootstrap-web.php mountet '/api', custom/app.php 'api/v1/example/'. Silex hat beides
-         * angenommen.
+         * The prefix is normalised because callers write it differently: bootstrap-web.php
+         * mounts '/api', custom/app.php 'api/v1/example/'. Silex accepted both.
          */
-        $pfadPraefix = '/'.trim($prefix, '/');
-        $controllers->addPrefix($pfadPraefix);
+        $pathPrefix = '/'.trim($prefix, '/');
+        $controllers->addPrefix($pathPrefix);
 
         /*
-         * DER NAMENSPRAEFIX IST KEINE KOSMETIK (013-001-0005).
+         * THE NAME PREFIX IS NOT COSMETIC (013-001-0005).
          *
-         * `Routensammlung` zaehlt ihre Routen **je Provider** durch: Die erste Route von
-         * ApiControllerProvider heisst `login_0`, die erste von AuthControllerProvider heisst
-         * ebenfalls `login_0`. `RouteCollection::addCollection()` ueberschreibt beim Namen —
-         * die spaeter gemountete Sammlung verdraengt die frueher gemountete, lautlos.
+         * `Routensammlung` numbers its routes **per provider**: the first route of
+         * ApiControllerProvider is called `login_0`, and so is the first route of
+         * AuthControllerProvider. `RouteCollection::addCollection()` overwrites by name — the
+         * collection mounted later silently displaces the one mounted earlier.
          *
-         * GEMESSEN: 30 registrierte Routen, 29 in der Sammlung. Verschwunden waren
-         * `POST /api/login` und `POST /api/logout` — beide von ihren Namensvettern unter
-         * `/auth` verdraengt. Sie galten als "tote Routen, die auf nicht existierende Methoden
-         * zeigen"; in Wahrheit erreichten sie den Router nie, und ein Aufruf endete im
-         * OPTIONS-Catch-All mit 405, nicht im Controller-Resolver.
+         * MEASURED: 30 registered routes, 29 in the collection. Missing were `POST /api/login`
+         * and `POST /api/logout` — both displaced by their namesakes under `/auth`. They were
+         * considered "dead routes pointing to methods that do not exist"; in truth they never
+         * reached the router, and a call ended in the OPTIONS catch-all with 405, not in the
+         * controller resolver.
          *
-         * Der Praefix kommt aus dem Mountpunkt und macht die Namen ueber alle Sammlungen
-         * hinweg eindeutig. Die Namen selbst benutzt niemand — es gibt keinen `url_generator`
-         * —, aber eindeutig muessen sie sein, sonst ist Mounten ein Gluecksspiel.
+         * The prefix comes from the mount point and makes the names unique across all
+         * collections. Nobody uses the names themselves — there is no `url_generator` — but they
+         * have to be unique, otherwise mounting is a gamble.
          */
-        $controllers->addNamePrefix(trim(preg_replace('/[^A-Za-z0-9]+/', '_', $pfadPraefix), '_').'_');
+        $controllers->addNamePrefix(trim(preg_replace('/[^A-Za-z0-9]+/', '_', $pathPrefix), '_').'_');
 
-        $this->routen->addCollection($controllers);
+        $this->routes->addCollection($controllers);
 
         return $this;
     }
 
-    /** Die gesammelten Routen — für den Matcher und für Tests. */
-    public function routen(): RouteCollection
+    /** The collected routes — for the matcher and for tests. */
+    public function routes(): RouteCollection
     {
-        return $this->routen;
+        return $this->routes;
     }
 
     /**
-     * Eine Route direkt an der Anwendung, ohne Provider — nur für OPTIONS.
+     * A route directly on the application, without a provider — for OPTIONS only.
      *
-     * `bootstrap-web.php` legt damit den CORS-Preflight-Catch-All an. Das ist die einzige
-     * Route im Baum, die kein Controller-Provider baut, und sie bleibt deshalb die einzige
-     * Methode dieser Art: Wer eine gewöhnliche Route will, nimmt den `RouteManager`.
+     * `bootstrap-web.php` uses it to create the CORS preflight catch-all. It is the only route in
+     * the tree not built by a controller provider, and so this stays the only method of its kind:
+     * whoever wants an ordinary route uses the `RouteManager`.
      */
-    public function options(string $pfad, callable $callback): Routeneintrag
+    public function options(string $path, callable $callback): Routeneintrag
     {
-        $route = new Route('/'.ltrim($pfad, '/'), array('_controller' => $callback));
+        $route = new Route('/'.ltrim($path, '/'), array('_controller' => $callback));
         $route->setMethods(array('OPTIONS'));
 
-        $this->routen->add('options_'.count($this->routen), $route);
+        $this->routes->add('options_'.count($this->routes), $route);
 
         return new Routeneintrag($route);
     }
@@ -180,11 +179,11 @@ class Application extends Container implements ApplicationInterface
     // ── Hooks ──────────────────────────────────────────────────────────────────────────
 
     /**
-     * Hook vor der Action.
+     * Hook before the action.
      *
-     * Der Rückruf bekommt `(Request $request, Application $app)` wie in Silex. Gibt er eine
-     * `Response` zurück, bricht die Verarbeitung ab — das ist der dokumentierte Weg, einen
-     * Request zu blockieren (`custom/app.php`).
+     * The callback receives `(Request $request, Application $app)` as in Silex. If it returns a
+     * `Response`, processing stops — that is the documented way to block a request
+     * (`custom/app.php`).
      */
     public function before($callback, $priority = 0)
     {
@@ -195,26 +194,26 @@ class Application extends Container implements ApplicationInterface
                     return;
                 }
 
-                $ergebnis = $callback($event->getRequest(), $this);
+                $result = $callback($event->getRequest(), $this);
 
-                if ($ergebnis instanceof Response) {
-                    $event->setResponse($ergebnis);
+                if ($result instanceof Response) {
+                    $event->setResponse($result);
                 }
             },
             $priority
         );
     }
 
-    /** Hook nach der Action. Der Rückruf bekommt `(Request, Response)` wie in Silex. */
+    /** Hook after the action. The callback receives `(Request, Response)` as in Silex. */
     public function after($callback, $priority = 0)
     {
         $this->on(
             \Symfony\Component\HttpKernel\KernelEvents::RESPONSE,
             function (ResponseEvent $event) use ($callback): void {
-                $ergebnis = $callback($event->getRequest(), $event->getResponse(), $this);
+                $result = $callback($event->getRequest(), $event->getResponse(), $this);
 
-                if ($ergebnis instanceof Response) {
-                    $event->setResponse($ergebnis);
+                if ($result instanceof Response) {
+                    $event->setResponse($result);
                 }
             },
             $priority
@@ -222,10 +221,10 @@ class Application extends Container implements ApplicationInterface
     }
 
     /**
-     * Fehlerbehandlung.
+     * Error handling.
      *
-     * Die Vorgabe-Priorität ist −8 wie in Silex: Sie lässt Listenern mit höherer Priorität den
-     * Vortritt und läuft vor allem, was noch weiter unten hängt.
+     * The default priority is −8 as in Silex: it lets listeners with a higher priority go first
+     * and runs before anything attached further down.
      */
     public function error($callback, $priority = -8)
     {
@@ -236,10 +235,10 @@ class Application extends Container implements ApplicationInterface
                     return;
                 }
 
-                $ergebnis = $callback($event->getThrowable(), $event->getRequest());
+                $result = $callback($event->getThrowable(), $event->getRequest());
 
-                if ($ergebnis instanceof Response) {
-                    $event->setResponse($ergebnis);
+                if ($result instanceof Response) {
+                    $event->setResponse($result);
                 }
             },
             $priority
@@ -247,29 +246,29 @@ class Application extends Container implements ApplicationInterface
     }
 
     /**
-     * Ein Listener auf ein beliebiges Kernel-Ereignis.
+     * A listener on any kernel event.
      *
-     * VOR DEM BOOT WIRD DIE REGISTRIERUNG VERSCHOBEN, NICHT AUSGEFÜHRT (009-004-0004).
+     * BEFORE BOOT THE REGISTRATION IS DEFERRED, NOT EXECUTED (009-004-0004).
      *
-     * Der Grund ist das Einfrieren des Containers: Wer `$this['dispatcher']` ausliest, friert
-     * ihn ein, und jedes spätere `extend('dispatcher', …)` wirft. Der `ConsoleManager` braucht
-     * genau dieses `extend()`, um Projekt-Commands anzumelden. Ein `before()` in
-     * `custom/app.php` — die Datei, in der ein Projekt beides tut — hätte also jeden danach
-     * registrierten Command unmöglich gemacht:
+     * The reason is container freezing: whoever reads `$this['dispatcher']` freezes it, and every
+     * later `extend('dispatcher', …)` throws. The `ConsoleManager` needs exactly this `extend()`
+     * to register project commands. A `before()` in `custom/app.php` — the file in which a
+     * project does both — would therefore have made every command registered after it
+     * impossible:
      *
-     *     RuntimeException: Der Dienst "dispatcher" ist bereits ausgelesen …
+     *     RuntimeException: The service "dispatcher" has already been read …
      *
-     * Silex hat das genauso gelöst und `on()` vor dem Boot über `extend()` geführt. Beim
-     * Nachbau in `009-002-0002` ist es verlorengegangen — die Methode sah einfacher aus, und
-     * kein Test deckte die Abfolge „erst ein Hook, dann ein Command" ab. Aufgefallen ist es
-     * erst, als die Vorlage in `009-004-0001` ihren eigenen dokumentierten Weg ging.
+     * Silex solved it the same way and routed `on()` through `extend()` before boot. It got lost
+     * when this was rebuilt in `009-002-0002` — the method looked simpler, and no test covered the
+     * sequence "first a hook, then a command". It only surfaced when the template followed its own
+     * documented path in `009-004-0001`.
      *
-     * An der Ausführungsreihenfolge ändert das nichts: Die verschobenen Registrierungen laufen
-     * beim ersten `handle()` in derselben Reihenfolge und mit denselben Prioritäten.
+     * The execution order does not change: the deferred registrations run on the first
+     * `handle()` in the same order and with the same priorities.
      */
     public function on($eventName, $callback, $priority = 0)
     {
-        if ($this->gebootet) {
+        if ($this->booted) {
             $this['dispatcher']->addListener($eventName, $callback, $priority);
 
             return;
@@ -282,7 +281,7 @@ class Application extends Container implements ApplicationInterface
         });
     }
 
-    // ── Antwort-Fabriken ───────────────────────────────────────────────────────────────
+    // ── Response factories ─────────────────────────────────────────────────────────────
 
     public function json($data = array(), $status = 200, array $headers = array()): JsonResponse
     {
@@ -294,36 +293,36 @@ class Application extends Container implements ApplicationInterface
         return new RedirectResponse($url, $status);
     }
 
-    // ── Ausführung ─────────────────────────────────────────────────────────────────────
+    // ── Execution ──────────────────────────────────────────────────────────────────────
 
     /**
-     * Hängt die Routen an den Kernel — einmal, beim ersten `handle()`.
+     * Attaches the routes to the kernel — once, on the first `handle()`.
      *
-     * Später als im Konstruktor, weil `mount()` bis unmittelbar vor dem ersten Request
-     * aufgerufen wird: `bootstrap.php` liest `custom/app.php` und ruft danach
+     * Later than in the constructor because `mount()` is called until right before the first
+     * request: `bootstrap.php` reads `custom/app.php` and then calls
      * `$app['routeManager']->bindRoutes()`.
      */
     private function boot(): void
     {
-        if ($this->gebootet) {
+        if ($this->booted) {
             return;
         }
 
         /*
-         * gebootet ZUERST: Ab hier laeuft on() direkt statt ueber extend(), und die Zeilen
-         * darunter lesen den Dispatcher aus — was die verschobenen Registrierungen aufloest.
-         * Andersherum riefe der erste Zugriff on() rekursiv.
+         * booted FIRST: from here on on() runs directly instead of through extend(), and the lines
+         * below read the dispatcher — which resolves the deferred registrations. The other way
+         * round, the first access would call on() recursively.
          */
-        $this->gebootet = true;
+        $this->booted = true;
 
         $this['dispatcher']->addSubscriber(new RouterListener(
-            new UrlMatcher($this->routen, new RequestContext()),
+            new UrlMatcher($this->routes, new RequestContext()),
             $this['request_stack']
         ));
 
         /*
-         * Die Absicherung pro Route. Prioritaet 0 auf kernel.controller: Der Router hat die
-         * Route schon zugeordnet, der Controller ist aufgeloest, aber noch nicht gelaufen.
+         * Per-route protection. Priority 0 on kernel.controller: the router has already matched
+         * the route, the controller is resolved but has not run yet.
          */
         $this['dispatcher']->addListener(
             \Symfony\Component\HttpKernel\KernelEvents::CONTROLLER,
@@ -338,7 +337,7 @@ class Application extends Container implements ApplicationInterface
         return $this['kernel']->handle($request, $type, $catch);
     }
 
-    /** Nimmt den Request aus den Globals, beantwortet ihn und schickt die Antwort. */
+    /** Takes the request from the globals, answers it and sends the response. */
     public function run(?Request $request = null): void
     {
         if ($request === null) {

@@ -61,7 +61,7 @@ class TokenCleanupCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $app = $this->anwendung();
+        $app = $this->application();
         $em  = $app['orm.em'];
 
         if (!Adapter::getConfig()->APP_CHECK_TOKEN_TIMEOUT) {
