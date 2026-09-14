@@ -85,7 +85,7 @@
             "changes one of the three lines still checks the other two along with it.",
             "",
             "THE VERSION IS HERE AND IN version.php. Two places are one too many, and that is",
-            "exactly why tests/Unit/Kernel/PaketmanifestTest.php checks that they match — a",
+            "exactly why tests/Unit/Kernel/PackageManifestTest.php checks that they match — a",
             "guarantee nobody checks is no guarantee."
         ]
     }

@@ -53,7 +53,7 @@ require_once $packageDir.'/version.php';
  * it.
  *
  * Decision and rejected alternatives: an_project/docs/architecture.md, Key decisions, 2026-09-11.
- * `tests/Unit/AutoloaderUeberschneidungTest.php` has been turned around and now checks that there
+ * `tests/Unit/AutoloaderOverlapTest.php` has been turned around and now checks that there
  * stays one tree.
  */
 require_once $customDir.'/config.php';
@@ -165,7 +165,7 @@ if(Adapter::getConfig()->APP_DEBUG){
  * the replacement of the foundation. Today it extends Kernel\Container and assembles a Symfony 7.4
  * HttpKernel. The interface has stayed the same, and no caller noticed the switch.
  *
- * tests/Unit/Kernel/KeineSilexTypenTest.php records that Silex, Pimple and knplabs no longer occur
+ * tests/Unit/Kernel/NoSilexTypesTest.php records that Silex, Pimple and knplabs no longer occur
  * anywhere in the tree — with an empty exception list since 009-002.
  */
 $app = new Application();
