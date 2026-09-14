@@ -113,7 +113,7 @@ class Helper
     }
 
     public function install(EntityManager $em): void{
-        //Admin-Benutzer
+        //Admin user
         $admin = $em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => 'admin'));
         if(!$admin){
             $admin = new User();
@@ -126,7 +126,7 @@ class Helper
 
         $em->persist($admin);
 
-        //Bildgrößen
+        //Image sizes
         $sizeList = $em->getRepository('Areanet\PIM\Entity\ThumbnailSetting')->findOneBy(array('alias' => 'pim_list'));
         if(!$sizeList){
             $sizeList = new ThumbnailSetting();

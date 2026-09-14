@@ -102,7 +102,7 @@ class Api
             throw new ContentflyException(Messages::contentfly_general_not_found, $entityShortName, Messages::contentfly_status_not_found);
         }
 
-        //Berechtigungen prüfen
+        //Check permissions
         if(!($permission = Permission::isDeletable($this->app['auth.user'], $entityShortName))){
             throw new ContentflyException(Messages::contentfly_general_access_denied, $entityShortName, Messages::contentfly_status_access_denied);
         }
@@ -132,14 +132,14 @@ class Api
 
         }
 
-        //Prüfen, ob für Subsprachen bereits Übersetzungen bestehen
+        //Check whether translations already exist for sub-languages
         /*if($i18n){
             $mainLang = is_array(Adapter::getConfig()->APP_LANGUAGES) ? Adapter::getConfig()->APP_LANGUAGES[0] : null;
 
             if($object->getLang() != $mainLang){
 
-                // executeStatement() statt exec() (009-005-0002). exec() gibt es in DBAL 3
-                // noch, aber als @deprecated — und Epic 009 baut deprecation-frei.
+                // executeStatement() instead of exec() (009-005-0002). exec() still exists in
+                // DBAL 3, but as @deprecated — and Epic 009 builds deprecation-free.
                 $this->em->getConnection()->executeStatement('SET FOREIGN_KEY_CHECKS = 0;');
 
                 //$query = $this->em->createQuery("SELECT COUNT(e) FROM $entityFullName e WHERE e.id = :id");
@@ -151,7 +151,7 @@ class Api
             }
         }*/
 
-        //Baumstruktur aktualisieren
+        //Update tree structure
         if($schema[$entityShortName]['settings']['type'] == 'tree') {
             $subObjects = $this->em->getRepository($entityFullName)->findBy(array('treeParent' => $object->getId()));
             if($subObjects){
@@ -161,8 +161,8 @@ class Api
             }
         }
 
-        //Dateien löschen
-        //todo: Löschen von Datein aus API auslagern
+        //Delete files
+        //todo: move deletion of files out of the API
         if($entityShortName == 'PIM\\File') {
             $backend    = Backend::getInstance();
 
@@ -174,7 +174,7 @@ class Api
             @rmdir($path);
         }
 
-        //Protokollierung
+        //Logging
         $schema = $this->app['schema'];
 
         $log = new Log();
@@ -199,7 +199,7 @@ class Api
         $this->em->flush();
 
 
-        //OneJoins löschen
+        //Delete OneJoins
         foreach($schema[$entityShortName]['properties'] as $property => $propertyConfig){
             if($propertyConfig['type'] == 'onejoin'){
                 $getterJoinedEntity = 'get'.ucfirst($property);
@@ -215,7 +215,7 @@ class Api
             $query->execute();
         }
 
-        //Objekt löschen
+        //Delete object
         $this->em->remove($object);
         $this->em->flush();
 
@@ -288,20 +288,20 @@ class Api
                 $objectDuplicated = $this->em->getRepository($entityFullName)->findOneBy(array($property => $value));
                 if($objectDuplicated){
                     /*
-                     * EIN ECHTER FEHLER, VON PHPSTAN GEFUNDEN (009-003-0002).
+                     * A REAL BUG, FOUND BY PHPSTAN (009-003-0002).
                      *
-                     * Hier stand `Messages::contentfly_general_record_already_exists`. Diese
-                     * Konstante gibt es nicht — sie heisst `…_ressource_already_exists`. Die
-                     * Zeile war damit kein Fehlerbericht, sondern ein Fatal:
+                     * This used to say `Messages::contentfly_general_record_already_exists`. That
+                     * constant does not exist — it is called `…_ressource_already_exists`. So the
+                     * line was not an error report but a fatal:
                      *
                      *     Undefined constant …Messages::contentfly_general_record_already_exists
                      *
-                     * Der Aufrufer bekam 500 statt 409. `ConstraintApiTest` hat das als
-                     * Ist-Zustand festgehalten und `000-000-0006` zugeschrieben — die
-                     * Zuschreibung war falsch, es lag nie an der Fehlerkette.
+                     * The caller got 500 instead of 409. `ConstraintApiTest` recorded that as the
+                     * current state and attributed it to `000-000-0006` — the attribution was
+                     * wrong, it was never down to the error chain.
                      *
-                     * Jetzt dieselbe Konstante und derselbe Statuscode wie in den drei
-                     * anderen Faellen weiter unten in doUpdate().
+                     * Now the same constant and the same status code as in the three other cases
+                     * further down in doUpdate().
                      */
                     throw new ContentflyException(Messages::contentfly_general_ressource_already_exists, "$property::$value", Messages::contentfly_status_ressource_already_exists);
                 }
@@ -626,40 +626,40 @@ class Api
     public function getAll($lastModified = null, $flatten = false, $filedata = null): array
     {
         /*
-         * Bis 000-000-0007 sammelte diese Methode ihre Entities auf einem dritten, eigenen
-         * Weg: eine fest verdrahtete Einschlussliste aus File, User und Group, dazu ein Lauf
-         * ueber custom/Entity/ mit einem Pfad, der aus dem Repo herauszeigte — weshalb
-         * /api/all bedingungslos mit HTTP 500 antwortete.
+         * Until 000-000-0007 this method collected its entities in a third way of its own: a
+         * hard-wired inclusion list of File, User and Group, plus a pass over custom/Entity/
+         * with a path that pointed out of the repo — which is why /api/all unconditionally
+         * answered with HTTP 500.
          *
-         * Jetzt derselbe Weg wie in getDeleted(), der anderen Haelfte des Sync-Vertrags: das
-         * Schema minus derselben Ausschlussliste. Vorher meldete getDeleted() Loeschungen fuer
-         * Entities, die getAll() nie ausgeliefert hat — ein Client erfuhr vom Verschwinden von
-         * Objekten, die er nie bekommen hatte. Fuer Clients ist die Aenderung additiv: Tag,
-         * Option, OptionGroup und die Custom-Entities kommen hinzu, es faellt nichts weg.
+         * Now the same way as in getDeleted(), the other half of the sync contract: the
+         * schema minus the same exclusion list. Previously getDeleted() reported deletions for
+         * entities that getAll() never delivered — a client learned of the disappearance of
+         * objects it had never received. For clients the change is additive: Tag, Option,
+         * OptionGroup and the custom entities are added, nothing is dropped.
          *
-         * Dabei ist aufgefallen, dass excludeFromSync bis dahin ausschliesslich in
-         * getCount() geprueft wurde — das Feld wirkte also auf die Bestandsstatistik, nie
-         * auf den Endpunkt, nach dem es benannt ist. Die Pruefung steht jetzt auch hier.
+         * Along the way it turned out that excludeFromSync had until then been checked
+         * exclusively in getCount() — so the field affected the inventory statistics, never
+         * the endpoint it is named after. The check now sits here as well.
          */
         $schema = $this->getSchema();
 
         /**
-         * Die zweite Ausschlussliste ist weg (000-000-0013).
+         * The second exclusion list is gone (000-000-0013).
          *
-         * Hier stand eine fest verdrahtete Liste — Folder, Token, Group, ThumbnailSetting,
-         * Permission, Nav, NavItem, Log — in dreifacher Ausfertigung, in getAll(), getCount()
-         * und getDeleted(). Sie stand in keiner Annotation und in keiner Konfiguration: Ein
-         * Projekt konnte nicht erkennen, warum eine Entity nie synchronisiert wird.
+         * Here stood a hard-wired list — Folder, Token, Group, ThumbnailSetting, Permission,
+         * Nav, NavItem, Log — in triplicate, in getAll(), getCount() and getDeleted(). It was
+         * in no annotation and in no configuration: a project could not tell why an entity
+         * is never synchronised.
          *
-         * Die betroffenen Entities tragen jetzt `@PIM\Config(excludeFromSync=true)`, jede mit
-         * ihrer Begruendung an der Klasse. Damit gibt es EINEN Mechanismus statt zwei, und er
-         * steht im Schema, das jeder Client lesen kann.
+         * The affected entities now carry `@PIM\Config(excludeFromSync=true)`, each with its
+         * justification on the class. That makes ONE mechanism instead of two, and it is in
+         * the schema, which every client can read.
          *
-         * Zwei Eintraege der alten Liste waren tot: `PIM\Token` steht nicht im Schema (die
-         * Entity leitet sich nicht von Base ab), `PIM\PushToken` gibt es im Baum nicht.
+         * Two entries of the old list were dead: `PIM\Token` is not in the schema (the entity
+         * does not derive from Base), `PIM\PushToken` does not exist in the tree.
          *
-         * `_hash` bleibt hier: Das ist kein Entity-Name, sondern der Schema-Hash. Es laesst
-         * sich nicht annotieren, weil es keine Klasse gibt, an die man es schreiben koennte.
+         * `_hash` stays here: it is not an entity name but the schema hash. It cannot be
+         * annotated, because there is no class it could be written on.
          */
         $helper   = new Helper();
         $entities = array();
@@ -749,6 +749,14 @@ class Api
             //GET DELETED
             $qb = $this->em->createQueryBuilder();
 
+            /*
+             * 'Gelöscht' IS A LEGACY VALUE, NOT A NAME (014-003-0002).
+             *
+             * Contentfly 1.x wrote this German word into `pim_log.mode` when a token was deleted.
+             * Existing projects carry such rows in their database, and sync clients must keep
+             * receiving those deletions. The comparison therefore stays, by decision of
+             * 2026-09-14; the English value written today is 'DEL'.
+             */
             $qb->select('log')
                 ->from('Areanet\PIM\Entity\Log', 'log')
                 ->where('log.modelName = :modelName')
@@ -796,12 +804,12 @@ class Api
         $schema = $this->getSchema();
 
         /**
-         * Was hier uebrig bleibt, ist KEINE Sync-Entscheidung (000-000-0013).
+         * What remains here is NOT a sync decision (000-000-0013).
          *
-         * Die gemeinsame Liste ist zu `excludeFromSync` an den Entities geworden und wird
-         * unten geprueft. `PIM\File` bleibt hier stehen, weil Dateien in dieser Statistik
-         * gesondert gezaehlt werden — `filesCount` und `filesSize` weiter oben. Sie ein
-         * zweites Mal unter `details` zu fuehren, waere doppelt.
+         * The shared list has become `excludeFromSync` on the entities and is checked
+         * below. `PIM\File` stays here because files are counted separately in these
+         * statistics — `filesCount` and `filesSize` further up. Listing them a second time
+         * under `details` would be duplication.
          */
         $details = array();
         foreach($schema as $entityName => $entityConfig){
@@ -823,14 +831,14 @@ class Api
 
             $tableName = $entityConfig['settings']['dbname'];
 
-            // ZAEHLEN STATT HOLEN (010-005-0001). Hier stand `SELECT 1`, und gezaehlt
-            // wurde mit `rowCount()` — eine Zeile je Treffer ging ueber die Verbindung und in
-            // den Speicher, nur um abgezaehlt zu werden. Bei einer grossen Tabelle ist das der
-            // Unterschied zwischen einer Zahl und einem Datenuebertrag.
+            // COUNT INSTEAD OF FETCH (010-005-0001). This used to say `SELECT 1`, and counting
+            // was done with `rowCount()` — one row per hit went over the connection and into
+            // memory, only to be counted off. For a large table that is the difference
+            // between a number and a data transfer.
             //
-            // Dazu ist `rowCount()` fuer eine LESEabfrage nicht zugesichert: DBAL sagt, der
-            // Rueckgabewert haenge dann vom Treiber ab. Dass es unter MySQL ging, war kein
-            // Vertrag. Befund aus 009-005-0002.
+            // On top of that, `rowCount()` is not guaranteed for a READ query: DBAL says the
+            // return value then depends on the driver. That it worked under MySQL was not a
+            // contract. Finding from 009-005-0002.
             $query = "SELECT COUNT(*) FROM `$tableName`";
 
             if($entityConfig['settings']['type'] == 'tree'){
@@ -929,7 +937,7 @@ class Api
                 }
             }
 
-            // fetchAssoc() ist in DBAL 3 entfallen (009-005-0002).
+            // fetchAssoc() was removed in DBAL 3 (009-005-0002).
             $files = $this->app['database']->fetchAssociative($query, $params);
             $data['filesCount'] = intval($files['records']);
             $data['filesSize'] = $files['size'] ?: 0;
@@ -957,13 +965,13 @@ class Api
             }
 
             /**
-             * excludeFromSync — hier neu, siehe 000-000-0013.
+             * excludeFromSync — new here, see 000-000-0013.
              *
-             * getDeleted() hat es NIE geprueft: Es hatte nur seine fest verdrahtete Liste.
-             * getAll() und getCount() pruefen es seit 000-000-0007 beziehungsweise seit jeher.
-             * Eine Entity, die aus dem Bestand ausgeschlossen ist, aber ihre Loeschungen
-             * meldet, ergibt keinen Sinn — ein Sync-Client bekaeme Loeschmeldungen zu
-             * Objekten, die er nie erhalten hat.
+             * getDeleted() NEVER checked it: it only had its hard-wired list. getAll() and
+             * getCount() have checked it since 000-000-0007 and since forever, respectively.
+             * An entity that is excluded from the inventory but reports its deletions makes
+             * no sense — a sync client would receive deletion notices for objects it never
+             * received.
              */
             if(!empty($entityConfig['settings']['excludeFromSync'])){
                 continue;
@@ -973,25 +981,25 @@ class Api
 
             $params  = array($entityName, $this->app['auth.user']->getId());
             /**
-             * `>=` statt `>` — die Grenzsekunde gehoert dazu (000-000-0013).
+             * `>=` instead of `>` — the boundary second is included (000-000-0013).
              *
-             * `pim_log.created` ist ein datetime mit Sekundenaufloesung. Ein Lebenszyklus, der
-             * in derselben Sekunde ablaeuft — bei je einem API-Aufruf der Normalfall —
-             * hinterlaesst Zeilen mit identischem Zeitstempel. Mit `>` verliert ein
-             * Sync-Client jede Loeschung, die in derselben Sekunde stattfand wie die, deren
-             * Zeitstempel er sich gemerkt hat: Sie ist nicht groesser, also kommt sie nie.
+             * `pim_log.created` is a datetime with second resolution. A lifecycle that runs
+             * within the same second — the normal case with one API call per step — leaves
+             * rows with identical timestamps. With `>` a sync client loses every deletion
+             * that happened in the same second as the one whose timestamp it remembered: it
+             * is not greater, so it never arrives.
              *
-             * `>=` liefert die Grenzsekunde stattdessen erneut. Eine Loeschung doppelt zu
-             * melden ist folgenlos — der Client loescht etwas, das schon weg ist. Eine
-             * Loeschung zu verlieren ist es nicht: Das Objekt bleibt beim Client fuer immer
-             * stehen, und nichts weist je darauf hin.
+             * `>=` instead delivers the boundary second again. Reporting a deletion twice has
+             * no consequences — the client deletes something that is already gone. Losing a
+             * deletion does: the object stays on the client forever, and nothing ever
+             * points to it.
              *
-             * getAll() filtert seit jeher mit `modified >= :lastModified`. Die beiden Haelften
-             * derselben Synchronisation lagen also auf verschiedenen Seiten der Grenze.
+             * getAll() has always filtered with `modified >= :lastModified`. So the two halves
+             * of the same synchronisation lay on different sides of the boundary.
              *
-             * Die eigentliche Loesung waere eine hoehere Aufloesung oder eine monoton
-             * steigende Sequenz. Beides braucht eine Spalte und damit eine Migration fuer
-             * jedes Bestandsprojekt; das gehoert zum Kernel-Wechsel und nicht hierher.
+             * The real solution would be a higher resolution or a monotonically increasing
+             * sequence. Both need a column and therefore a migration for every existing
+             * project; that belongs to the kernel switch and not here.
              */
             $tsQuery = "";
             if($lastMofified){
@@ -1008,7 +1016,7 @@ class Api
 
             $query .= $tsQuery;
 
-            // fetchAll() ist in DBAL 3 entfallen (009-005-0002).
+            // fetchAll() was removed in DBAL 3 (009-005-0002).
             if(($deletedObjects = $this->app['database']->fetchAllAssociative($query, $params))){
                 $data   = array_merge($data, $deletedObjects);
             }
@@ -1021,21 +1029,21 @@ class Api
     public function getExtendedSchema(): array
     {
         /*
-         * DER frontend-BLOCK IST VON SIEBEN AUF ZWEI SCHLUESSEL GESCHRUMPFT (000-000-0010).
+         * THE frontend BLOCK HAS SHRUNK FROM SEVEN TO TWO KEYS (000-000-0010).
          *
-         * Entfallen sind customLogo, formImageSquarePreview, title, welcome und
-         * login_redirect. Alle fuenf beschrieben Eigenschaften der PIM-Oberflaeche, die Epic
-         * 012 entfernt hat — das Schema bewarb sie weiter.
+         * Dropped are customLogo, formImageSquarePreview, title, welcome and
+         * login_redirect. All five described properties of the PIM interface that Epic
+         * 012 removed — the schema kept advertising them.
          *
-         * Die beiden verbliebenen sind keine Oberflaechen-Sache:
+         * The two remaining ones are not an interface matter:
          *
-         *   customNavigation  liest die Entities PIM\Nav und PIM\NavItem aus. Beide gibt es,
-         *                     sie gehoeren zum Datenmodell und die Suite beruehrt sie.
-         *   languages         kommt aus APP_LANGUAGES und bestimmt die Hauptsprache
-         *                     (bootstrap.php setzt daraus APP_CMS_MAIN_LANG).
+         *   customNavigation  reads the entities PIM\Nav and PIM\NavItem. Both exist,
+         *                     they belong to the data model and the suite touches them.
+         *   languages         comes from APP_LANGUAGES and determines the main language
+         *                     (bootstrap.php derives APP_CMS_MAIN_LANG from it).
          *
-         * Der Schluesselname "frontend" bleibt trotzdem. Ihn umzubenennen waere ein zweiter
-         * Bruch fuer jeden Client, der ihn liest — und einer ohne Gegenwert.
+         * The key name "frontend" stays nonetheless. Renaming it would be a second break
+         * for every client that reads it — and one with no benefit.
          */
         $frontend = array(
             'customNavigation' => array(
@@ -1449,9 +1457,9 @@ class Api
         $permissions = array();
         foreach($schema as $entityName => $config){
 
-            // 'export' und 'extended' sind mit 000-000-0012 entfallen. Beide standen hier,
-            // ohne dass irgendein Endpunkt sie geprueft haette — siehe den Klassenkommentar
-            // von Areanet\PIM\Classes\Permission.
+            // 'export' and 'extended' were dropped with 000-000-0012. Both stood here without
+            // any endpoint ever checking them — see the class comment of
+            // Areanet\PIM\Classes\Permission.
             $permissions[$entityName] = array(
                 'readable'  => Permission::isReadable($this->app['auth.user'], $entityName),
                 'writable'  => Permission::isWritable($this->app['auth.user'], $entityName),
@@ -1530,9 +1538,9 @@ class Api
 
             $defaultValues = $reflect->getDefaultProperties();
 
-            $metadaten = new MetadataReader();
+            $metadata = new MetadataReader();
 
-            // Siehe oben: 'export' und 'extended' entfallen mit 000-000-0012.
+            // See above: 'export' and 'extended' were dropped with 000-000-0012.
             $permissions[$entityName] = array(
                 'readable'  => $this->app['auth.user'] ? Permission::isReadable($this->app['auth.user'], $entityName) : 0,
                 'writable'  => $this->app['auth.user'] ? Permission::isWritable($this->app['auth.user'], $entityName) : 0,
@@ -1573,7 +1581,7 @@ class Api
                 $settings['type']  = 'tree';
             }
 
-            $classAnnotations = $metadaten->forClass($reflect);
+            $classAnnotations = $metadata->forClass($reflect);
 
             $skipEntity = false;
 
@@ -1614,7 +1622,7 @@ class Api
                 $reflectionProperty = new ReflectionProperty($className, $prop->getName());
 
 
-                $propertyAnnotations = $metadaten->forProperty($reflectionProperty);
+                $propertyAnnotations = $metadata->forProperty($reflectionProperty);
 
                 $allPropertyAnnotations = array();
                 foreach($propertyAnnotations as $propertyAnnotation){
@@ -1651,24 +1659,24 @@ class Api
                 }
 
                 /*
-                 * EIN FELD OHNE PASSENDEN TYP FAELLT NICHT MEHR STILL AUS DEM SCHEMA
+                 * A FIELD WITHOUT A MATCHING TYPE NO LONGER SILENTLY DROPS OUT OF THE SCHEMA
                  * (000-000-0017).
                  *
-                 * Griff keiner der registrierten Typen, blieb $properties fuer diese
-                 * Eigenschaft schlicht ungesetzt: kein Eintrag, keine Warnung, kein Hinweis.
-                 * Lesen lieferte das Feld nicht, Schreiben scheiterte mit
-                 * contentfly_general_unknown_property — und niemand erfuhr, warum. Die
-                 * Vorlage custom/ fuehrte mit einem json-Feld genau diesen Fall vor.
+                 * If none of the registered types matched, $properties simply stayed unset for
+                 * this property: no entry, no warning, no hint. Reading did not return the
+                 * field, writing failed with contentfly_general_unknown_property — and nobody
+                 * learned why. The custom/ template demonstrated exactly this case with a json
+                 * field.
                  *
-                 * Geworfen wird NICHT: Ein Projekt mit einem exotischen Spaltentyp koennte
-                 * sonst nach einem Update sein Schema nicht mehr aufbauen. Eine Warnung
-                 * landet im Log, und die Suite setzt failOnWarning — dort faellt es sofort
-                 * auf, ohne im Betrieb etwas umzuwerfen.
+                 * NOTHING is thrown: a project with an exotic column type could otherwise no
+                 * longer build its schema after an update. A warning lands in the log, and the
+                 * suite sets failOnWarning — there it shows up immediately, without upsetting
+                 * anything in production.
                  */
                 if (empty($properties[$prop->getName()]) && isset($allPropertyAnnotations['Doctrine\\ORM\\Mapping\\Column'])) {
                     trigger_error(
                         sprintf(
-                            'Kein Contentfly-Typ passt auf %s::%s (Spaltentyp "%s") — das Feld fehlt im API-Schema.',
+                            'No Contentfly type matches %s::%s (column type "%s") — the field is missing from the API schema.',
                             $entityName,
                             $prop->getName(),
                             $allPropertyAnnotations['Doctrine\\ORM\\Mapping\\Column']->type
@@ -1813,23 +1821,23 @@ class Api
         $object = $queryBuilder->getQuery()->getOneOrNullResult();
 
         /**
-         * Nicht gefunden heisst null (000-000-0006).
+         * Not found means null (000-000-0006).
          *
-         * BIS HIERHER GAB DIESE METHODE EINE JsonResponse ZURUECK — eine fertige HTTP-Antwort
-         * aus einer Klasse, die keine Controller ist. Jeder interne Aufrufer prueft mit
-         * `if(!$object)`, und eine JsonResponse ist wahr. Die Pruefung lief also ins Leere, und
-         * der Code danach arbeitete mit der Antwort weiter, als waere sie das Objekt:
+         * UNTIL NOW THIS METHOD RETURNED A JsonResponse — a finished HTTP response from a
+         * class that is not a controller. Every internal caller checks with `if(!$object)`,
+         * and a JsonResponse is truthy. So the check came to nothing, and the code after it
+         * carried on working with the response as if it were the object:
          *
          *   Helper::getUsersRemoved(): Argument #1 must be of type ...Entity\Base,
          *   ...HttpFoundation\JsonResponse given, called in Api.php on line 488
          *
-         * Das war die Ursache dafuer, dass eine unbekannte Id ueber die API als 500 ankam,
-         * obwohl doUpdate() und doDelete() jeweils eine ContentflyException mit 404 vorsehen —
-         * sie wurden nie erreicht. Ein TypeError ist kein Exception, und die Fehlerkette von
-         * Silex nimmt nur Exceptions an; deshalb fiel er bis zum globalen Handler durch.
+         * That was the reason an unknown id arrived via the API as 500, although doUpdate()
+         * and doDelete() each provide a ContentflyException with 404 — they were never
+         * reached. A TypeError is not an Exception, and Silex's error chain only accepts
+         * Exceptions; that is why it fell through to the global handler.
          *
-         * `/api/single` gab die Antwort sogar aus: Der Aufrufer bekam 200 und als Rumpf
-         * `data: {"headers": {}}` — die JsonResponse, durch json_encode gedreht.
+         * `/api/single` even output the response: the caller got 200 and as the body
+         * `data: {"headers": {}}` — the JsonResponse, run through json_encode.
          */
         if (!$object) {
             return null;
@@ -1837,7 +1845,7 @@ class Api
 
         if($compareToLang && $compareToLang != $lang) {
             if(!$loadJoinedLang) {
-                //Bestehenden übersetzten Datensatz bearbeiten
+                //Edit existing translated record
                 try {
                     $compareObject = $this->getSingle($entityShortName, $id, $where, $compareToLang, true, null, null, true);
                 } catch (Exception) {
@@ -1869,7 +1877,7 @@ class Api
                     }
                 }
             }else{
-                //Datensatz neu übersetzen
+                //Translate record anew
 
                 try {
                     $compareObject = $this->getSingle($entityShortName, $id, $where, $lang, true, null, null, true);
@@ -1966,8 +1974,9 @@ class Api
             ->groupBy('lang')
             ->setParameter('lang', $lang);
 
-        // executeQuery() statt execute() — letzteres ist in DBAL 3 @deprecated — und
-        // fetchAllAssociative() statt fetchAll(), das am Result entfallen ist (009-005-0002).
+        // executeQuery() instead of execute() — the latter is @deprecated in DBAL 3 — and
+        // fetchAllAssociative() instead of fetchAll(), which was removed from the Result
+        // (009-005-0002).
         return $queryBuilder->executeQuery()->fetchAllAssociative();
     }
 
@@ -2062,9 +2071,9 @@ class Api
         $dbFields   = array();
 
         /*
-         * Vorher kam die Spaltenauswahl aus `showInList` — der Listenposition der
-         * gelöschten Oberfläche. Sie ist mit den UI-Annotationen entfallen; die Route
-         * liefert jetzt alle skalaren Eigenschaften. Für Clients ist das additiv.
+         * Previously the column selection came from `showInList` — the list position of the
+         * deleted interface. It was dropped together with the UI annotations; the route now
+         * delivers all scalar properties. For clients this is additive.
          */
         foreach($schema[$entityShortName]['properties'] as $propName => $propConfig){
 
@@ -2097,8 +2106,8 @@ class Api
         }
 
         /*
-         * Spaltennamen quoten: Seit die Auswahl alle Eigenschaften umfasst, sind auch
-         * Felder wie `groups` dabei — in MySQL 8 ein reserviertes Wort.
+         * Quote column names: since the selection covers all properties, fields such as
+         * `groups` are included too — a reserved word in MySQL 8.
          */
         $columns = implode(',', array_map(
             function($field){ return '`'.$field.'`'; },
@@ -2112,7 +2121,7 @@ class Api
               on e.id = t.id $joinI18NCond
             ORDER BY t.parent_id, t.sorting ";
 
-        // fetchAll() ist in DBAL 3 entfallen (009-005-0002).
+        // fetchAll() was removed in DBAL 3 (009-005-0002).
         $records = $this->app['database']->fetchAllAssociative($statement);
 
         return $this->treeSort($records, $dbFields, null);
@@ -2387,8 +2396,9 @@ class Api
             }
         }
 
-        // executeQuery() statt execute() — letzteres ist in DBAL 3 @deprecated — und
-        // fetchAllAssociative() statt fetchAll(), das am Result entfallen ist (009-005-0002).
+        // executeQuery() instead of execute() — the latter is @deprecated in DBAL 3 — and
+        // fetchAllAssociative() instead of fetchAll(), which was removed from the Result
+        // (009-005-0002).
         return $queryBuilder->executeQuery()->fetchAllAssociative();
 
     }

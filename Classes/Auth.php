@@ -5,18 +5,18 @@ use Areanet\PIM\Entity\User;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
 /**
- * Zugriff auf den angemeldeten Benutzer.
+ * Access to the logged-in user.
  *
- * Bis 2026-09-04 hielt diese Klasse zusätzlich die sessionbasierte Anmeldung der
- * PIM-Oberfläche: `init()` las bei **jedem** Request `auth.userid` aus der PHP-Session,
- * `login()` und `logout()` schrieben sie. Mit der Oberfläche ist das entfallen (Story
- * `012-004`) — und mit ihr die Session selbst, deren exklusiver Dateilock gleichzeitige
- * API-Aufrufe desselben Nutzers serialisierte.
+ * Until 2026-09-04 this class additionally held the session-based login of the PIM UI:
+ * `init()` read `auth.userid` from the PHP session on **every** request, and `login()` and
+ * `logout()` wrote it. This was dropped together with the UI (story `012-004`) — and with it
+ * the session itself, whose exclusive file lock serialised concurrent API calls by the same
+ * user.
  *
- * `login()` und `logout()` hatten ohnehin keinen Aufrufer: Der `AuthController` bringt seine
- * eigene Anmeldung mit und stellt Tokens aus. Wer den angemeldeten Benutzer setzt, ist seit
- * `013-002-0004` `BaseControllerProvider::anmelden()` — davor `checkToken()`, das mit jenem
- * Task entfallen ist.
+ * `login()` and `logout()` had no caller anyway: the `AuthController` brings its own login and
+ * issues tokens. Since `013-002-0004`, the one setting the logged-in user is
+ * `BaseControllerProvider::anmelden()` — before that it was `checkToken()`, which was dropped
+ * with that task.
  */
 class Auth
 {

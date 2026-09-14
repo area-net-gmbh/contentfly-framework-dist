@@ -12,19 +12,19 @@ abstract class Plugin
     protected $app;
 
     /**
-     * @var string Eindeutiger Plugin-Key
+     * @var string Unique plugin key
      */
     protected $key          = null;
     /**
-     * @var string Namespace des Plugins, wird automatisch ermittelt
+     * @var string Namespace of the plugin, determined automatically
      */
     protected $namespace    = null;
     /**
-     * @var mixed|null Plugin-Options, können beim Registrieren über den Plugin-Manager übergeben werden
+     * @var mixed|null Plugin options, can be passed via the plugin manager on registration
      */
     protected $options      = null;
     /**
-     * @var bool Plugin nutzt eigene Doctrine-Entitäten
+     * @var bool Plugin uses its own Doctrine entities
      */
     private $doUseORM       = false;
 
@@ -82,14 +82,14 @@ abstract class Plugin
     }
 
     /**
-     * Wird beim Initialisieren des Plugins aufgerufen, kann im Plugin überschrieben/angepasst werden
+     * Called when the plugin is initialised, can be overridden/customised in the plugin
      */
     public function init(){
 
     }
 
     /**
-     * Initialisieren der Composer-Funktion im Plugin
+     * Initialises the Composer functionality in the plugin
      */
     private function initComposer(): void{
         if(file_exists(Paths::plugins().'/'.$this->key.'/vendor/autoload.php')){
@@ -98,26 +98,26 @@ abstract class Plugin
     }
 
     /**
-     * Initialisieren von eigenen Doctrine-Entitäten im Plugin.
+     * Initialises the plugin's own Doctrine entities.
      *
-     * ATTRIBUTE STATT ANNOTATIONEN (010-001-0004). Hier stand
+     * ATTRIBUTES INSTEAD OF ANNOTATIONS (010-001-0004). This used to be
      * `$ormConfig->newDefaultAnnotationDriver(...)`.
      *
-     * DIE UMSTELLUNG WAR NICHT WAHLFREI. Eine Plugin-Entity erbt von
-     * `Areanet\PIM\Entity\Base`, und bei einer MappedSuperclass setzt Doctrine an den
-     * geerbten Feldern kein `inherited` — der Treiber der Unterklasse liest sie neu. Ein
-     * Annotation-Treiber faende an der umgestellten `Base` nichts mehr und meldete
-     * „No identifier/primary key specified". Gemessen und begruendet in `010-001-0003`.
+     * THE SWITCH WAS NOT OPTIONAL. A plugin entity inherits from `Areanet\PIM\Entity\Base`,
+     * and for a MappedSuperclass Doctrine sets no `inherited` on the inherited fields — the
+     * subclass's driver reads them anew. An annotation driver would find nothing on the
+     * converted `Base` any more and would report "No identifier/primary key specified".
+     * Measured and justified in `010-001-0003`.
      *
-     * WAS GEPRUEFT IST UND WAS NICHT. `tests/Unit/Manager/PluginManagerTest.php` deckt diese
-     * Methode ab — ein Spion auf der Doctrine-Konfiguration haelt fest, dass ein
-     * `AttributeDriver` fuer `plugins/<Key>/Entity` unter `Plugins\<Key>\Entity` eingehaengt
-     * wird. Der Test ist mit der Umstellung umgedreht worden und war vorher zu Recht rot.
+     * WHAT IS VERIFIED AND WHAT IS NOT. `tests/Unit/Manager/PluginManagerTest.php` covers this
+     * method — a spy on the Doctrine configuration records that an `AttributeDriver` for
+     * `plugins/<Key>/Entity` is hooked in under `Plugins\<Key>\Entity`. The test was inverted
+     * with the switch and was rightly red before.
      *
-     * Was er NICHT zeigt: dass Doctrine aus einer echten Plugin-Entity danach auch Metadaten
-     * liest. `plugins/` ist leer, seit `006-003-0002` — dort liess sich schon
-     * `AnnotationRegistry::registerFile()` an nichts vorfuehren. Wer das erste Plugin baut,
-     * prueft das als Erstes.
+     * What it does NOT show: that Doctrine then actually reads metadata from a real plugin
+     * entity. `plugins/` has been empty since `006-003-0002` — even back then
+     * `AnnotationRegistry::registerFile()` could not be demonstrated on anything there. Whoever
+     * builds the first plugin checks this first.
      */
     private function initORM(): void{
         $ormConfig  = $this->app['orm.em']->getConfiguration();
@@ -129,14 +129,14 @@ abstract class Plugin
     }
 
     /**
-     * @param PluginType $plugin Instanz des benutzerdefinierten Types
+     * @param PluginType $plugin Instance of the custom type
      */
     final protected function registerPluginType(PluginType $plugin){
         $this->app['typeManager']->registerPluginType($plugin, $this);
     }
 
     /**
-     * Nutzung von eigenen Entitäten im Ordner 'Entity' des Plugins
+     * Use of the plugin's own entities in the plugin's 'Entity' folder
      */
     final protected function useORM(){
         $this->doUseORM = true;

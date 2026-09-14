@@ -2,15 +2,15 @@
 namespace Areanet\PIM\Classes;
 
 /**
- * Das Ereignis, mit dem das Framework seine Hooks versorgt.
+ * The event the framework feeds its hooks with.
  *
- * ERBT SEIT 009-002-0004 VON `Symfony\Contracts\EventDispatcher\Event`. Die alte Basisklasse
- * `Symfony\Component\EventDispatcher\Event` gibt es in Symfony 7 nicht mehr — sie ist mit
- * Symfony 5 in die Contracts gewandert und in 6 aus der Komponente verschwunden. Der Wechsel
- * ist ein Namenswechsel: Die Klasse kann dasselbe, `stopPropagation()` eingeschlossen.
+ * INHERITS FROM `Symfony\Contracts\EventDispatcher\Event` SINCE 009-002-0004. The old base class
+ * `Symfony\Component\EventDispatcher\Event` no longer exists in Symfony 7 — it moved into the
+ * Contracts with Symfony 5 and disappeared from the component in 6. The switch is a rename:
+ * the class can do the same things, `stopPropagation()` included.
  *
- * Über dieses Objekt laufen die `pim.controller.before.*`- und `pim.file.*`-Hooks. Es traegt
- * beliebige benannte Parameter und laesst sich durchlaufen — daher `Iterator`.
+ * The `pim.controller.before.*` and `pim.file.*` hooks run through this object. It carries
+ * arbitrary named parameters and can be iterated — hence `Iterator`.
  */
 class Event extends \Symfony\Contracts\EventDispatcher\Event implements \Iterator
 {
