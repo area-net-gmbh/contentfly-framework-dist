@@ -27,7 +27,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * provider with the same identifier always finds the same account again. That is exactly what
  * the MD5 prefix in the alias used to achieve, only unreadably.
  */
-#[ORM\UniqueConstraint(name: 'uniq_user_fremdkennung', columns: ['loginManager', 'externalId'])]
+#[ORM\UniqueConstraint(name: 'uniq_user_external_identity', columns: ['loginManager', 'externalId'])]
 #[PIM\Config(labelProperty: 'alias')]
 class User extends Base implements UserInterface
 {
@@ -87,7 +87,7 @@ class User extends Base implements UserInterface
      * account —, but it solved it by making the answer unreadable.
      *
      * Uniqueness now applies to `loginManager` AND `externalId` together; the alias carries
-     * both visibly as `<provider>:<kennung>`.
+     * both visibly as `<provider>:<identifier>`.
      */
     #[ORM\Column(type: 'string', length: 190, nullable: true)]
     protected $externalId;
