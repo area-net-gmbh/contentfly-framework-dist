@@ -2,6 +2,7 @@
 namespace Areanet\PIM\Controller;
 use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Config\Adapter;
+use Areanet\PIM\Classes\Event;
 use Areanet\PIM\Classes\Controller\BaseController;
 use Areanet\PIM\Classes\Security\ExternalIdentity;
 use Areanet\PIM\Classes\Security\TokenHandler;
@@ -249,6 +250,33 @@ class AuthController extends BaseController
                 500
             );
         }
+
+        /*
+         * THE PROJECT'S TURN, AFTER THE CHECK AND BEFORE THE TOKEN (000-000-0045).
+         *
+         * The provider contract gives a provider one duty and keeps it away from the database. What an
+         * old LoginManager did beyond that — set fields on the user, hand the client extra data as
+         * `tempData` — has its place here. Found on the existing project UFP (007-005-0004), whose app
+         * reads `data.role` on every login.
+         *
+         * Every way that reaches this line has succeeded: password or provider, account active, JWT
+         * configured if requested. A rejected login never fires the event, so a listener never acts on
+         * a failed attempt.
+         *
+         * Params: `user`, `request`, `provider` (the registered name, or null for the password path),
+         * `identity` (the ExternalIdentity, or null) and `app`, like the other `pim.*` events.
+         *
+         * What a listener changes on the user is written with the token below — same EntityManager,
+         * one flush — and `user`/`data` in the response are built after it. A listener that throws
+         * ends the login without a token; that is its decision to make.
+         */
+        $event = new Event();
+        $event->setParam('user', $user);
+        $event->setParam('request', $request);
+        $event->setParam('provider', $loginProvider ? strtolower(trim((string) $providerName)) : null);
+        $event->setParam('identity', $loginProvider ? $identity : null);
+        $event->setParam('app', $this->app);
+        $this->app['dispatcher']->dispatch($event, 'pim.auth.after.login');
 
         $token = new Token();
         $token->setUser($user);
