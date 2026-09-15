@@ -213,14 +213,65 @@ class SystemController extends BaseController
         return $data;
     }
 
+    /**
+     * The floor for an API token the caller brings along (000-000-0030).
+     *
+     * 32 characters: as hex from a random source that is 128 bits — out of reach online and
+     * offline, even against the unsalted SHA-256 in `pim_token`. 10 different characters: rejects
+     * repetition such as `aaaa…` or `abab…`, which reaches any length without being any harder to
+     * guess. A random hex string of 32 characters has about 14 different ones.
+     *
+     * **This is a floor, not a proof of randomness.** A value can be chosen weak and still pass.
+     * The safe way is to leave `token` out; then the framework generates it.
+     */
+    private const API_TOKEN_MIN_LENGTH = 32;
+    private const API_TOKEN_MIN_DISTINCT_CHARACTERS = 10;
+
+    /**
+     * Creates an API token — a row with a `referrer`.
+     *
+     * ── Who chooses the value (000-000-0030, finding A-5) ────────────────────────────────
+     *
+     * Until then `token` was taken from the request as it came; only an empty value was rejected.
+     * `token=test` was accepted. The table stores an unsalted SHA-256 — right for 64 random bytes
+     * and worthless for `test`, which is reversed offline in seconds. The safety of the table thus
+     * depended on a choice made by the caller, not one the framework enforced.
+     *
+     * CHOSEN: `token` becomes optional, and a supplied one has to clear a floor.
+     *
+     *   - Without `token` the framework generates the value, the same one `generateToken` returns.
+     *     The response carries it once, as before.
+     *   - A supplied token shorter than API_TOKEN_MIN_LENGTH or with fewer than
+     *     API_TOKEN_MIN_DISTINCT_CHARACTERS different characters is rejected with 400, and nothing
+     *     is written.
+     *
+     * NOT CHOSEN: always generating and ignoring a supplied `token`. The most thorough, but it
+     * breaks every setup that knows the value beforehand — for example because it already sits in
+     * the configuration of the other system.
+     *
+     * NOT CHOSEN: documenting only. That leaves the table's safety with the next operator.
+     */
     protected function addToken(Request $request)
     {
         $referrer    =  ($request->request->all()['referrer'] ?? null);
         $tokenString =  ($request->request->all()['token'] ?? null);
         $userId      =  ($request->request->all()['user'] ?? null);
 
-        if(!$referrer || !$tokenString || !$userId){
-            throw new \Exception('Invalid token and/or referrer');
+        if(!$referrer || !$userId){
+            throw new \Exception('Invalid referrer and/or user');
+        }
+
+        if($tokenString === null || $tokenString === ''){
+            $tokenString = $this->generateToken($request);
+        }elseif(!is_string($tokenString)
+            || strlen($tokenString) < self::API_TOKEN_MIN_LENGTH
+            || count(array_unique(str_split($tokenString))) < self::API_TOKEN_MIN_DISTINCT_CHARACTERS){
+            throw new \Exception(sprintf(
+                'The token is too weak: at least %d characters with at least %d different ones. '
+                .'Leave "token" out to have one generated.',
+                self::API_TOKEN_MIN_LENGTH,
+                self::API_TOKEN_MIN_DISTINCT_CHARACTERS
+            ), 400);
         }
 
         $user = $this->em->getRepository('Areanet\\PIM\\Entity\\User')->find($userId);
@@ -258,8 +309,8 @@ class SystemController extends BaseController
             'active' => $token->getUser()->getIsActive()
         );
 
-        // Here the PLAIN TEXT: it is the value the caller brought along themselves, and the
-        // only point in time at which it can be returned.
+        // Here the PLAIN TEXT: the value the caller brought along or the one generated for them,
+        // and the only point in time at which it can be returned.
         return array('id' => $token->getId(), 'token' => $token->getPlaintext(), 'referrer' => $token->getReferrer(), 'user' => $userData);
     }
 }
