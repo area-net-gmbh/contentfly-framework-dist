@@ -598,10 +598,10 @@ class ApiController extends BaseController
             throw new ContentflyException(Messages::contentfly_general_invalid_params, 'objects');
         }
 
-        $verbindung     = $this->app['orm.em']->getConnection();
-        $aktualisiert   = array();
+        $connection     = $this->app['orm.em']->getConnection();
+        $updated        = array();
 
-        $verbindung->beginTransaction();
+        $connection->beginTransaction();
 
         try{
             foreach($objects as $object){
@@ -617,12 +617,12 @@ class ApiController extends BaseController
 
         // One entry per object from the request, in its order. The copies written into the other
         // languages are a consequence of the same entry and not entries of their own.
-                $aktualisiert[] = array('entity' => $object['entity'], 'id' => $object['id']);
+                $updated[] = array('entity' => $object['entity'], 'id' => $object['id']);
             }
 
-            $verbindung->commit();
+            $connection->commit();
         }catch(\Throwable $e){
-            $verbindung->rollBack();
+            $connection->rollBack();
             throw $e;
         }
 
@@ -630,7 +630,7 @@ class ApiController extends BaseController
 
         return $this->renderResponse(array(
             'ts'    => $currentDate->format('Y-m-d H:i:s'),
-            'data'  => $aktualisiert
+            'data'  => $updated
         ));
     }
 
