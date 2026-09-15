@@ -2,7 +2,6 @@
 namespace Areanet\PIM\Classes\Config;
 
 use Areanet\PIM\Classes\Config;
-use Areanet\PIM\Classes\Exceptions\Config\NotFoundException;
 
 
 /**

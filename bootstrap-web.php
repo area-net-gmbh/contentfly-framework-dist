@@ -8,7 +8,6 @@ use Areanet\PIM\Classes\Controller\Provider\Base\SystemControllerProvider;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\ContentflyI18NException;
 use Areanet\PIM\Classes\Exceptions\FileNotFoundException;
-use Areanet\PIM\Controller;
 use Areanet\PIM\Classes\Config;
 use Symfony\Component\HttpFoundation\AcceptHeader;
 use Symfony\Component\HttpFoundation\JsonResponse;

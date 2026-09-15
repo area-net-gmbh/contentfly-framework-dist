@@ -9,7 +9,6 @@ use Areanet\PIM\Entity\ThumbnailSetting;
 use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
 use Doctrine\ORM\Tools\Console\Command\SchemaTool\UpdateCommand;
-use Doctrine\ORM\Tools\Console\Helper\EntityManagerHelper;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\ORM\Tools\SchemaValidator;
 use Symfony\Component\Console\Application;
