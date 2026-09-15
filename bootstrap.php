@@ -65,6 +65,7 @@ use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Auth;
 use Areanet\PIM\Classes\Mailer;
 use Areanet\PIM\Classes\Config\Adapter;
+use Areanet\PIM\Classes\Database\ConnectionDefaults;
 use Areanet\PIM\Classes\Kernel\Paths;
 use Areanet\PIM\Classes\Helper;
 use Areanet\PIM\Classes\Manager\ConsoleManager;
@@ -224,6 +225,8 @@ if($app['is_installed']) {
             'user'     => Adapter::getConfig()->DB_USER,
             'password' => Adapter::getConfig()->DB_PASS,
             'charset'  => Adapter::getConfig()->DB_CHARSET,
+            // Numbers from raw SQL stay strings, as on PHP 7.4 (000-000-0044).
+            'driverOptions' => ConnectionDefaults::driverOptions(),
             'defaultTableOptions' => array(
                 'charset' => Adapter::getConfig()->DB_CHARSET,
                 'collate' => Adapter::getConfig()->DB_COLLATE
@@ -540,7 +543,9 @@ $app['database'] = function ($app){
         'port'      => $config->DB_PORT,
         'host'      => $config->DB_HOST,
         'driver'    => 'pdo_mysql',
-        'charset'   => $config->DB_CHARSET
+        'charset'   => $config->DB_CHARSET,
+        // Same as $app['db']: numbers from raw SQL stay strings (000-000-0044).
+        'driverOptions' => ConnectionDefaults::driverOptions(),
     );
 
     return  DriverManager::getConnection($connectionParams);

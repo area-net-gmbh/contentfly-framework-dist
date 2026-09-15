@@ -2,6 +2,7 @@
 namespace Areanet\PIM\Command;
 
 use Areanet\PIM\Classes\Config\Adapter;
+use Areanet\PIM\Classes\Database\ConnectionDefaults;
 use Doctrine\ORM\Tools\SchemaTool;
 use Areanet\PIM\Classes\Kernel\Command;
 use Areanet\PIM\Classes\Kernel\Paths;
@@ -236,6 +237,7 @@ class InstallCommand extends Command
                 'password' => $db['pass'],
                 'charset'  => Adapter::getConfig()->DB_CHARSET,
                 'collate'  => Adapter::getConfig()->DB_COLLATE,
+                'driverOptions' => ConnectionDefaults::driverOptions(),
             )));
         };
 
