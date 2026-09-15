@@ -51,7 +51,7 @@ final class EntityManagerFactory
      * @param Connection            $connection   the DBAL connection, today `$app['dbs']['pim']`
      * @param array<int,array{namespace:string,path:string}> $mappings namespace → directory
      * @param string                $proxyDir     directory for the generated proxies
-     * @param bool                  $autoGenerateProxies
+     * @param int                   $autoGenerateProxies a ProxyFactory::AUTOGENERATE_* mode, see ProxyGeneration
      * @param array<string,string>  $numericFunctions  custom DQL functions
      * @param CacheItemPoolInterface|null $queryCache  PSR-6 pool, or null for no cache
      * @param CacheItemPoolInterface|null $metadataCache ditto
@@ -60,7 +60,7 @@ final class EntityManagerFactory
         Connection $connection,
         array $mappings,
         string $proxyDir,
-        bool $autoGenerateProxies,
+        int $autoGenerateProxies,
         array $numericFunctions = array(),
         ?CacheItemPoolInterface $queryCache = null,
         ?CacheItemPoolInterface $metadataCache = null

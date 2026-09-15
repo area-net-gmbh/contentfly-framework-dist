@@ -92,9 +92,11 @@ class Config{
     public $DB_ID_INTEGER_TYPE  = 'integer';
 
     /**
-     * @var boolean Doctrine generates proxy classes automatically at runtime
+     * @var bool|int When Doctrine writes its proxy classes: true = on every request, false = never (run
+     *               orm:generate-proxies on deployment), or a ProxyFactory::AUTOGENERATE_* constant.
+     *               Default: only when a proxy is missing or its entity changed (000-000-0047).
      */
-    public $APP_AUTOGENERATE_PROXIES = true;
+    public $APP_AUTOGENERATE_PROXIES = \Areanet\PIM\Classes\ORM\ProxyGeneration::DEFAULT;
 
     /**
      * @var boolean Enable Schema Cache

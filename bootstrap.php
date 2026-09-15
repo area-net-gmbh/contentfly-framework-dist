@@ -65,6 +65,7 @@ use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Auth;
 use Areanet\PIM\Classes\Mailer;
 use Areanet\PIM\Classes\Config\Adapter;
+use Areanet\PIM\Classes\ORM\ProxyGeneration;
 use Areanet\PIM\Classes\Database\ConnectionDefaults;
 use Areanet\PIM\Classes\Kernel\Paths;
 use Areanet\PIM\Classes\Helper;
@@ -414,7 +415,8 @@ if($app['is_installed']) {
                 array('namespace' => 'Custom\Entity',       'path' => Paths::projectEntities()),
             ),
             Paths::data() . '/cache/doctrine',
-            (bool) Adapter::getConfig()->APP_AUTOGENERATE_PROXIES,
+            // Not (bool): that turned the default `true` into regeneration on every request (000-000-0047).
+            ProxyGeneration::mode(Adapter::getConfig()->APP_AUTOGENERATE_PROXIES),
             array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet'),
             $queryCache,
             $metadataCache
