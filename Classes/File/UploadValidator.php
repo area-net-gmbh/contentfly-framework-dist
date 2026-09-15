@@ -57,12 +57,36 @@ class UploadValidator
      *         type — detected from the file when a whitelist applies, otherwise the client's
      *         statement as before (it only selects the image processor, it grants nothing).
      *
-     * @throws ContentflyException 400 without a file, 415 for a name or type that is not accepted
+     * @throws ContentflyException 400 without a file, 413 for a file over the size limit, 415 for a
+     *         name or type that is not accepted
      */
     public function validate(?UploadedFile $file): array
     {
+        /*
+         * PHP'S OWN LIMIT IS NAMED, NOT REPORTED AS A MISSING FILE (000-000-0042).
+         *
+         * Over `upload_max_filesize` PHP keeps no temporary file, and the check below answered 400
+         * "missing params" — the client learned nothing. The value is PHP's limit as configured.
+         */
+        if ($file instanceof UploadedFile && in_array($file->getError(), array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+            throw new ContentflyException(Messages::contentfly_file_too_large, ini_get('upload_max_filesize'), 413);
+        }
+
         if (!$file instanceof UploadedFile || !is_file($file->getPathname())) {
             throw new ContentflyException(Messages::contentfly_general_missing_params, 'file', 400);
+        }
+
+        /*
+         * THE APPLICATION'S LIMIT, BEFORE ANYTHING ELSE IS READ (000-000-0042).
+         *
+         * `upload_max_filesize` belongs to the server, and a shared PHP pool rarely has the limit an
+         * application wants. Existing projects set `FILE_MAX_UPLOAD_SIZE` as a patch to their framework
+         * copy (UFP: 20 MB), which went away with `lib/`. Checked on the size of the stored temporary
+         * file, not on the size the client reports.
+         */
+        $limit = $this->maxSize();
+        if ($limit !== null && filesize($file->getPathname()) > $limit) {
+            throw new ContentflyException(Messages::contentfly_file_too_large, $limit, 413);
         }
 
         $name      = $this->normalizeName($file->getClientOriginalName());
@@ -174,6 +198,30 @@ class UploadValidator
      *
      * @return array<string, list<string>>|null
      */
+    /**
+     * `FILE_MAX_UPLOAD_SIZE` in bytes, or null for no limit of the application's own.
+     *
+     * A numeric string counts, because the template reads the value from the environment. Anything
+     * else is a configuration error and says so, instead of silently allowing every size.
+     */
+    private function maxSize(): ?int
+    {
+        $configured = Adapter::getConfig()->FILE_MAX_UPLOAD_SIZE;
+
+        if ($configured === null || $configured === '' || $configured === false) {
+            return null;
+        }
+
+        if ((is_int($configured) || (is_string($configured) && ctype_digit($configured))) && (int) $configured > 0) {
+            return (int) $configured;
+        }
+
+        throw new \RuntimeException(sprintf(
+            'FILE_MAX_UPLOAD_SIZE must be a positive number of bytes or null, got %s.',
+            var_export($configured, true)
+        ));
+    }
+
     private function allowedTypes(): ?array
     {
         $configured = Adapter::getConfig()->FILE_ALLOWED_TYPES;

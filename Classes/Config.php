@@ -386,6 +386,13 @@ class Config{
     public $FILE_ALLOWED_TYPES = null;
 
     /**
+     * @var int|null Largest accepted upload in bytes, checked by `Classes\File\UploadValidator` before
+     *               anything is stored (413). null = only PHP's `upload_max_filesize` applies
+     *               (000-000-0042).
+     */
+    public $FILE_MAX_UPLOAD_SIZE = null;
+
+    /**
      * @var integer Quality, 0..100 / 100 = no compression
      */
     public $FILE_IMAGE_QUALITY_JPEG = 90;
