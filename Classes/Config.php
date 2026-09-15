@@ -195,7 +195,13 @@ class Config{
     public $APP_CS_POLICY        = "default-src 'self' 'unsafe-inline' 'unsafe-eval'  https://maxcdn.bootstrapcdn.com;";
 
     /**
-     * @var string Allow CORS '*' or 'domain.de'
+     * @var string|array<int,string>|null The origins a browser client may call the API from —
+     *      exact values such as `https://app.example.com` or `capacitor://localhost`, as an array
+     *      or a comma-separated string. `*` allows any origin, but without credentials.
+     *
+     * null (the default) allows no foreign origin: `Access-Control-Allow-Origin` is not sent.
+     * Until 000-000-0039 this field was never read, and every origin was allowed with credentials.
+     * See Classes/Security/CorsPolicy.
      */
     public $APP_ALLOW_ORIGIN        = null;
 
