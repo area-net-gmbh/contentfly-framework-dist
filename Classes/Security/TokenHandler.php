@@ -229,6 +229,24 @@ final class TokenHandler implements AccessTokenHandlerInterface
      */
     private function fromDatabase(string $token): UserBadge
     {
+        /*
+         * NO THROTTLE WHEN A TOKEN IS PRESENTED — decided, not inherited (000-000-0030).
+         *
+         * The `LoginThrottle` from 013-001-0003 guards the login, not this path. For an opaque
+         * token that is deliberate:
+         *
+         *   - Guessing online is out of reach for what `addToken` now accepts: a generated value
+         *     has 512 bits, a supplied one clears a floor of 32 characters. A throttle protects a
+         *     space that can be searched; this one cannot be, within any request budget.
+         *   - A throttle keyed on the IP would sit in front of every API request. Behind a shared
+         *     proxy or NAT, a misconfigured client would lock out every other client of the same
+         *     address — an availability risk traded for a guessing risk that no longer exists.
+         *   - A failed lookup costs one indexed query on the hash, the same as a successful one.
+         *
+         * What the floor does not cover — a value chosen weak on purpose that still passes — no
+         * throttle would cover either: it is reversed offline from a table dump, not guessed here.
+         */
+
         $row = $this->em->getRepository(Token::class)->findOneBy(
             array('token' => Token::hash($token))
         );
@@ -284,6 +302,19 @@ final class TokenHandler implements AccessTokenHandlerInterface
      *
      * A token with a `referrer` is an API token and does not expire; and the operator can switch the
      * check off entirely. Both have always been this way.
+     *
+     * ── No expiry for API tokens — decided, not inherited (000-000-0030) ──────────────────
+     *
+     * Finding A-5 named "never expires" as a weakness. An expiry was considered and rejected:
+     *
+     *   - An API token sits in the configuration of another system. A deadline would stop that
+     *     integration on a date nobody watches — the failure would be an outage, not a message.
+     *   - An expiry is not this timeout. The sliding expiration here is about inactivity; an
+     *     optional deadline set at creation would be a second mechanism, with a column and a check
+     *     of its own, for a case nobody has asked for.
+     *   - Guessing is no longer the risk: `addToken` generates the value or requires a floor. What
+     *     remains is a leaked token, and for that there is revocation — `deleteToken` works since
+     *     000-000-0015 and takes effect immediately, a deadline only eventually.
      */
     public static function timeoutApplies(Token $row): bool
     {
