@@ -356,7 +356,21 @@ class Api
                         if(!empty($propertyConfig['i18n_universal']) && $propertyConfig['type'] != 'multijoin' && $propertyConfig['type'] != 'multifile' && empty($data[$property])){
                             $getter = 'get'.ucfirst($property);
                             $setter = 'set'.ucfirst($property);
-                            $object->$setter($mainLangObject->$getter());
+                            $value  = $mainLangObject->$getter();
+
+                            // A join to an i18n entity is bound to the language being written, as
+                            // JoinType::toDatabase() does on every other path (000-000-0025). Copied
+                            // as it is, the translation of a tree node would point to the parent in
+                            // the MAIN language — since the key of the relation carries `lang`,
+                            // that is a different row.
+                            if($value instanceof BaseI18n){
+                                $value = $this->em->getReference(
+                                    $this->em->getClassMetadata(get_class($value))->getName(),
+                                    array('id' => $value->getId(), 'lang' => $lang)
+                                );
+                            }
+
+                            $object->$setter($value);
                         }
                     }
                 }
