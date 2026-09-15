@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Areanet\PIM\Classes\Security\TrustedProxies;
+use Areanet\PIM\Classes\Security\CorsPolicy;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /*
@@ -193,8 +194,24 @@ $app->error(function (\Throwable $e) use($app) {
 
 $app->after(function (Request $request, Response $response) {
 
-    $response->headers->set('Access-Control-Allow-Origin', $request->headers->get('Origin'));
-    $response->headers->set('Access-Control-Allow-Credentials', Config\Adapter::getConfig()->APP_ALLOW_CREDENTIALS_SDK);
+    /*
+     * ONLY A CONFIGURED ORIGIN (000-000-0039).
+     *
+     * This used to copy the request's Origin into Allow-Origin, with credentials — every foreign
+     * page was allowed. The rule and the reasoning are in Classes/Security/CorsPolicy. `Vary:
+     * Origin` always: the answer now depends on the header, and a cache must not hand one
+     * origin's response to another.
+     */
+    $response->headers->set('Vary', 'Origin', false);
+
+    $allowedOrigin = CorsPolicy::allowedOrigin($request->headers->get('Origin'), Config\Adapter::getConfig()->APP_ALLOW_ORIGIN);
+    if ($allowedOrigin !== null) {
+        $response->headers->set('Access-Control-Allow-Origin', $allowedOrigin);
+
+        if ($allowedOrigin !== '*') {
+            $response->headers->set('Access-Control-Allow-Credentials', Config\Adapter::getConfig()->APP_ALLOW_CREDENTIALS_SDK);
+        }
+    }
 
     $response->headers->set('Access-Control-Allow-Headers', Config\Adapter::getConfig()->APP_ALLOW_HEADERS_SDK);
     $response->headers->set('Access-Control-Allow-Methods', Config\Adapter::getConfig()->APP_ALLOW_METHODS);
