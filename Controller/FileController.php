@@ -3,9 +3,11 @@ namespace Areanet\PIM\Controller;
 use Areanet\PIM\Classes\Config;
 use Areanet\PIM\Classes\Controller\BaseController;
 use Areanet\PIM\Classes\Event;
+use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\FileNotFoundException;
 use Areanet\PIM\Classes\File\Backend;
 use Areanet\PIM\Classes\File\Processing;
+use Areanet\PIM\Classes\File\UploadValidator;
 use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\Permission;
 use Areanet\PIM\Entity\File;
@@ -15,6 +17,7 @@ use DirectoryIterator;
 use Doctrine\ORM\Id\AssignedGenerator;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Exception;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -53,7 +56,19 @@ class FileController extends BaseController
         $file   = $request->files->get('file');
 
         /*
-         * The four values are read ONCE here, not 16 times in the body.
+         * CHECKED BEFORE ANYTHING IS WRITTEN (000-000-0038).
+         *
+         * Until here the stored name was built from the client's name, extension included — and
+         * `data/files/` is served straight from disk. An upload `probe-upload.php` was stored and
+         * executed on request (`EXECUTED-42`, measured 2026-09-15). The validator rejects such a
+         * name with 415 and builds the name that is stored; nothing below may fall back to the
+         * client's name. See Classes/File/UploadValidator.
+         */
+        $validator = new UploadValidator();
+        $upload    = $validator->validate($file instanceof UploadedFile ? $file : null);
+
+        /*
+         * The values are read ONCE here, not 16 times in the body.
          *
          * Up to Symfony 3.4, files->get() returned the raw $_FILES array, and the body
          * accessed it via $uploadName. That worked by accident: PHP 8.1 adds the key
@@ -65,22 +80,20 @@ class FileController extends BaseController
          * The mapping deliberately follows the old $_FILES entry word for word, so that the
          * behaviour does not change along the way:
          *
-         *   getClientOriginalName()  <- $_FILES['name']      name reported by the client
          *   getPathname()            <- $_FILES['tmp_name']  path of the temporary upload file
-         *   getClientMimeType()      <- $_FILES['type']      type reported by the client
          *   getSize()                <- $_FILES['size']      size
          *
-         * getClientMimeType() and NOT getMimeType(): the latter guesses the type from the
-         * content and would therefore return something different than before. What is needed
-         * here is the client's statement — the same one as before.
+         * NAME AND TYPE COME FROM THE VALIDATOR SINCE 000-000-0038, no longer from
+         * getClientOriginalName() and getClientMimeType() directly. The type stays the client's
+         * statement as long as no whitelist is configured — it only selects the image processor;
+         * with FILE_ALLOWED_TYPES it is detected from the content.
          *
          * These methods exist in HttpFoundation 4.4 just as in 7.4. After this, the body does
          * not see any Symfony at all, so it is not once again the spot that breaks during the
          * kernel swap (Epic 009).
          */
-        $uploadName    = $file->getClientOriginalName();
         $uploadTmpPath = $file->getPathname();
-        $uploadType    = $file->getClientMimeType();
+        $uploadType    = $upload['type'];
         $uploadSize    = $file->getSize();
 
         if(($request->request->all()["id"] ?? null)){
@@ -95,9 +108,7 @@ class FileController extends BaseController
                 if(Config\Adapter::getConfig()->DB_GUID_STRATEGY) $metadata->setIdGenerator(new AssignedGenerator());
                 $fileObject->setId(($request->request->all()["id"] ?? null));
 
-                $extension      = pathinfo($uploadName, PATHINFO_EXTENSION);
-                $baseFilename   = pathinfo($uploadName, PATHINFO_FILENAME);
-                $filename       = $this->sanitizeFileName($baseFilename) . "." . $extension;
+                $filename       = $upload['name'];
                 $fileObject->setName($filename);
 
                 //AUDIT
@@ -110,6 +121,19 @@ class FileController extends BaseController
                 $this->em->flush();
             }else{
                 $filename = $fileObject->getName();
+
+                // A name stored before 000-000-0038 may be one the web server executes. It does
+                // not survive a re-upload: the record gets the checked name, the old file goes.
+                if(!$validator->isAcceptableName((string) $filename)){
+                    $previous = (string) $filename;
+                    $filename = $upload['name'];
+                    $fileObject->setName($filename);
+
+                    $previousPath = Backend::getInstance()->getPath($fileObject).'/'.basename($previous);
+                    if($previous !== '' && is_file($previousPath)){
+                        unlink($previousPath);
+                    }
+                }
                 $log = new Log();
                 $log->setModelName('PIM\File');
                 $log->setUser($this->app['auth.user']);
@@ -166,9 +190,7 @@ class FileController extends BaseController
                 $height = null;
             }
 
-            $extension      = pathinfo($uploadName, PATHINFO_EXTENSION);
-            $baseFilename   = pathinfo($uploadName, PATHINFO_FILENAME);
-            $filename       = $this->sanitizeFileName($baseFilename) . "." . $extension;
+            $filename       = $upload['name'];
 
             if (!$fileObject) {
 
@@ -470,6 +492,12 @@ class FileController extends BaseController
             throw new FileNotFoundException(Messages::contentfly_general_not_found);
         }
 
+        // Both names are stored ones and equal. One from before 000-000-0038 may be executable;
+        // overwrite moves files under that name, so it is refused rather than carried along.
+        if(!(new UploadValidator())->isAcceptableName((string) $fileDest->getName())){
+            throw new ContentflyException(Messages::contentfly_file_invalid_type, $fileDest->getName(), 415);
+        }
+
         $backend    = Backend::getInstance();
 
         //Delete old data
@@ -515,19 +543,4 @@ class FileController extends BaseController
         return new JsonResponse(array('message' => 'File overwritten', 'sourceId' => $sourceId, 'destId' => $destId));
     }
 
-
-    protected function sanitizeFileName($string, $force_lowercase = true, $anal = false): array|false|string|null
-    {
-        $strip = array("~", "`", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "=", "+", "[", "{", "]",
-            "}", "\\", "|", ";", ":", "\"", "'", "&#8216;", "&#8217;", "&#8220;", "&#8221;", "&#8211;", "&#8212;",
-            "â€”", "â€“", ",", "<", ".", ">", "/", "?");
-        $clean = trim(str_replace($strip, "", strip_tags($string)));
-        $clean = preg_replace('/\s+/', "-", $clean);
-        $clean = ($anal) ? preg_replace("/[^a-zA-Z0-9]/", "", $clean) : $clean ;
-        return ($force_lowercase) ?
-            (function_exists('mb_strtolower')) ?
-                mb_strtolower($clean, 'UTF-8') :
-                strtolower($clean) :
-            $clean;
-    }
 }

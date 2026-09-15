@@ -9,6 +9,8 @@ namespace Areanet\PIM\Classes;
 class Messages
 {
     const contentfly_general_access_denied              = 'contentfly_general_access_denied';
+    // An upload whose name or content type is not accepted (000-000-0038).
+    const contentfly_file_invalid_type                  = 'contentfly_file_invalid_type';
     const contentfly_general_admin_not_deletable        = 'contentfly_general_admin_not_deletable';
     const contentfly_general_filesize_not_found         = 'contentfly_general_filesize_not_found';
     const contentfly_general_invalid_base_entity        = 'contentfly_general_invalid_base_entity';

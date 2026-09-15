@@ -349,6 +349,17 @@ class Config{
     public $FILE_HASH_MUST_UNIQUE = false;
 
     /**
+     * @var array<string, list<string>>|null Optional whitelist for uploads: extension => content
+     *      types it may carry, e.g. `array('png' => array('image/png'), 'pdf' => array('application/pdf'))`.
+     *
+     * null (the default) accepts every name that passes the floor in
+     * `Classes\File\UploadValidator` — which always rejects executable extensions and server
+     * configuration names, whatever is set here. When set, the extension has to be listed and the
+     * type detected from the file's content has to match (000-000-0038).
+     */
+    public $FILE_ALLOWED_TYPES = null;
+
+    /**
      * @var integer Quality, 0..100 / 100 = no compression
      */
     public $FILE_IMAGE_QUALITY_JPEG = 90;
