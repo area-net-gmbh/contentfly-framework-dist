@@ -45,9 +45,7 @@ class LoadMetadata
 {
     public function loadClassMetadata(\Doctrine\ORM\Event\LoadClassMetadataEventArgs $eventArgs): void
     {
-        $em             = $eventArgs->getEntityManager();
         $classMetadata  = $eventArgs->getClassMetadata();
-        $className      = $classMetadata->getName();
 
         /*
          * Trees have been excluded for as long as the listener has existed: `BaseTree` and
@@ -66,6 +64,15 @@ class LoadMetadata
         $cmBuilder = new ClassMetadataBuilder($classMetadata);
         $cmBuilder->addIndex(array('modified'), 'modified_index');
 
-        $em->getMetadataFactory()->setMetadataFor($className, $classMetadata);
+        /*
+         * NOTHING IS WRITTEN BACK (000-000-0031).
+         *
+         * This used to end with `$em->getMetadataFactory()->setMetadataFor($className,
+         * $classMetadata)`. doctrine/persistence 4.2 deprecated that method, and the deprecation
+         * gate turned red. The event hands over the very instance the factory is building and
+         * stores afterwards; the builder changes it in place. Measured on a fresh installation:
+         * without the call the same 15 tables carry `modified_index`, and the schema dump is
+         * identical.
+         */
     }
 }
