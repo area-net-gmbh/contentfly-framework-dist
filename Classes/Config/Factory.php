@@ -42,6 +42,17 @@ class Factory{
     }
 
     /**
+     * Whether a configuration has been set at all (000-000-0024).
+     *
+     * `getConfig()` cannot be asked that: without a default it reads an undefined key and returns
+     * null. `Kernel\Start` needs the answer when the start fails before `custom/config.php` ran.
+     */
+    public function hasConfig(): bool
+    {
+        return isset($this->configSettings['default']);
+    }
+
+    /**
      * @param Config $config Config-Settings
      */
     public function setConfig(Config $config): void

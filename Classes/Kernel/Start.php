@@ -35,12 +35,31 @@ final class Start
 {
     /**
      * The web entry. Does not return — the bootstrap ends with `$app->run()`.
+     *
+     * ── A failure before the kernel still gets a response (000-000-0024) ──────────────────
+     *
+     * Whatever the bootstrap throws before `$app->run()` reaches no error handler: the
+     * `$app->error()` handler is a `kernel.exception` listener, and the kernel does not exist yet.
+     * PHP then ended the request with HTTP 500 and a body of 0 bytes — the message was in the
+     * server log and nowhere else. Measured with `APP_CACHE_DRIVER = 'apc'`.
+     *
+     * A misconfiguration is the normal case while setting up an instance, and on a host without
+     * access to the server log an empty 500 cannot be diagnosed at all.
+     *
+     * The catch sits HERE and not in the bootstrap because this is the one place that encloses
+     * all of it: the checks in `prepare()` and every line of `bootstrap.php`. Once the kernel
+     * runs, it catches every throwable itself; what still arrives here afterwards is a failure of
+     * the error handling itself, and it gets the same answer.
      */
     public static function web(string $project): void
     {
-        self::prepare($project);
+        try {
+            self::prepare($project);
 
-        require Paths::package() . '/bootstrap-web.php';
+            require Paths::package() . '/bootstrap-web.php';
+        } catch (\Throwable $e) {
+            self::respondToStartupFailure($e, $project);
+        }
     }
 
     /**
@@ -142,6 +161,101 @@ final class Start
             $configuration,
             Paths::project()
         ));
+    }
+
+    /**
+     * The response to a failure before the kernel (000-000-0024).
+     *
+     * **The same shape as every other error response** — `message`, `type`, `status`, and
+     * `debug` only with `APP_DEBUG` (compare the `$app->error()` handler in `bootstrap-web.php`).
+     * A client that reads error responses needs no second case for this one. The body is JSON in
+     * debug mode too.
+     *
+     * **Only in a web SAPI.** On the command line the exception is thrown on: there an uncaught
+     * exception with its message on `stderr` already is the right behaviour, and `StartTest`
+     * checks the abort paths exactly that way. The built-in server reports `cli-server`, not `cli`,
+     * and therefore gets the response.
+     *
+     * **The message goes to the log first.** Until now PHP wrote the uncaught exception there by
+     * itself; a caught one it does not. Without `error_log()` this change would have taken the
+     * message out of the log — and without debug output the operator would have lost its details.
+     *
+     * **Without `APP_DEBUG` the body names no directory.** Some messages of this class name the
+     * project directory on purpose — for the operator, who reads them in the log. In the body both
+     * directories are replaced by a placeholder; file, line and trace only come with debug mode.
+     *
+     * **Once headers are out, nothing can be answered.** The exception is then thrown on, and PHP
+     * behaves as before.
+     */
+    private static function respondToStartupFailure(\Throwable $e, string $project): void
+    {
+        if (PHP_SAPI === 'cli' || headers_sent()) {
+            throw $e;
+        }
+
+        error_log(sprintf('Contentfly cannot start: %s: %s in %s:%d', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine()));
+
+        $debug = self::debugEnabled();
+
+        $data = array(
+            'message' => $debug ? $e->getMessage() : self::withoutDirectories($e->getMessage(), $project),
+            'type'    => get_class($e),
+            'status'  => 500,
+        );
+
+        if ($debug) {
+            $data['debug'] = array(
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'trace' => explode("\n", $e->getTraceAsString()),
+            );
+        }
+
+        http_response_code(500);
+        header('Content-Type: application/json');
+
+        echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    /**
+     * Whether debug output is allowed — even if the configuration never loaded.
+     *
+     * A failure in `prepare()` happens BEFORE `custom/config.php` is read. What remains then is the
+     * environment variable the template reads as well. Without either the answer is no: a start
+     * that failed is no reason to reveal more than usual.
+     */
+    private static function debugEnabled(): bool
+    {
+        $factory = \Areanet\PIM\Classes\Config\Factory::getInstance();
+
+        if ($factory->hasConfig()) {
+            return (bool) \Areanet\PIM\Classes\Config\Adapter::getConfig()->APP_DEBUG;
+        }
+
+        $env = $_ENV['APP_DEBUG'] ?? getenv('APP_DEBUG');
+
+        return is_string($env) && filter_var($env, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * The message with the project and package directory replaced by placeholders.
+     *
+     * Only the two directories this class knows are replaced — as given by the entry point and as
+     * resolved. A general pattern for "looks like a path" would also hit route names such as
+     * `/api/config`.
+     */
+    private static function withoutDirectories(string $message, string $project): string
+    {
+        $replacements = array(Paths::package() => '<package>');
+
+        foreach (array($project, realpath($project) ?: $project) as $directory) {
+            if ($directory !== '') {
+                $replacements[rtrim($directory, '/')] = '<project>';
+            }
+        }
+
+        // strtr() tries the longest key first — the package usually lives INSIDE the project.
+        return strtr($message, $replacements);
     }
 
     /**
