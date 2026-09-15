@@ -7,7 +7,25 @@ use PHPMailer\PHPMailer\PHPMailer;
 /**
  * Class Config
  * @package Areanet\PIM\Classes
+ *
+ * ── Projects add keys of their own — and may (000-000-0040) ─────────────────────────
+ *
+ * `custom/config.php` has always set keys that are not declared here: SMTP settings, OAuth
+ * endpoints, frontend URLs. The existing project UFP sets 35 of them. Up to PHP 8.1 that was plain
+ * PHP; since 8.2 every dynamic property is deprecated.
+ *
+ * The deprecation is not noise in a log. `custom/config.php` runs BEFORE the bootstrap sets
+ * `display_errors`, so on a server without a php.ini that turns it off — the official php images have
+ * none — PHP writes one HTML block per key in front of the JSON. Measured at UFP (007-005-0003):
+ * `/api/v2/core/config` answered 200 with `text/html` and 35 `Deprecated` blocks. It would also turn
+ * every project's deprecation gate red.
+ *
+ * DECIDED ON 2026-09-15: own keys are allowed, explicitly. Not chosen: a subclass per project that
+ * declares its keys — a migration step that protects nothing, since a key a project sets and reads
+ * itself cannot collide with the framework's, and misspelling one of the framework's keys is not
+ * caught by declaring the project's either.
  */
+#[\AllowDynamicProperties]
 class Config{
     /**
      * Hostname for config settings
