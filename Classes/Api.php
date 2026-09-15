@@ -2,6 +2,7 @@
 namespace Areanet\PIM\Classes;
 
 
+use Areanet\PIM\Classes\Type\UntypedColumn;
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Kernel\Paths;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
@@ -1688,14 +1689,11 @@ class Api
                  * anything in production.
                  */
                 if (empty($properties[$prop->getName()]) && isset($allPropertyAnnotations['Doctrine\\ORM\\Mapping\\Column'])) {
-                    trigger_error(
-                        sprintf(
-                            'No Contentfly type matches %s::%s (column type "%s") — the field is missing from the API schema.',
-                            $entityName,
-                            $prop->getName(),
-                            $allPropertyAnnotations['Doctrine\\ORM\\Mapping\\Column']->type
-                        ),
-                        E_USER_WARNING
+                    // Binary columns are left out without a warning (000-000-0046), see UntypedColumn.
+                    UntypedColumn::report(
+                        $entityName,
+                        $prop->getName(),
+                        $allPropertyAnnotations['Doctrine\\ORM\\Mapping\\Column']->type
                     );
                 }
 
