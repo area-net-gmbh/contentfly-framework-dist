@@ -79,6 +79,7 @@ use Areanet\PIM\Command\SetupCommand;
 use Areanet\PIM\Command\ProviderSyncCommand;
 use Areanet\PIM\Command\ReencryptCommand;
 use Areanet\PIM\Command\TokenCleanupCommand;
+use Areanet\PIM\Command\RelocateFilesCommand;
 use Areanet\PIM\Classes\ORM\EntityManagerFactory;
 use Symfony\Component\Cache\Adapter\ApcuAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
@@ -526,6 +527,7 @@ $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app)
         $console->addCommand(new TokenCleanupCommand());
         $console->addCommand(new ReencryptCommand());
         $console->addCommand(new ProviderSyncCommand());
+        $console->addCommand(new RelocateFilesCommand());
     });
     return $dispatcher;
 });
