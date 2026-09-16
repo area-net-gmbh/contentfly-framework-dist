@@ -166,10 +166,14 @@ final class Start
     /**
      * The response to a failure before the kernel (000-000-0024).
      *
-     * **The same shape as every other error response** — `message`, `type`, `status`, and
-     * `debug` only with `APP_DEBUG` (compare the `$app->error()` handler in `bootstrap-web.php`).
-     * A client that reads error responses needs no second case for this one. The body is JSON in
-     * debug mode too.
+     * **The same shape as every other error response** — `data`, `errors`, `meta`, built by the
+     * same `Classes\Envelope` as the `$app->error()` handler in `bootstrap-web.php`
+     * (`011-001-0003`; before that it was `message`, `type`, `status`). A client that reads error
+     * responses needs no second case for this one. The body is JSON in debug mode too.
+     *
+     * **`meta.version` is `null` here, and rightly so.** This answer comes before `version.php` has
+     * been read — at that point nobody knows which version could not start. `Envelope` reads both
+     * constants defensively for exactly this caller.
      *
      * **Only in a web SAPI.** On the command line the exception is thrown on: there an uncaught
      * exception with its message on `stderr` already is the right behaviour, and `StartTest`
@@ -197,24 +201,27 @@ final class Start
 
         $debug = self::debugEnabled();
 
-        $data = array(
-            'message' => $debug ? $e->getMessage() : self::withoutDirectories($e->getMessage(), $project),
-            'type'    => get_class($e),
-            'status'  => 500,
-        );
+        $meta = $debug ? array('debug' => array(
+            'file'  => $e->getFile(),
+            'line'  => $e->getLine(),
+            'trace' => explode("\n", $e->getTraceAsString()),
+        )) : array();
 
-        if ($debug) {
-            $data['debug'] = array(
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine(),
-                'trace' => explode("\n", $e->getTraceAsString()),
-            );
-        }
+        // Without debug the message is stripped of directories — but it stays the message; the
+        // entry is built like every other one, so that the four keys are decided in one place.
+        $entry = \Areanet\PIM\Classes\Envelope::fault(
+            null,
+            $debug ? $e->getMessage() : self::withoutDirectories($e->getMessage(), $project),
+            get_class($e)
+        );
 
         http_response_code(500);
         header('Content-Type: application/json');
 
-        echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        echo json_encode(
+            \Areanet\PIM\Classes\Envelope::failure(array($entry), null, $meta),
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+        );
     }
 
     /**

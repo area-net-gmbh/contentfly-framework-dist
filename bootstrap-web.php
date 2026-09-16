@@ -5,8 +5,7 @@ use Areanet\PIM\Classes\Controller\Provider\Base\ApiControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\AuthControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\FileControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\SystemControllerProvider;
-use Areanet\PIM\Classes\Exceptions\ContentflyException;
-use Areanet\PIM\Classes\Exceptions\ContentflyI18NException;
+use Areanet\PIM\Classes\Envelope;
 use Areanet\PIM\Classes\Exceptions\FileNotFoundException;
 use Areanet\PIM\Classes\Config;
 use Symfony\Component\HttpFoundation\AcceptHeader;
@@ -170,24 +169,33 @@ $app->error(function (\Throwable $e) use($app) {
             ? $code
             : ($e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500);
 
-        if($e instanceof ContentflyException){
-            $data = array('message' => $e->getMessage(), 'type' => get_class($e), 'message_value' => $e->getValue(), 'status' => $e->getCode());
-        }elseif($e instanceof ContentflyI18NException){
-            $data = array('message' => $e->getMessage(), 'type' => get_class($e), 'message_entity' => $e->getEntity(), 'message_lang' => $e->getLang(), 'status' => $e->getCode());
-        }else{
-            // "status" => ..., not $e->getCode() ?: 500 as a keyless third entry: that used to be
-            // here and ended up as "0": 500 in the response. For everything that is neither a
-            // ContentflyException nor a ContentflyI18NException — i.e. for every PHP error — the
-            // status code in the body was named differently than in the two branches above
-            // (000-000-0006).
-            $data = array("message" => $e->getMessage(), "type" => get_class($e), "status" => $status);
-        }
+        /*
+         * THE SAME HULL AS ON SUCCESS (011-001-0003).
+         *
+         * Three branches stood here, and each built its own body: `message` and `type` everywhere,
+         * `message_value` only for a ContentflyException, `message_entity`/`message_lang` only for
+         * a ContentflyI18NException. WHICH KEYS ARRIVED DEPENDED ON THE EXCEPTION CLASS — so a
+         * client had to know the framework's exceptions in order to read an error at all. And the
+         * error shape was the eighth beside the seven success shapes.
+         *
+         * Now: `data` is null, `errors` a list, `meta` the same as everywhere. The entry is built
+         * by `Envelope::entry()`, with four fixed keys; the branches moved there, where there is
+         * one of them per piece of information instead of one per body.
+         *
+         * `status` is gone from the body. It is in the HTTP response, `000-000-0006` put it right
+         * there, and a body that repeats it invites the two to disagree — which is exactly what
+         * happened before that task: for a ContentflyException the body named `getCode()` and the
+         * response named something else.
+         *
+         * The trace goes to `meta.debug`, because it describes THIS ANSWER, not the fault: the
+         * same place `ts` and `hash` live. As before, only with APP_DEBUG.
+         */
+        $meta = Config\Adapter::getConfig()->APP_DEBUG ? array('debug' => $e->getTrace()) : array();
 
-        if(Config\Adapter::getConfig()->APP_DEBUG){
-            $data['debug'] = $e->getTrace();
-        }
-
-        return $app->json($data, $status);
+        return $app->json(
+            Envelope::failure(array(Envelope::entry($e)), Envelope::schemaHash($app), $meta),
+            $status
+        );
     }
 
 });

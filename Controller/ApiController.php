@@ -5,6 +5,7 @@ use Areanet\PIM\Classes\Annotations\ManyToMany;
 use Areanet\PIM\Classes\Api;
 use \Areanet\PIM\Classes\Config;
 use Areanet\PIM\Classes\Controller\BaseController;
+use Areanet\PIM\Classes\Envelope;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\Entity\EntityDuplicateException;
 use Areanet\PIM\Classes\Exceptions\Entity\EntityNotFoundException;
@@ -751,23 +752,19 @@ class ApiController extends BaseController
      * instead of one string, because a client that wants to compare versions should not have to
      * split one.
      *
+     * The hull itself is built by `Classes\Envelope`, because the ERROR path builds the same one
+     * (`011-001-0003`) — in `bootstrap-web.php`, far away from here. Two copies of the meta would
+     * drift, and then a client would after all have to know beforehand which kind of answer it has.
+     *
      * @param mixed $data the payload as the endpoint's row in api-envelope.md describes it
      * @param array<string,mixed> $meta what this endpoint adds to the standard meta
      */
     protected function renderResponse(mixed $data = null, int $status = 200, array $meta = array()): JsonResponse
     {
-        $currentDate = new \DateTime();
-
-        return new JsonResponse(array(
-            'data'   => $data,
-            'errors' => null,
-            'meta'   => array_merge(array(
-                'ts'             => $currentDate->format('Y-m-d H:i:s'),
-                'version'        => APP_VERSION,
-                'projectVersion' => CUSTOM_VERSION,
-                'hash'           => $this->app['schema']['_hash'],
-            ), $meta),
-        ), $status);
+        return new JsonResponse(
+            Envelope::success($data, Envelope::schemaHash($this->app), $meta),
+            $status
+        );
     }
 
     /**

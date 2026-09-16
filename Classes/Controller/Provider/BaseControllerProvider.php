@@ -2,6 +2,8 @@
 namespace Areanet\PIM\Classes\Controller\Provider;
 
 use Areanet\PIM\Classes\Config\Adapter;
+use Areanet\PIM\Classes\Envelope;
+use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 use Areanet\PIM\Classes\Kernel\ControllerProviderInterface;
 use Areanet\PIM\Entity\User;
@@ -57,10 +59,18 @@ abstract class BaseControllerProvider implements ControllerProviderInterface
             // Not installed: this used to redirect to the installer screen. That no longer
             // exists - installation happens on the command line. Instead of a redirect to
             // nowhere, we say what needs to be done.
+            //
+            // In the envelope since 011-001-0003, like every other error. This one throws no
+            // exception, so it names its own code — and it deserves one: "not installed" is a
+            // foreseeable state a client may well want to branch on, not an unforeseen fault.
             if (Adapter::getConfig()->DB_HOST == '$SET_DB_HOST') {
-                return new \Symfony\Component\HttpFoundation\JsonResponse(array(
-                    'message' => 'Contentfly is not installed. Run the installation: php bin/console.php appcms:install'
-                ), 503);
+                return new \Symfony\Component\HttpFoundation\JsonResponse(Envelope::failure(array(
+                    Envelope::fault(
+                        Messages::contentfly_general_not_installed,
+                        'Contentfly is not installed. Run the installation: php bin/console.php appcms:install',
+                        self::class
+                    ),
+                ), Envelope::schemaHash($app)), 503);
             }
 
             /*

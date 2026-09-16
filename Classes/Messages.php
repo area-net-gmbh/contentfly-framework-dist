@@ -22,6 +22,8 @@ class Messages
     const contentfly_general_invalid_gettersetter       = 'contentfly_general_invalid_gettersetter';
     const contentfly_general_missing_params             = 'contentfly_general_missing_params';
     const contentfly_general_not_found                  = 'contentfly_general_not_found';
+    // The installation has not been run — the guard in BaseControllerProvider (011-001-0003).
+    const contentfly_general_not_installed              = 'contentfly_general_not_installed';
     const contentfly_general_permission_denied          = 'contentfly_general_permission_denied';
     const contentfly_general_plugin_not_found           = 'contentfly_general_plugin_not_found';
     const contentfly_general_property_not_exists        = 'contentfly_general_property_not_exists';
