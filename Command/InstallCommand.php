@@ -257,7 +257,7 @@ class InstallCommand extends Command
                     array('namespace' => 'Areanet\PIM\Entity', 'path' => Paths::frameworkEntities()),
                     array('namespace' => 'Custom\Entity',       'path' => Paths::projectEntities()),
                 ),
-                Paths::data().'/cache/doctrine',
+                \Areanet\PIM\Classes\ORM\ProxyDirectory::path(Paths::data()),
                 \Areanet\PIM\Classes\ORM\ProxyGeneration::mode(Adapter::getConfig()->APP_AUTOGENERATE_PROXIES),
                 array('Find_In_Set' => '\Areanet\PIM\Classes\ORM\Query\Mysql\FindInSet')
             );
