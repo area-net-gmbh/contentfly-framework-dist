@@ -15,7 +15,6 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Areanet\PIM\Classes\Kernel\Paths;
@@ -92,9 +91,17 @@ class SystemController extends BaseController
             throw new \Exception('Method '.(is_string($method) ? $method : '').' is not available.');
         }
 
-        $date = new \DateTime();
-
-        return new JsonResponse(array('method' => $method, 'datetime' => $date->format('Y-m-d H:i:s'),  'message' => $this->$method($request) ));
+        /*
+         * 011-001-0004. `datetime` is gone, and nothing replaces it: `meta.ts` is the same value in
+         * the same format, and it is there in EVERY answer of the API. Two fields for one timestamp
+         * were one of the seven shapes this epic removes.
+         *
+         * `message` keeps its name although it rarely holds a message — it is the return value of
+         * the called method, sometimes a token, sometimes a list. Renaming it would be a second
+         * break in the same response for no gain; `an_project/docs/api-envelope.md` decided it that
+         * way.
+         */
+        return $this->renderResponse(array('method' => $method, 'message' => $this->$method($request)));
     }
 
     /**

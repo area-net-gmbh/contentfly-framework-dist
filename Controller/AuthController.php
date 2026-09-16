@@ -3,6 +3,7 @@ namespace Areanet\PIM\Controller;
 use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Event;
+use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\Controller\BaseController;
 use Areanet\PIM\Classes\Security\ExternalIdentity;
 use Areanet\PIM\Classes\Security\TokenHandler;
@@ -12,7 +13,6 @@ use Areanet\PIM\Entity\Token;
 use Areanet\PIM\Entity\User;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 
 
@@ -85,8 +85,9 @@ class AuthController extends BaseController
          * only says how long to wait — the legitimate user who mistyped three times is entitled to that.
          */
         if (($retryAfter = $throttle->retryAfter($identifier, $ip)) !== null) {
-            return new JsonResponse(
-                array('message' => 'Too many login attempts. Please try again later.'),
+            return $this->renderError(
+                Messages::contentfly_general_too_many_attempts,
+                'Too many login attempts. Please try again later.',
                 429,
                 array('Retry-After' => $retryAfter)
             );
@@ -102,7 +103,11 @@ class AuthController extends BaseController
         $reject = function ($message) use ($throttle, $identifier, $ip) {
             $throttle->recordFailure($identifier, $ip);
 
-            return new JsonResponse(array('message' => $message), 401);
+            // ONE CODE FOR ALL 401s of the login, and that is deliberate (011-001-0004): unknown
+            // user, wrong password, rejected provider — a client must not be able to tell them
+            // apart, or the answer becomes an oracle for which accounts exist. The wording of
+            // `detail` is already uniform for the same reason.
+            return $this->renderError(Messages::contentfly_general_invalid_credentials, $message, 401);
         };
 
         /*
@@ -245,8 +250,9 @@ class AuthController extends BaseController
              * nothing else. It says nothing about accounts, passwords or existing tokens — an attacker
              * only learns that this installation does not issue JWTs.
              */
-            return new JsonResponse(
-                array('message' => 'JWTs are not configured on this installation: SECURITY_JWT_SECRET is missing.'),
+            return $this->renderError(
+                Messages::contentfly_general_jwt_not_configured,
+                'JWTs are not configured on this installation: SECURITY_JWT_SECRET is missing.',
                 500
             );
         }
@@ -293,7 +299,6 @@ class AuthController extends BaseController
         $this->app['auth.user'] = $user;
 
         $response = array(
-            'message' => 'Login successful',
             // getPlaintext(), not getToken(): since 013-001-0004 the column only holds the hash. This is
             // the only place and the only moment at which the token itself leaves the system — after
             // that it only exists at the client.
@@ -314,18 +319,43 @@ class AuthController extends BaseController
             $response['expiresIn']    = $access['exp'] - time();
         }
 
+        /*
+         * `data` INSIDE `data` WOULD HAVE BEEN THE NAME (011-001-0004).
+         *
+         * What a project hands the client on login was called `data` at the top level of the
+         * response. Under the envelope that would read `body.data.data` — so it is now called what
+         * the entity field it comes from is called. Named in the register; it is one line for a
+         * client, the same as everything else in this response.
+         */
         if(($tempData = $user->getTempData())){
-            $response['data'] = $tempData;
+            $response['tempData'] = $tempData;
         }
 
+        $meta = array();
+
+        /*
+         * withSchema ANSWERS EXACTLY LIKE /api/schema (011-001-0004).
+         *
+         * Both used to hand over the whole `getExtendedSchema()` in one lump — but /api/schema
+         * moved with 011-001-0002: `data` is the entity map, the rights and the rest annotate it
+         * and sit in `meta`. If the split were different here, a client would need a second reader
+         * for the same schema depending on where it came from, which is the one thing this epic is
+         * about.
+         *
+         * `hash` is gone from here: `meta.hash` carries it in EVERY answer.
+         */
         if(($request->request->all()['withSchema'] ?? null)){
-            $api = new Api($this->app);
-            $response['schema'] = $api->getExtendedSchema();
-            $response['hash']   = $this->app['schema']['_hash'];
+            $api      = new Api($this->app);
+            $extended = $api->getExtendedSchema();
+
+            $response['schema']     = $extended['data'];
+            $meta['permissions']     = $extended['permissions'];
+            $meta['i18nPermissions'] = $extended['i18nPermissions'];
+            $meta['devmode']         = $extended['devmode'];
+            $meta['frontend']        = $extended['frontend'];
         }
 
-        return new JsonResponse($response);
-
+        return $this->renderResponse($response, 200, $meta);
     }
 
     /**
@@ -363,8 +393,9 @@ class AuthController extends BaseController
          * one place.
          */
         if (($retryAfter = $throttle->retryAfter(null, $ip)) !== null) {
-            return new JsonResponse(
-                array('message' => 'Too many login attempts. Please try again later.'),
+            return $this->renderError(
+                Messages::contentfly_general_too_many_attempts,
+                'Too many login attempts. Please try again later.',
                 429,
                 array('Retry-After' => $retryAfter)
             );
@@ -380,7 +411,7 @@ class AuthController extends BaseController
         $reject = function () use ($throttle, $ip) {
             $throttle->recordFailure(null, $ip);
 
-            return new JsonResponse(array('message' => 'Invalid refresh token.'), 401);
+            return $this->renderError(Messages::contentfly_general_invalid_refresh_token, 'Invalid refresh token.', 401);
         };
 
         $presented = ($request->request->all()['refreshToken'] ?? null);
@@ -413,8 +444,9 @@ class AuthController extends BaseController
         }
 
         if (!JwtAccessToken::isConfigured()) {
-            return new JsonResponse(
-                array('message' => 'JWTs are not configured on this installation: SECURITY_JWT_SECRET is missing.'),
+            return $this->renderError(
+                Messages::contentfly_general_jwt_not_configured,
+                'JWTs are not configured on this installation: SECURITY_JWT_SECRET is missing.',
                 500
             );
         }
@@ -443,8 +475,8 @@ class AuthController extends BaseController
 
         $access = JwtAccessToken::issue($user);
 
-        return new JsonResponse(array(
-            'message'      => 'Refresh successful',
+        // `message` is gone with 011-001-0004: the status code already says that it worked.
+        return $this->renderResponse(array(
             'token'        => $access['token'],
             'refreshToken' => $new->getPlaintext(),
             'expiresIn'    => $access['exp'] - time(),
@@ -523,6 +555,12 @@ class AuthController extends BaseController
         unset($this->app['auth.token']);
         unset($this->app['auth.user']);
 
-        return new JsonResponse(array('message' => 'Logout successful'));
+        /*
+         * NOTHING TO HAND BACK — so `data` is null (011-001-0004).
+         *
+         * It used to be `{"message": "Logout successful"}`, a sentence a client could only compare
+         * against verbatim. The `200` says it, and says it in a way that survives a translation.
+         */
+        return $this->renderResponse();
     }
 }

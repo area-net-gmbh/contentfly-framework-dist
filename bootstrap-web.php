@@ -6,7 +6,6 @@ use Areanet\PIM\Classes\Controller\Provider\Base\AuthControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\FileControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\SystemControllerProvider;
 use Areanet\PIM\Classes\Envelope;
-use Areanet\PIM\Classes\Exceptions\FileNotFoundException;
 use Areanet\PIM\Classes\Config;
 use Symfony\Component\HttpFoundation\AcceptHeader;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -113,9 +112,7 @@ if(Config\Adapter::getConfig()->APP_HTTP_AUTH_USER) {
  */
 $app->error(function (\Throwable $e) use($app) {
 
-    if($e instanceof FileNotFoundException){
-        return new Response($e->getMessage(), 404, array('X-Status-Code' => 404));
-    }else{
+    {
         // Not $app['request']: that is a Pimple service that freezes on first access and stays
         // null if the kernel has already cleared the request at this point — and then the error
         // handler dies of the very error it is supposed to report. Exactly this path let a

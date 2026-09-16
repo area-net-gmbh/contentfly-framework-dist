@@ -273,7 +273,8 @@ class FileController extends BaseController
         $this->app['dispatcher']->dispatch($event, 'pim.file.after.upload');
 
 
-        return new JsonResponse(array('message' => 'File uploaded', 'data' => $fileObject->toValueObject($this->app, 'PIM\\File')));
+        // 011-001-0004: `message` is gone — the 200 says it, and the file object is the payload.
+        return $this->renderResponse($fileObject->toValueObject($this->app, 'PIM\\File'));
     }
 
     /**
@@ -540,7 +541,8 @@ class FileController extends BaseController
         $this->em->persist($fileDest);
         $this->em->flush();
 
-        return new JsonResponse(array('message' => 'File overwritten', 'sourceId' => $sourceId, 'destId' => $destId));
+        // 011-001-0004: the two ids ARE what this endpoint has to say; `message` said it twice.
+        return $this->renderResponse(array('sourceId' => $sourceId, 'destId' => $destId));
     }
 
 }

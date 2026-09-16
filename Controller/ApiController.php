@@ -5,7 +5,6 @@ use Areanet\PIM\Classes\Annotations\ManyToMany;
 use Areanet\PIM\Classes\Api;
 use \Areanet\PIM\Classes\Config;
 use Areanet\PIM\Classes\Controller\BaseController;
-use Areanet\PIM\Classes\Envelope;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\Entity\EntityDuplicateException;
 use Areanet\PIM\Classes\Exceptions\Entity\EntityNotFoundException;
@@ -32,7 +31,6 @@ use Doctrine\ORM\Id\AssignedGenerator;
 use Doctrine\ORM\Query;
 
 use Symfony\Component\HttpFoundation\File\Exception\AccessDeniedException;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -730,41 +728,6 @@ class ApiController extends BaseController
 
         return $this->renderResponse(array('id' => $id));
 
-    }
-
-    /**
-     * The one envelope of the API: `data`, `errors`, `meta` (011-001-0002).
-     *
-     * WHY THIS IS THE ONLY PLACE. Every action used to hand in its own array and this method added
-     * `version` and `hash` to it — which is how seventeen answer points ended up with seven shapes:
-     * `ts` here, `lastModified` there, `id` beside `data`, `totalItems` between them, and the schema
-     * spread across the top level. A client needed one reader per endpoint. The shape is decided in
-     * `an_project/docs/api-envelope.md`; it is built here, so no action can invent another one.
-     *
-     * `data` and `errors` are always present. `errors` is null here because this method only answers
-     * success — the error path builds the same envelope in `bootstrap-web.php`. Everything that is
-     * not payload goes to `meta`: the timestamp, the two versions, the schema hash, and whatever an
-     * endpoint adds (`totalItems`, `itemsPerPage`, `lastModified`, `params`).
-     *
-     * `meta.version` is the FRAMEWORK version, `meta.projectVersion` the project's. Until now
-     * `/api/config` tried to deliver both as `2.0.0/0.0.0` and this method overwrote the key right
-     * after, so the project version never reached a client (found in `011-001-0001`). Two fields
-     * instead of one string, because a client that wants to compare versions should not have to
-     * split one.
-     *
-     * The hull itself is built by `Classes\Envelope`, because the ERROR path builds the same one
-     * (`011-001-0003`) — in `bootstrap-web.php`, far away from here. Two copies of the meta would
-     * drift, and then a client would after all have to know beforehand which kind of answer it has.
-     *
-     * @param mixed $data the payload as the endpoint's row in api-envelope.md describes it
-     * @param array<string,mixed> $meta what this endpoint adds to the standard meta
-     */
-    protected function renderResponse(mixed $data = null, int $status = 200, array $meta = array()): JsonResponse
-    {
-        return new JsonResponse(
-            Envelope::success($data, Envelope::schemaHash($this->app), $meta),
-            $status
-        );
     }
 
     /**
