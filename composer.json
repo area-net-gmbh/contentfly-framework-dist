@@ -3,7 +3,6 @@
     "description": "Contentfly — data storage and core functions as a library. Symfony 7.4, Doctrine ORM 3.",
     "type": "library",
     "license": "proprietary",
-    "version": "2.0.0",
     "require": {
         "php": "^8.3",
         "ext-openssl": "*",
@@ -84,9 +83,27 @@
             "The chain is shorter than it used to be: nothing caps from above any more. Whoever",
             "changes one of the three lines still checks the other two along with it.",
             "",
-            "THE VERSION IS HERE AND IN version.php. Two places are one too many, and that is",
-            "exactly why tests/Unit/Kernel/PackageManifestTest.php checks that they match — a",
-            "guarantee nobody checks is no guarantee."
+            "THE VERSION IS NOT HERE, AND THAT IS THE POINT (011-002-0003). Until then this",
+            "manifest carried a `version` field, and version.php carried the same number a",
+            "second time. It was there for the `path` repository of the development tree —",
+            "without it Composer derives a path package's version from the Git branch.",
+            "",
+            "IT MADE THE DELIVERY IMPOSSIBLE. Composer discards a tag whose composer.json",
+            "declares a DIFFERENT version than the tag itself. Measured on 2026-09-17: with",
+            "the field the tag v2.0.0 was seen and v2.0.0-rc1 was dropped without a word;",
+            "without it, both are seen. A pre-release tag is how this path gets proven before",
+            "a release version is decided — so the field went, and the TAG is now the single",
+            "source of the delivered version. That is Composer's own recommendation for",
+            "packages distributed through a VCS repository.",
+            "",
+            "The development tree keeps its stable version through the path repository's",
+            "`options.versions`, one level up — where it belongs: it is a statement about",
+            "this checkout, not about the package.",
+            "",
+            "version.php stays. It is what the APPLICATION reads at runtime (APP_VERSION),",
+            "and tools/ci/paket-veroeffentlichen.sh checks tag, version.php and the path",
+            "option against each other before it publishes — a guarantee nobody checks is",
+            "no guarantee."
         ]
     }
 }
