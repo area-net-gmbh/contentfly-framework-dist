@@ -367,8 +367,14 @@ class Api
 
             $object->setLang($lang);
 
-            $mainLang = is_array(Adapter::getConfig()->APP_LANGUAGES) ? Adapter::getConfig()->APP_LANGUAGES[0] : null;
-            if($lang != $mainLang && !empty($data['id'])){
+            /*
+             * Without configured languages there is no main language (000-000-0064). The default
+             * of APP_LANGUAGES is an EMPTY array, so is_array() was true and `[0]` raised
+             * "Undefined array key 0". Without a main language there is nothing to inherit the
+             * universal fields from — the translation carries exactly what was sent.
+             */
+            $mainLang = Adapter::getConfig()->APP_LANGUAGES[0] ?? null;
+            if($mainLang !== null && $lang != $mainLang && !empty($data['id'])){
                 $mainLangObject = $this->getSingle($entityShortName, $data['id'], null, $mainLang, true, null, null, true);
                 if($mainLangObject){
                     foreach($schema[$entityShortName]['properties'] as $property => $propertyConfig){
