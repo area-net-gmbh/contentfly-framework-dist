@@ -49,6 +49,7 @@ class Messages
     const contentfly_general_unknown_perror             = 'contentfly_general_unknown_perror';
     const contentfly_general_unknown_entity             = 'contentfly_general_unknown_entity';
     const contentfly_general_unknown_property           = 'contentfly_general_unknown_property';
+    const contentfly_general_invalid_sort_direction     = 'contentfly_general_invalid_sort_direction';
     const contentfly_general_unknown_plugin             = 'contentfly_general_unknown_plugin';
     const contentfly_general_unknown_type_object        = 'contentfly_general_unknown_type_object';
     const contentfly_general_use_plugin_register_method = 'contentfly_general_use_plugin_register_method';
@@ -59,6 +60,7 @@ class Messages
     const contentfly_i18n_translations_exists           = 'contentfly_i18n_translations_exists';
     const contentfly_i18n_undefined_languages           = 'contentfly_i18n_undefined_languages';
 
+    const contentfly_status_bad_request                 = 400;
     const contentfly_status_access_denied               = 403;
     const contentfly_status_invalid_token               = 401;
     const contentfly_status_not_found                   = 404;

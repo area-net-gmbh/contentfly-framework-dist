@@ -1366,15 +1366,29 @@ class Api
             ;
         }
 
+        /*
+         * Field names and the direction come from the request and go into DQL as text, so each
+         * must name a property of the entity (000-000-0063). They used to go in unchecked — DQL
+         * injection. An unknown name is rejected, not dropped: a sort or grouping the client
+         * asked for must not silently disappear.
+         */
         if($order !== null){
             foreach($order as $orderBy => $orderSort){
-                $queryBuilder->addOrderBy($entityNameAlias.'.'.$orderBy, $orderSort);
+                $this->assertProperty($entityShortName, $orderBy);
+
+                $direction = strtoupper((string) $orderSort);
+                if(!in_array($direction, array('ASC', 'DESC'), true)){
+                    throw new ContentflyException(Messages::contentfly_general_invalid_sort_direction, "$entityShortName::$orderBy", Messages::contentfly_status_bad_request);
+                }
+
+                $queryBuilder->addOrderBy($entityNameAlias.'.'.$orderBy, $direction);
             }
         }else{
             $queryBuilder->orderBy($entityNameAlias.'.id', 'DESC');
         }
 
         if($groupBy){
+            $this->assertProperty($entityShortName, $groupBy);
             $queryBuilder->groupBy($entityNameAlias.".".$groupBy);
         }
 
@@ -1766,6 +1780,10 @@ class Api
                 ->setParameter('id', $id);
         }elseif($where){
             foreach($where as $field => $value){
+                // The key is a field name that goes into DQL as text (000-000-0063). Rejected
+                // when unknown, not dropped: without the filter a DIFFERENT record comes back.
+                $this->assertProperty($entityShortName, $field);
+
                 $queryBuilder
                     ->andWhere("$entityNameAlias.$field = :$field")
                     ->setParameter($field, $value);
@@ -1949,6 +1967,19 @@ class Api
         return $returnObject ? $object : $object->toValueObject($this->app, $entityShortName, false);
     }
 
+    /**
+     * A field name from the request must name a property of the entity before it goes into DQL
+     * as text (000-000-0063).
+     *
+     * @throws ContentflyException
+     */
+    protected function assertProperty(string $entityShortName, mixed $field): void
+    {
+        if(!is_string($field) || !isset($this->app['schema'][$entityShortName]['properties'][$field])){
+            throw new ContentflyException(Messages::contentfly_general_unknown_property, $entityShortName.'::'.(is_scalar($field) ? $field : gettype($field)), Messages::contentfly_status_bad_request);
+        }
+    }
+
     protected function getTableName($entityName, $tablename){
 
         if(empty($this->app['schema'][$entityName])){
@@ -2072,6 +2103,15 @@ class Api
         }else{
             $queryBuilder->andWhere("$entityNameAlias.treeParent IS NULL");
         }
+
+        /*
+         * Only names of properties go into the partial select (000-000-0063); they used to go
+         * into DQL unchecked. Unknown ones are dropped — exactly what getList() has always done
+         * with its `properties`.
+         */
+        $properties = array_values(array_filter($properties, function($name) use ($schema, $entityShortName){
+            return is_string($name) && isset($schema[$entityShortName]['properties'][$name]);
+        }));
 
         if(count($properties)){
             $properties[] = 'id';
