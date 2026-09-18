@@ -2,7 +2,7 @@
     "name": "areanet/contentfly",
     "description": "Contentfly — data storage and core functions as a library. Symfony 7.4, Doctrine ORM 3.",
     "type": "library",
-    "license": "proprietary",
+    "license": "MIT",
     "require": {
         "php": "^8.3",
         "ext-openssl": "*",

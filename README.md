@@ -51,4 +51,4 @@ existed inside one container.
 
 ## License
 
-Proprietary. See `LICENSE` in the development repository.
+MIT. See `LICENSE`.
