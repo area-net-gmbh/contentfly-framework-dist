@@ -2111,10 +2111,17 @@ class Api
 
         $tblTreeName  = 'pim_tree';
         $joinI18NCond = '';
+        $params       = array();
 
+        /*
+         * `lang` is BOUND, not written into the statement (000-000-0062). It comes unchanged
+         * from the request body of /api/tree2; it used to be placed between quotes here, which
+         * made it an SQL injection for every logged-in user.
+         */
         if($i18n){
             $tblTreeName  = 'pim_i18n_tree';
-            $joinI18NCond = "AND t.lang = e.lang AND t.lang = '$lang'";
+            $joinI18NCond = 'AND t.lang = e.lang AND t.lang = ?';
+            $params[]     = $lang;
         }
 
         /*
@@ -2134,7 +2141,7 @@ class Api
             ORDER BY t.parent_id, t.sorting ";
 
         // fetchAll() was removed in DBAL 3 (009-005-0002).
-        $records = $this->app['database']->fetchAllAssociative($statement);
+        $records = $this->app['database']->fetchAllAssociative($statement, $params);
 
         return $this->treeSort($records, $dbFields, null);
     }
