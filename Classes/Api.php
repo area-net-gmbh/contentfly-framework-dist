@@ -992,6 +992,16 @@ class Api
                 continue;
             }
 
+            /*
+             * Only entities the user may read (000-000-0061). The log used to report the
+             * deletions of every entity — only ids, but ids of records the user may not know
+             * exist. There is no owner to narrow by: the record is gone, the log row is all
+             * that is left of it.
+             */
+            if(!Permission::isReadable($this->app['auth.user'], $entityName)){
+                continue;
+            }
+
             $query = "SELECT model_name, model_id FROM `pim_log` WHERE model_name = ? AND (mode = 'DEL' OR (mode = 'USERDEL' AND users = ?))";
 
             $params  = array($entityName, $this->app['auth.user']->getId());
@@ -2011,12 +2021,38 @@ class Api
             throw new ContentflyException(Messages::contentfly_general_unknown_entity, $entityShortName, Messages::contentfly_status_not_found);
         }
 
+        /*
+         * The read right, as in getList() (000-000-0061). This route used to check only THAT
+         * someone is logged in: a user without any read right got the full tree.
+         *
+         * Narrowed by OWN/GROUP on every level of the recursion. A child is only fetched
+         * through its parent, so a node below a hidden parent stays hidden — getTree2() does
+         * the same.
+         */
+        if(!($permission = Permission::isReadable($this->app['auth.user'], $entityShortName))){
+            throw new ContentflyException(Messages::contentfly_general_permission_denied, $entityShortName, Messages::contentfly_status_access_denied);
+        }
+
         $i18n               = $schema[$entityShortName]['settings']['i18n'];
 
         $queryBuilder = $this->em->createQueryBuilder();
         $queryBuilder->from($entityFullName, $entityNameAlias)
             ->where("$entityNameAlias.isIntern = false")
             ->orderBy($entityNameAlias.'.sorting', 'ASC');
+
+        if($permission == \Areanet\PIM\Entity\Permission::OWN){
+            $queryBuilder->andWhere("$entityNameAlias.userCreated = :userCreated OR FIND_IN_SET(:userCreated, $entityNameAlias.users) > 0");
+            $queryBuilder->setParameter('userCreated', $this->app['auth.user']);
+        }elseif($permission == \Areanet\PIM\Entity\Permission::GROUP){
+            $group = $this->app['auth.user']->getGroup();
+            if(!$group){
+                $queryBuilder->andWhere("$entityNameAlias.userCreated = :userCreated");
+            }else{
+                $queryBuilder->andWhere("$entityNameAlias.userCreated = :userCreated OR FIND_IN_SET(:userCreated, $entityNameAlias.users) > 0 OR FIND_IN_SET(:userGroup, $entityNameAlias.groups) > 0");
+                $queryBuilder->setParameter('userGroup', $group);
+            }
+            $queryBuilder->setParameter('userCreated', $this->app['auth.user']);
+        }
 
         if($i18n){
             $queryBuilder->andWhere("$entityNameAlias.lang = :lang");
@@ -2078,6 +2114,11 @@ class Api
             throw new ContentflyException(Messages::contentfly_general_unknown_entity, $entityShortName, Messages::contentfly_status_not_found);
         }
 
+        // The read right, as in getTree() (000-000-0061).
+        if(!($permission = Permission::isReadable($this->app['auth.user'], $entityShortName))){
+            throw new ContentflyException(Messages::contentfly_general_permission_denied, $entityShortName, Messages::contentfly_status_access_denied);
+        }
+
         $i18n       = $schema[$entityShortName]['settings']['i18n'];
         $tblName    = $schema[$entityShortName]['settings']['dbname'];
         $dbFields   = array();
@@ -2133,11 +2174,36 @@ class Api
             array_keys($dbFields)
         ));
 
+        /*
+         * Narrowed by OWN/GROUP like getTree() (000-000-0061). The owner columns live in the
+         * tree table, not in the entity's own one. treeSort() builds the tree from the root
+         * down, so a node whose parent is filtered out is left out as well — the same result
+         * as getTree(), which reaches children only through their parent.
+         */
+        $where = '';
+        if($permission == \Areanet\PIM\Entity\Permission::OWN){
+            $where    = 'WHERE (t.usercreated_id = ? OR FIND_IN_SET(?, t.users) > 0)';
+            $params[] = $this->app['auth.user']->getId();
+            $params[] = $this->app['auth.user']->getId();
+        }elseif($permission == \Areanet\PIM\Entity\Permission::GROUP){
+            $group = $this->app['auth.user']->getGroup();
+            if(!$group){
+                $where    = 'WHERE t.usercreated_id = ?';
+                $params[] = $this->app['auth.user']->getId();
+            }else{
+                $where    = 'WHERE (t.usercreated_id = ? OR FIND_IN_SET(?, t.users) > 0 OR FIND_IN_SET(?, t.`groups`) > 0)';
+                $params[] = $this->app['auth.user']->getId();
+                $params[] = $this->app['auth.user']->getId();
+                $params[] = $group->getId();
+            }
+        }
+
         $statement = "
             SELECT t.id, ".$columns.", t.sorting, t.parent_id 
             FROM $tblName e 
             INNER JOIN $tblTreeName t 
               on e.id = t.id $joinI18NCond
+            $where
             ORDER BY t.parent_id, t.sorting ";
 
         // fetchAll() was removed in DBAL 3 (009-005-0002).
