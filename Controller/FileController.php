@@ -473,7 +473,7 @@ class FileController extends BaseController
         $sourceId   = ($request->request->all()["sourceId"] ?? null);
         $destId     = ($request->request->all()["destId"] ?? null);
 
-        if(!Permission::isWritable($this->app['auth.user'], 'PIM\\File')){
+        if(!($permission = Permission::isWritable($this->app['auth.user'], 'PIM\\File'))){
             throw new AccessDeniedHttpException("Access to PIM\\File denied.");
         }
 
@@ -488,6 +488,14 @@ class FileController extends BaseController
         if(!$fileSource || !$fileDest){
             throw new FileNotFoundException(Messages::contentfly_general_not_found);
         }
+
+        /*
+         * BOTH files must be writable for this user (000-000-0060). Only the right on PIM\File
+         * was checked here: with OWN a user replaced the content of any file carrying the same
+         * name — and made a foreign source disappear, because it is moved, not copied.
+         */
+        $this->assertFileWritable($permission, $fileDest);
+        $this->assertFileWritable($permission, $fileSource);
 
         if($fileSource->getName() != $fileDest->getName()){
             throw new FileNotFoundException(Messages::contentfly_general_not_found);
@@ -545,4 +553,24 @@ class FileController extends BaseController
         return $this->renderResponse(array('sourceId' => $sourceId, 'destId' => $destId));
     }
 
+    /**
+     * Narrows the write right on PIM\File to one file — the same rule Api::doUpdate() applies:
+     * OWN reaches files the user created or is listed in `users`, GROUP additionally those
+     * listed for the user's group.
+     */
+    private function assertFileWritable(int $permission, File $file): void
+    {
+        $user = $this->app['auth.user'];
+
+        if($permission == \Areanet\PIM\Entity\Permission::OWN && $file->getUserCreated() != $user && !$file->hasUserId($user->getId())){
+            throw new AccessDeniedHttpException("Access to PIM\\File::{$file->getId()} denied.");
+        }
+
+        if($permission == \Areanet\PIM\Entity\Permission::GROUP && $file->getUserCreated() != $user){
+            $group = $user->getGroup();
+            if(!($group && $file->hasGroupId($group->getId()))){
+                throw new AccessDeniedHttpException("Access to PIM\\File::{$file->getId()} denied.");
+            }
+        }
+    }
 }
