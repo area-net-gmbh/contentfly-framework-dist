@@ -249,12 +249,30 @@ class Api
             throw new ContentflyException(Messages::contentfly_general_unknown_entity, $entityShortName, Messages::contentfly_status_not_found);
         }
 
-        if(!Permission::isWritable($this->app['auth.user'], $entityShortName)){
+        if(!($permission = Permission::isWritable($this->app['auth.user'], $entityShortName))){
             throw new ContentflyException(Messages::contentfly_general_permission_denied, $entityShortName, Messages::contentfly_status_access_denied);
         }
 
         if(I18nPermission::isOnlyReadable($this->app, $entityShortName, $lang)){
             throw new ContentflyI18NException(Messages::contentfly_i18n_permission_denied, $entityShortName, $lang);
+        }
+
+        /*
+         * A TRANSLATION BELONGS TO ITS RECORD (000-000-0059). An insert that carries the id of an
+         * existing record creates a language variant of THAT record. The right on the entity
+         * alone used to be enough: with OWN a user added translations to anyone's records.
+         * Narrowed by the ownership of the existing record, like doUpdate() narrows a change.
+         */
+        if($schema[$entityShortName]['settings']['i18n'] && !empty($data['id'])){
+            $tableName = $schema[$entityShortName]['settings']['dbname'];
+            $existing  = $this->database->fetchAssociative(
+                "SELECT usercreated_id, users, `groups` FROM `$tableName` WHERE id = ? LIMIT 1",
+                array($data['id'])
+            );
+
+            if($existing && !$this->reachesRow($permission, $existing)){
+                throw new ContentflyException(Messages::contentfly_general_permission_denied, "$entityShortName::{$data['id']}", Messages::contentfly_status_access_denied);
+            }
         }
 
         $object  = new $entityFullName();
@@ -349,8 +367,14 @@ class Api
 
             $object->setLang($lang);
 
-            $mainLang = is_array(Adapter::getConfig()->APP_LANGUAGES) ? Adapter::getConfig()->APP_LANGUAGES[0] : null;
-            if($lang != $mainLang && !empty($data['id'])){
+            /*
+             * Without configured languages there is no main language (000-000-0064). The default
+             * of APP_LANGUAGES is an EMPTY array, so is_array() was true and `[0]` raised
+             * "Undefined array key 0". Without a main language there is nothing to inherit the
+             * universal fields from — the translation carries exactly what was sent.
+             */
+            $mainLang = Adapter::getConfig()->APP_LANGUAGES[0] ?? null;
+            if($mainLang !== null && $lang != $mainLang && !empty($data['id'])){
                 $mainLangObject = $this->getSingle($entityShortName, $data['id'], null, $mainLang, true, null, null, true);
                 if($mainLangObject){
                     foreach($schema[$entityShortName]['properties'] as $property => $propertyConfig){
@@ -1980,6 +2004,32 @@ class Api
         }
     }
 
+    /**
+     * Whether a permission level reaches a raw table row — the rule doUpdate() applies to an
+     * object: OWN reaches rows the user created or is listed in `users`, GROUP additionally rows
+     * listed for the user's group, ALL reaches every row (000-000-0059).
+     *
+     * @param array{usercreated_id: ?string, users: ?string, groups: ?string} $row
+     */
+    protected function reachesRow(int $permission, array $row): bool
+    {
+        $user = $this->app['auth.user'];
+        $own  = $row['usercreated_id'] === $user->getId()
+            || in_array($user->getId(), explode(',', (string) $row['users']), true);
+
+        if($permission == \Areanet\PIM\Entity\Permission::OWN){
+            return $own;
+        }
+
+        if($permission == \Areanet\PIM\Entity\Permission::GROUP){
+            $group = $user->getGroup();
+
+            return $own || ($group && in_array($group->getId(), explode(',', (string) $row['groups']), true));
+        }
+
+        return true;
+    }
+
     protected function getTableName($entityName, $tablename){
 
         if(empty($this->app['schema'][$entityName])){
@@ -1998,7 +2048,7 @@ class Api
         $helper             = new Helper();
         $entityShortName    = $helper->getShortEntityName($entityName);
 
-        if(!(Permission::isReadable($this->app['auth.user'], $entityName))){
+        if(!($permission = Permission::isReadable($this->app['auth.user'], $entityName))){
             throw new ContentflyException(Messages::contentfly_general_access_denied, $entityShortName, Messages::contentfly_status_access_denied);
         }
 
@@ -2026,6 +2076,26 @@ class Api
             ->where("id NOT IN (SELECT id FROM $dbName WHERE lang = :lang) ")
             ->groupBy('lang')
             ->setParameter('lang', $lang);
+
+        /*
+         * Narrowed by OWN/GROUP like getCount() (000-000-0059). Only numbers flow here, no
+         * content — but they used to count every owner's records, telling a user how many
+         * records exist that the user may not see.
+         */
+        $userId = $this->app['auth.user']->getId();
+        if($permission == \Areanet\PIM\Entity\Permission::OWN){
+            $queryBuilder->andWhere('(usercreated_id = :userId OR FIND_IN_SET(:userId, users) > 0)')
+                ->setParameter('userId', $userId);
+        }elseif($permission == \Areanet\PIM\Entity\Permission::GROUP){
+            $group = $this->app['auth.user']->getGroup();
+            if(!$group){
+                $queryBuilder->andWhere('usercreated_id = :userId');
+            }else{
+                $queryBuilder->andWhere('(usercreated_id = :userId OR FIND_IN_SET(:userId, users) > 0 OR FIND_IN_SET(:groupId, `groups`) > 0)')
+                    ->setParameter('groupId', $group->getId());
+            }
+            $queryBuilder->setParameter('userId', $userId);
+        }
 
         // executeQuery() instead of execute() — the latter is @deprecated in DBAL 3 — and
         // fetchAllAssociative() instead of fetchAll(), which was removed from the Result

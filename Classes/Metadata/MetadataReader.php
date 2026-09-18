@@ -1,6 +1,8 @@
 <?php
 namespace Areanet\PIM\Classes\Metadata;
 
+use Doctrine\ORM\Mapping\Column;
+
 /**
  * The single access point to an entity's metadata.
  *
@@ -50,7 +52,43 @@ final class MetadataReader
      */
     public function forProperty(\ReflectionProperty $property): array
     {
-        return $this->instantiate($property->getAttributes());
+        $attributes = $property->getAttributes();
+
+        if (!$property->getAttributes(Column::class)) {
+            $attributes = array_merge($attributes, $this->inheritedColumn($property));
+        }
+
+        return $this->instantiate($attributes);
+    }
+
+    /**
+     * The column of the nearest parent declaration of a redeclared property (000-000-0064).
+     *
+     * `BaseI18n` redeclares `$id` to give it its own `Id` and `GeneratedValue` — but WITHOUT a
+     * `Column`: that stays in `Base`, because ORM 3 rejects a second definition (010-003-0002).
+     * Doctrine inherits the column mapping. Reading only the declaration itself did not: no
+     * column, no matching type, and `id` dropped out of the schema of every translatable entity.
+     *
+     * Only the column is inherited. Everything the redeclaration states itself — here the
+     * generator strategy `NONE` — stays in charge.
+     *
+     * @return \ReflectionAttribute[]
+     */
+    private function inheritedColumn(\ReflectionProperty $property): array
+    {
+        $parent = $property->getDeclaringClass()->getParentClass();
+
+        while ($parent && $parent->hasProperty($property->getName())) {
+            $declaration = $parent->getProperty($property->getName());
+
+            if (($column = $declaration->getAttributes(Column::class))) {
+                return $column;
+            }
+
+            $parent = $declaration->getDeclaringClass()->getParentClass();
+        }
+
+        return array();
     }
 
     /**
