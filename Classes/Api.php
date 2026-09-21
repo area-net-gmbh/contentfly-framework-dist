@@ -909,7 +909,9 @@ class Api
                     $tsQuery .= " AND userCreated_id = ?";
                     $params[] = $this->app['auth.user']->getId();
                 }else{
-                    $tsQuery .= " AND (userCreated_id = ? OR FIND_IN_SET(?, groups) > 0)";
+                    // `groups` is reserved in MySQL 8 and needs the backticks unless it is qualified
+                    // with a table alias — without them every GROUP user got 500 here (000-000-0072).
+                    $tsQuery .= " AND (userCreated_id = ? OR FIND_IN_SET(?, `groups`) > 0)";
                     $params[] = $this->app['auth.user']->getId();
                     $params[] = $group->getId();
                 }
@@ -2581,7 +2583,7 @@ class Api
                                     $queryBuilder->andWhere("userCreated_id = ?");
                                     $queryBuilder->setParameter($paramCount, $this->app['auth.user']->getId());
                                 } else {
-                                    $queryBuilder->andWhere("usercreated_id = ? OR FIND_IN_SET(?, users) > 0 OR FIND_IN_SET(?, groups) > 0");
+                                    $queryBuilder->andWhere("usercreated_id = ? OR FIND_IN_SET(?, users) > 0 OR FIND_IN_SET(?, `groups`) > 0"); // 000-000-0072, see getCount()
                                     $queryBuilder->setParameter($paramCount, $this->app['auth.user']->getId());
                                     $paramCount++;
                                     $queryBuilder->setParameter($paramCount, $this->app['auth.user']->getId());
