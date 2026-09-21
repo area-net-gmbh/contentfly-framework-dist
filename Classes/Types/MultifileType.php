@@ -114,10 +114,13 @@ class MultifileType extends Type
                     }
                 }
 
+                // The FILE, not the record that holds it (000-000-0067). This branch used
+                // `$object` and passed the caller's property list on to the file, so every
+                // entry came back as `{}` — the list names fields of the parent, not of PIM\File.
                 if($flatten){
-                    $data[] = array('id' => $object->getId());
+                    $data[] = array('id' => $objectToLoad->getId());
                 } else{
-                    $data[] = $object->toValueObject($this->app, $subEntity, $flatten, $propertiesToLoad, ($level + 1), true);
+                    $data[] = $objectToLoad->toValueObject($this->app, $subEntity, $flatten, array(), ($level + 1), true);
                 }
             }
         } else {

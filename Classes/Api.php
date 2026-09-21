@@ -1427,11 +1427,14 @@ class Api
 
                 $config = $schema[$entityShortName]['properties'][$name];
 
-                if(in_array($config['type'], array('multijoin', 'multifile', 'checkbox'))){
+                // Collections have no column to select. `permissions` was missing here, and
+                // `properties: ["permissions"]` on PIM\Group answered 500 (000-000-0067).
+                if(in_array($config['type'], array('multijoin', 'multifile', 'checkbox', 'permissions'))){
                     continue;
                 }
 
-                if(in_array($config['type'], array('join', 'file', 'radio'))){
+                // Joined below, like `join` — see the note on `onejoin` there.
+                if(in_array($config['type'], array('join', 'file', 'radio', 'onejoin'))){
                     continue;
                 }
 
@@ -1452,10 +1455,19 @@ class Api
 
         $forceLoadPartial = false;
 
+        /*
+         * `onejoin` BELONGS IN THIS LIST (000-000-0067).
+         *
+         * The query below runs with HINT_FORCE_PARTIAL_LOAD as soon as one relation is joined —
+         * and every entity has one, `user`. Under that hint Doctrine creates no proxy for a
+         * relation the query does not join, so a one-to-one field came back as `null` in every
+         * list, while `/api/single` returned it. Nobody noticed because no entity had such a
+         * field until the template got `Core\ExampleRelations`.
+         */
         foreach ($schema[$entityShortName]['properties'] as $field => $config) {
             if (count($properties) && !in_array($field, $properties)) continue;
 
-            if($config['type'] == 'radio' || $config['type'] == 'join' || $config['type'] == 'file'){
+            if(in_array($config['type'], array('radio', 'join', 'file', 'onejoin'), true)){
                 $joinedShortEntity = match ($config['type']) {
                     'file' => 'PIM\\File',
                     'radio' => 'PIM\\Option',
