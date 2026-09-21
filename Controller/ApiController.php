@@ -44,12 +44,12 @@ class ApiController extends BaseController
     );
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/all all
      * @apiName All
      * @apiGroup Objects
      * @apiDeprecated
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiDescription Returns all objects of all entities
@@ -60,27 +60,31 @@ class ApiController extends BaseController
      *     {
      *      "lastModified": "2016-02-20 15:30:22"
      *      }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "message": "allAction",
-     *       "lastModified": "2016-02-21 12:20:00"
-     *       "data:" {
-     *          "News": [
-     *              {
-     *                  "id": 1,
-     *                  "isHidden": false,
-     *                  "isDeleted": false,
-     *                  "title": "A news item"
-     *              },
-     *              ...
-     *          },
-     *          "EntityXYZ": [
-     *              {...},
-     *              {...},
-     *              ...
-     *          ]
-     *      }
+     *       "data": {
+     *         "News": [
+     *           {
+     *             "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec",
+     *             "title": "A news item"
+     *           }
+     *         ],
+     *         "Category": [
+     *           {
+     *             "id": "0e9b4c5e-2f63-4d0a-9f1e-5b7a3c2d8e41",
+     *             "title": "A category"
+     *           }
+     *         ]
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65",
+     *         "lastModified": "2026-09-21 08:09:28"
+     *       }
      *     }
      */
     public function allAction(Request $request)
@@ -114,7 +118,7 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {get} /api/config config
      * @apiName Config
      * @apiGroup Settings
@@ -122,13 +126,18 @@ class ApiController extends BaseController
      *
      * @apiDescription Basic, publicly accessible configuration, e.g. for the login page
      *
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "devmode": false,
-     *       "version": "1.4.0"
-     *       "data:" {
-     *         ...
+     *       "data": {
+     *         "devmode": false
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
      *       }
      *     }
      */
@@ -151,33 +160,11 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/count count
      * @apiName Count
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
-     * @apiHeader {String} Content-Type=application/json
-     *
-     * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Only the objects that have been changed since lastModified are returned.
-     * @apiParamExample {json} Request example with a global timestamp:
-     *     {
-     *      "lastModified": "2016-02-20 15:30:22"
-     *      }
-     * @apiSuccessExample Success-Response:
-     *     HTTP/1.1 200 OK
-     *     {
-     *       "dataCount": 12345,
-     *       "filesCount": 234
-     *       "filesSize": 1234355
-     *     }
-     */
-
-    /**
-     * @apiVersion 1.5.2
-     * @api {post} /api/count count
-     * @apiName Count
-     * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Only the objects that have been changed since lastModified are returned.
@@ -192,12 +179,26 @@ class ApiController extends BaseController
      *          "Entity1" : "2016-02-20 15:30:22",
      *          "Entity2" : "2016-02-20 15:30:22"
      *      }
-     * @apiSuccessExample Success-Response:
+     *     }
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "dataCount": 12345,
-     *       "filesCount": 234
-     *       "filesSize": 1234355
+     *       "data": {
+     *         "dataCount": 12345,
+     *         "filesCount": 234,
+     *         "filesSize": 1234355,
+     *         "details": {
+     *           "News": 12000,
+     *           "Category": 345
+     *         }
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
      *     }
      */
     public function countAction(Request $request){
@@ -210,12 +211,12 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/delete delete
      * @apiName Delete
      * @apiDescription API endpoint for deleting an object of an entity.
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} entity Entity to delete
@@ -226,6 +227,20 @@ class ApiController extends BaseController
      *      "entity": "News",
      *      "id": 12
      *      }
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "data": {
+     *         "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec"
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      */
     public function deleteAction(Request $request)
     {
@@ -261,11 +276,11 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/deleted deleted
      * @apiName Deleted
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String/Array} [lastModified="yyyymmdd hh:mm:ii"] Only the objects that have been deleted since lastModified are returned.
@@ -279,11 +294,24 @@ class ApiController extends BaseController
      *          "Entity1" : "2016-02-20 15:30:22",
      *          "Entity2" : "2016-02-20 15:30:22"
      *      }
-     * @apiSuccessExample Success-Response:
+     *     }
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
-     *     [
-     *       {"entity_name": "Entity1", "id": "...."}
-     *     ]
+     *     {
+     *       "data": [
+     *         {
+     *           "model_name": "News",
+     *           "model_id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec"
+     *         }
+     *       ],
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      */
     public function deletedAction(Request $request){
         $api            = new Api($this->app, $request);
@@ -294,14 +322,16 @@ class ApiController extends BaseController
 
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/insert insert
      * @apiName Insert
      * @apiDescription API endpoint for adding a new object of an entity.
      *
-     * Date fields should be transmitted in ISO 8601 format.
+     * Date fields should be transmitted in ISO 8601 format or as <code>yyyy-mm-dd hh:ii:ss</code>.
+     * A join (1:n) is passed as <code>{"id": …}</code>, a multijoin (n:m) as a list of those — see
+     * <code>category</code> and <code>cross_selling</code> in the example.
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} entity Entity to insert
@@ -311,16 +341,13 @@ class ApiController extends BaseController
      *     {
      *      "entity": "News",
      *      "data": {
-     *          "title": "A new news item",
-     *          "subtitle: "Subtitle of the new news item",
+     *          "title": "A news item",
+     *          "subtitle": "Subtitle of the news item",
      *          "date": "2016-02-18 15:30:00",
-     *          // Join 1:n
      *          "category": {
      *              "id": 1
      *          },
-     *          // Date in the format yyyy-mm-dd hh:ii:ss
      *          "active_from": "2016-02-18 15:30:00",
-     *          // Multijoin n:m
      *          "cross_selling": [
      *              {
      *                  "id": 2
@@ -330,6 +357,35 @@ class ApiController extends BaseController
      *              }
      *           ]
      *      }
+     *     }
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "data": {
+     *         "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec",
+     *         "created": {
+     *           "LOCAL_TIME": "21.09.2026 08:09",
+     *           "LOCAL": "21.09.2026",
+     *           "ISO8601": "2026-09-21T08:09:28+0200",
+     *           "TIMESTAMP": 1789970968
+     *         },
+     *         "modified": {
+     *           "LOCAL_TIME": "21.09.2026 08:09",
+     *           "LOCAL": "21.09.2026",
+     *           "ISO8601": "2026-09-21T08:09:28+0200",
+     *           "TIMESTAMP": 1789970968
+     *         },
+     *         "isIntern": false,
+     *         "title": "A news item"
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      * @apiError 500 An object with the same UNIQUE-INDEX already exists
      * @apiError 501 Unknown server error
      */
@@ -371,7 +427,7 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/list list
      * @apiName List
      * @apiDescription API endpoint for retrieving objects of an entity.
@@ -381,63 +437,7 @@ class ApiController extends BaseController
      * joins/multijoins, this can lead to performance problems. The parameter flatten provides a
      * remedy.
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
-     * @apiHeader {String} Content-Type=application/json
-     *
-     * @apiParam {String} entity Entity to read
-     * @apiParam {Array} [properties] Returns only the specified properties/fields, otherwise all properties are loaded (performance!)<code>['field1', 'field2', ...]</code>
-     * @apiParam {Object} [order="{'id': 'DESC'}"] Sort order: <code>{'date': 'ASC/DESC',...}</code>
-     * @apiParam {String} [groupBy] Grouping of the result by property
-     * @apiParam {Object} [where] Condition; multiple fields are combined with AND: <code>{'title': 'test', 'desc': 'foo',...}</code>
-     * @apiParam {Boolean} [count] Return only the number of objects
-     * @apiParam {Integer} [currentPage] Current page for pagination
-     * @apiParam {Integer} [itemsPerPage="Config::FRONTEND_ITEMS_PER_PAGE"] Number of objects per page for pagination
-     * @apiParam {Boolean} [flatten="false"] For joins, returns only the IDs and not the complete objects
-     * @apiParamExample {json} Request example with a where query:
-     *     {
-     *      "entity": "News",
-     *      "currentPage": 1,
-     *      "order": {
-     *          "date": "DESC"
-     *       },
-     *      "where": {
-     *          "title": "foo",
-     *          "isHidden": false
-     *      },
-     *      "properties": ["id", "title"]
-     * @apiSuccessExample Success-Response:
-     *     HTTP/1.1 200 OK
-     *     {
-     *       "message": "listAction",
-     *       "lastModified": "2016-02-21 12:20:00"
-     *       "itemsPerPage": 15,
-     *       "totalItems": 200,
-     *       "data:" [
-     *          {
-     *              "id": 1,
-     *              "isHidden": false,
-     *              "isDeleted": false,
-     *              "title": "A news item"
-     *          },
-     *          {...},
-     *          ...
-     *      ]
-     *   }
-     * @apiError 404 No entries available
-     */
-
-     /**
-     * @apiVersion 1.5.0
-     * @api {post} /api/list list
-     * @apiName List
-     * @apiDescription API endpoint for retrieving objects of an entity.
-     *
-     * The data is returned in JSON format based on the Doctrine ORM. Joins (1:n) and multijoins
-     * (n:m) are converted automatically and returned as sub-objects. With many objects that have
-     * joins/multijoins, this can lead to performance problems. The parameter flatten provides a
-     * remedy.
-     * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} entity Entity to read
@@ -464,6 +464,7 @@ class ApiController extends BaseController
      *          "isHidden": false
      *      },
      *      "properties": ["id", "title"]
+     *     }
      * @apiParamExample {json} Request example: recently updated objects
      *     {
      *      "entity": "News",
@@ -475,25 +476,59 @@ class ApiController extends BaseController
      *      "lang": "de",
      *      "untranslatedLang": "en"
      *     }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response with pagination:
      *     HTTP/1.1 200 OK
      *     {
-     *       "message": "listAction",
-     *       "lastModified": "2016-02-21 12:20:00"
-     *       "itemsPerPage": 15,
-     *       "totalItems": 200,
-     *       "data:" [
-     *          {
-     *              "id": 1,
-     *              "isHidden": false,
-     *              "isDeleted": false,
-     *              "title": "A news item"
-     *          },
-     *          {...},
-     *          ...
-     *      ]
-     *   }
-     * @apiError 404 No entries available
+     *       "data": [
+     *         {
+     *           "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec",
+     *           "title": "A news item"
+     *         }
+     *       ],
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65",
+     *         "totalItems": "200",
+     *         "itemsPerPage": 15
+     *       }
+     *     }
+     * @apiSuccessExample {json} Success-Response with count:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "data": 200,
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
+     * @apiErrorExample {json} Error-Response for an unknown entity:
+     *     HTTP/1.1 404 Not Found
+     *     {
+     *       "data": null,
+     *       "errors": [
+     *         {
+     *           "code": "contentfly_general_unknown_entity",
+     *           "detail": "contentfly_general_unknown_entity",
+     *           "type": "Areanet\\PIM\\Classes\\Exceptions\\ContentflyException",
+     *           "context": {
+     *             "value": "News"
+     *           }
+     *         }
+     *       ],
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
+     * @apiError 404 Unknown entity — a known entity without matches answers 200 with an empty list
      */
     public function listAction(Request $request)
     {
@@ -630,40 +665,13 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/update update
      * @apiName Update
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
-     * @apiDescription API endpoint for adding a new object of an entity.
-     *
-     * Date fields should be transmitted in ISO 8601 format.
-     *
-     * @apiParam {String} entity entity to update
-     * @apiParam {Integer} id Object ID to update
-     * @apiParam {String=null} pass Password of the logged-in user. Must be passed if the pass property for the entity PIM\User is set under data.
-     * @apiParam {Object} data Data of the object, depending on the entity
-     * @apiParamExample {json} Request example:
-     *     {
-     *      "entity": "News",
-     *      "id": 12,
-     *      "data": {
-     *          "title": "A changed news item",
-     *          "subtitle: "Subtitle of the changed news item",
-     *          "date": "2016-02-18 15:30:00"
-     *      }
-     * @apiError 400 object to update does not exist
-     * @apiError 500 An object with the same UNIQUE-INDEX already exists
-     */
-    /**
-     * @apiVersion 1.5.0
-     * @api {post} /api/update update
-     * @apiName Update
-     * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
-     * @apiHeader {String} Content-Type=application/json
-     * @apiDescription API endpoint for adding a new object of an entity.
+     * @apiDescription API endpoint for changing an existing object of an entity.
      *
      * Date fields should be transmitted in ISO 8601 format.
      *
@@ -678,9 +686,24 @@ class ApiController extends BaseController
      *      "id": 12,
      *      "data": {
      *          "title": "A changed news item",
-     *          "subtitle: "Subtitle of the changed news item",
+     *          "subtitle": "Subtitle of the changed news item",
      *          "date": "2016-02-18 15:30:00"
      *      }
+     *     }
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "data": {
+     *         "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec"
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      * @apiError 400 object to update does not exist
      * @apiError 500 An object with the same UNIQUE-INDEX already exists
      */
@@ -731,40 +754,14 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/replace replace
      * @apiName Replace
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
-     * @apiDescription API endpoint for retrieving objects of an entity. If the object exists, an insert is performed, otherwise an update.
-     *
-     * Date fields should be transmitted in ISO 8601 format.
-     *
-     * @apiParam {String} entity entity to update or insert
-     * @apiParam {Integer/String} [id=null] Object ID (if present, the object is updated, otherwise newly created)
-     * @apiParam {Object} data Data of the object, depending on the entity
-     * @apiParamExample {json} Request example:
-     *     {
-     *      "entity": "News",
-     *      "id": 12,
-     *      "data": {
-     *          "title": "A changed news item",
-     *          "subtitle: "Subtitle of the changed news item",
-     *          "date": "2016-02-18 15:30:00"
-     *      }
-     * @apiError 500 An object with the same UNIQUE-INDEX already exists
-     */
-    /**
-     * @apiVersion 1.5.0
-     * @api {post} /api/replace replace
-     * @apiName Replace
-     * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
-     * @apiHeader {String} Content-Type=application/json
-     *
-     * @apiDescription API endpoint for retrieving objects of an entity. If the object exists, an insert is performed, otherwise an update.
+     * @apiDescription API endpoint for inserting or updating an object of an entity. If an object with the given id exists, it is updated, otherwise a new one is created. The response is the one of /api/update or /api/insert.
      *
      * Date fields should be transmitted in ISO 8601 format.
      *
@@ -778,9 +775,24 @@ class ApiController extends BaseController
      *      "id": 12,
      *      "data": {
      *          "title": "A changed news item",
-     *          "subtitle: "Subtitle of the changed news item",
+     *          "subtitle": "Subtitle of the changed news item",
      *          "date": "2016-02-18 15:30:00"
      *      }
+     *     }
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "data": {
+     *         "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec"
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      * @apiError 500 An object with the same UNIQUE-INDEX already exists
      */
     public function replaceAction(Request $request)
@@ -853,22 +865,51 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {get} /api/schema schema
      * @apiName Schema
      * @apiGroup Settings
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiDescription Returns the schema of all entities.
      *
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "devmode": false,
-     *       "version": "1.4.0"
-     *       "data:" {
-     *         ...
+     *       "data": {
+     *         "News": {
+     *           "settings": {
+     *             "label": "News",
+     *             "i18n": false
+     *           },
+     *           "properties": {
+     *             "title": {
+     *               "type": "string"
+     *             }
+     *           }
+     *         }
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65",
+     *         "permissions": {
+     *           "News": {
+     *             "readable": true,
+     *             "writable": true
+     *           }
+     *         },
+     *         "i18nPermissions": null,
+     *         "devmode": false,
+     *         "frontend": {
+     *           "customNavigation": {
+     *             "enabled": false
+     *           },
+     *           "languages": []
+     *         }
      *       }
      *     }
      */
@@ -899,7 +940,7 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/single single
      * @apiName Single
      * @apiDescription API endpoint for retrieving a single object of an entity.
@@ -907,45 +948,7 @@ class ApiController extends BaseController
      * The data is returned in JSON format based on the Doctrine ORM. Joins (1:n) and multijoins
      * (n:m) are converted automatically and returned as sub-objects.
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
-     * @apiHeader {String} Content-Type=application/json
-     *
-     * @apiParam {String} entity Entity to read
-     * @apiParam {String/Integer} [id = null] ID of the object
-     * @apiParam {Object} [where = null] Condition; multiple fields are combined with AND: <code>{'title': 'test', 'desc': 'foo',...}</code>
-     * @apiParamExample {json} Request example by ID:
-     *     {
-     *      "entity": "News",
-     *      "id": 1
-     *     }
-     * @apiParamExample {json} Request example by WHERE:
-     *     {
-     *      "entity": "Customers",
-     *      "where": {"customerNumber": 200200}
-     *     }
-     * @apiSuccessExample Success-Response:
-     *     HTTP/1.1 200 OK
-     *     {
-     *       "message": "singleAction",
-     *       "data:" {
-     *          "id": 1,
-     *          "isHidden": false,
-     *          "isDeleted": false,
-     *          "title": "A news item"
-     *       }
-     *   }
-     * @apiError 404 Object not found
-     */
-    /**
-     * @apiVersion 1.5.0
-     * @api {post} /api/single single
-     * @apiName Single
-     * @apiDescription API endpoint for retrieving a single object of an entity.
-     *
-     * The data is returned in JSON format based on the Doctrine ORM. Joins (1:n) and multijoins
-     * (n:m) are converted automatically and returned as sub-objects.
-     * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} entity Entity to read
@@ -964,17 +967,55 @@ class ApiController extends BaseController
      *      "entity": "Customers",
      *      "where": {"customerNumber": 200200}
      *     }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "message": "singleAction",
-     *       "data:" {
-     *          "id": 1,
-     *          "isHidden": false,
-     *          "isDeleted": false,
-     *          "title": "A news item"
+     *       "data": {
+     *         "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec",
+     *         "created": {
+     *           "LOCAL_TIME": "21.09.2026 08:09",
+     *           "LOCAL": "21.09.2026",
+     *           "ISO8601": "2026-09-21T08:09:28+0200",
+     *           "TIMESTAMP": 1789970968
+     *         },
+     *         "modified": {
+     *           "LOCAL_TIME": "21.09.2026 08:09",
+     *           "LOCAL": "21.09.2026",
+     *           "ISO8601": "2026-09-21T08:09:28+0200",
+     *           "TIMESTAMP": 1789970968
+     *         },
+     *         "isIntern": false,
+     *         "title": "A news item"
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
      *       }
-     *   }
+     *     }
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 404 Not Found
+     *     {
+     *       "data": null,
+     *       "errors": [
+     *         {
+     *           "code": "contentfly_general_not_found",
+     *           "detail": "contentfly_general_not_found",
+     *           "type": "Areanet\\PIM\\Classes\\Exceptions\\ContentflyException",
+     *           "context": {
+     *             "value": "News"
+     *           }
+     *         }
+     *       ],
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      * @apiError 404 Object not found
      */
     public function singleAction(Request $request)
@@ -1005,53 +1046,14 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/tree tree
      * @apiName Tree view
      * @apiDescription API endpoint for retrieving a tree structure.
      *
      * The entity must be of type Areanet\PIM\Entity\BaseTree
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
-     * @apiHeader {String} Content-Type=application/json
-     *
-     * @apiParam {String} entity Entity to read
-     * @apiParam {Array} [properties=null] Returns only the specified properties/fields, otherwise all properties are loaded (performance!)<code>['field1', 'field2', ...]</code>
-     * @apiParamExample {json} Request example:
-     *     {
-     *      "entity": "Category",
-     *      "properties": ["title"]
-     *     }
-     * @apiSuccessExample Success-Response:
-     *     HTTP/1.1 200 OK
-     *     {
-     *       "message": "treeAction",
-     *       "data:" [
-     *          {
-     *              "id": 1,
-     *              "isHidden": false,
-     *              "isDeleted": false,
-     *              "title": "A category",
-     *              "treeChilds" : [
-     *                  {
-     *                      ....
-     *                  }
-     *              ]
-     *          },
-     *          {...},
-     *          ...
-     *      ]
-     *   }
-     */
-    /**
-     * @apiVersion 1.5.0
-     * @api {post} /api/tree tree
-     * @apiName Tree view
-     * @apiDescription API endpoint for retrieving a tree structure.
-     *
-     * The entity must be of type Areanet\PIM\Entity\BaseTree
-     * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} entity Entity to read
@@ -1062,26 +1064,24 @@ class ApiController extends BaseController
      *      "entity": "Category",
      *      "properties": ["title"]
      *     }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "message": "treeAction",
-     *       "data:" [
-     *          {
-     *              "id": 1,
-     *              "isHidden": false,
-     *              "isDeleted": false,
-     *              "title": "A category",
-     *              "treeChilds" : [
-     *                  {
-     *                      ....
-     *                  }
-     *              ]
-     *          },
-     *          {...},
-     *          ...
-     *      ]
-     *   }
+     *       "data": [
+     *         {
+     *           "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec",
+     *           "title": "A category",
+     *           "treeChilds": []
+     *         }
+     *       ],
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      */
     public function treeAction(Request $request)
     {
@@ -1096,14 +1096,14 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.5.2
+     * @apiVersion 2.0.0
      * @api {post} /api/tree2 tree2
      * @apiName Tree view optimized
      * @apiDescription API endpoint for retrieving an optimized/performant tree structure.
      *
      * The entity must be of type Areanet\PIM\Entity\BaseTree
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} entity Entity to read
@@ -1112,26 +1112,24 @@ class ApiController extends BaseController
      *     {
      *      "entity": "Category"
      *     }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "message": "treeAction",
-     *       "data:" [
-     *          {
-     *              "id": 1,
-     *              "isHidden": false,
-     *              "isDeleted": false,
-     *              "title": "A category",
-     *              "treeChilds" : [
-     *                  {
-     *                      ....
-     *                  }
-     *              ]
-     *          },
-     *          {...},
-     *          ...
-     *      ]
-     *   }
+     *       "data": [
+     *         {
+     *           "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec",
+     *           "title": "A category",
+     *           "treeChilds": []
+     *         }
+     *       ],
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      */
     public function tree2Action(Request $request)
     {
@@ -1145,13 +1143,13 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.5.0
+     * @apiVersion 2.0.0
      * @api {post} /api/translations translations
      * @apiName Translations
      * @apiDescription Returns the number of pending translations for an entity.
      *
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} entity Entity to read
@@ -1161,17 +1159,23 @@ class ApiController extends BaseController
      *      "entity": "Category",
      *      "lang": "en"
      *     }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "message": "translationsAction",
      *       "data": [
      *         {
      *           "lang": "de",
      *           "records": "4"
-     *         }, ...
+     *         }
      *       ],
-     *   }
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      */
     public function translationsAction(Request $request)
     {
@@ -1185,15 +1189,16 @@ class ApiController extends BaseController
     }
 
     /**
-     * @apiVersion 1.4.2
+     * @apiVersion 2.0.0
      * @api {post} /api/query query
      * @apiDescription Extended API endpoint through which almost arbitrary queries can be run against the database/entities. The query syntax is based on Doctrine's DBAL QueryBuilder (http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/query-builder.html). The JSON request (see examples below) is converted in the Contentfly CMS into an equivalent DBAL query via the QueryBuilder.
      *
      * The data is returned in JSON format. Because of the DBAL query, the data is returned directly
-     * at database level and not as Doctrine entities.
+     * at database level and not as Doctrine entities. <code>setFirstResult</code> is the offset,
+     * <code>setMaxResults</code> the limit. The request is echoed in <code>meta.params</code>.
      * @apiName Query
      * @apiGroup Objects
-     * @apiHeader {String} APPMS-TOKEN Access-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParamExample {json} Simple query:
@@ -1205,31 +1210,44 @@ class ApiController extends BaseController
      *     {
      *      "select": "*",
      *      "from": "Product",
-     *      "where": {"active": true},
+     *      "where": {"active": true}
      *     }
      * @apiParamExample {json} Query with group, Count(), limit and offset
      *     {
-     *      "select": ['title', 'field2', 'COUNT(id) AS users'],
+     *      "select": ["title", "field2", "COUNT(id) AS users"],
      *      "from": "Product",
      *      "where": {"active": true},
      *      "groupBy": "category",
      *      "having": {"field": "value"},
      *      "orderBy": {"field": "ASC"},
      *      "addOrderBy": {"field": "DESC"},
-     *      "setFirstResult": 10, //Offfset,
-     *      "setMaxResults": 20, //Limit
+     *      "setFirstResult": 10,
+     *      "setMaxResults": 20
      *     }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
-     *      [
-     *          {
-     *              "name" : "Product1",
-     *              "active": true
-     *          },
-     *          {
-     *              ..
-     *          }
-     *      ]
+     *     {
+     *       "data": [
+     *         {
+     *           "name": "Product1",
+     *           "active": true
+     *         }
+     *       ],
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65",
+     *         "params": {
+     *           "select": [
+     *             "name",
+     *             "active"
+     *           ],
+     *           "from": "Product"
+     *         }
+     *       }
+     *     }
      */
     public function queryAction(Request $request){
         $params = $request->request->all();

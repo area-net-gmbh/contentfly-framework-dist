@@ -29,15 +29,50 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 class FileController extends BaseController
 {
     /**
-     * @apiVersion 1.3.0
+     * @apiVersion 2.0.0
      * @api {post} /file/upload upload
      * @apiName Upload
      * @apiGroup File
-     * @apiHeader {String} X-Token Acces-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiDescription Regular POST upload of files
      *
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "data": {
+     *         "id": "aa433220-9b62-4e77-93c1-8c3e8c52e7ec",
+     *         "created": {
+     *           "LOCAL_TIME": "21.09.2026 08:09",
+     *           "LOCAL": "21.09.2026",
+     *           "ISO8601": "2026-09-21T08:09:28+0200",
+     *           "TIMESTAMP": 1789970968
+     *         },
+     *         "modified": {
+     *           "LOCAL_TIME": "21.09.2026 08:09",
+     *           "LOCAL": "21.09.2026",
+     *           "ISO8601": "2026-09-21T08:09:28+0200",
+     *           "TIMESTAMP": 1789970968
+     *         },
+     *         "name": "sample.jpg",
+     *         "folder": null,
+     *         "title": null,
+     *         "altText": null,
+     *         "type": "image/jpeg",
+     *         "hash": "401b30e3b8b5d629635a5c613cdb7919",
+     *         "size": 123456,
+     *         "width": 1920,
+     *         "height": 1080
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      */
     public function uploadAction(Request $request): JsonResponse
     {
@@ -278,7 +313,7 @@ class FileController extends BaseController
     }
 
     /**
-     * @apiVersion 1.3.0
+     * @apiVersion 2.0.0
      * @api {get} /file/get/:id/[:size]/[:variant]/[:alias] get
      * @apiName Get
      * @apiGroup File

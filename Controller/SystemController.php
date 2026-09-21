@@ -23,29 +23,38 @@ class SystemController extends BaseController
 {
 
     /**
-     * @apiVersion 1.3.0
+     * @apiVersion 2.0.0
      * @api {post} /system/do do
      * @apiName Execute
      * @apiDescription Executes system commands.
      * @apiGroup System
-     * @apiHeader {String} X-Token Acces-Token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} method Method to execute
      * @apiParamExample {json} Flush schema cache:
      *     {
-     *      "method": "flushSchemaCache",
+     *      "method": "flushSchemaCache"
      *     }
      * @apiParamExample {json} Synchronise database:
      *     {
-     *      "method": "updateDatabase",
+     *      "method": "updateDatabase"
      *     }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "method": "flushSchemaCache",
-     *       "message:" "..."
-     *   }
+     *       "data": {
+     *         "method": "flushSchemaCache",
+     *         "message": "Schema cache cleared!"
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      */
     /**
      * The methods callable via `POST /system/do` (000-000-0015).

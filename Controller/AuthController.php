@@ -32,14 +32,14 @@ class AuthController extends BaseController
      */
 
     /**
-     * @apiVersion 1.3.0
+     * @apiVersion 2.0.0
      * @api {post} /auth/login login
      * @apiName Login
      * @apiGroup User
      * @apiDescription API endpoint for authenticating a user.
      *
      * A login provider (parameter `loginManager`) can extend or replace Contentfly's default password login.
-     * @apiHeader {String} X-Token Access token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      *
      * @apiParam {String} alias User name
@@ -52,16 +52,79 @@ class AuthController extends BaseController
      *      "alias": "admin",
      *      "pass": "xyz"
      *     }
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "message": "Login successful",
-     *       "token": "sdnajn3sdfmkwrk23cskvavdfgq45sdfasgafg"
-     *       "user": {
-     *          "alias": "admin",
-     *          "isAdmin": true
-     *      }
-     *   }
+     *       "data": {
+     *         "token": "765040cd53f2b7f8dd25c07cee4bc998c7be51162028b68304e3a2a327014a94",
+     *         "user": {
+     *           "id": "b6d69325-a864-11f1-8eb9-e2354fd57eaa",
+     *           "isIntern": false,
+     *           "isAdmin": true,
+     *           "alias": "admin",
+     *           "isActive": true,
+     *           "loginManager": ""
+     *         },
+     *         "tempData": {
+     *           "loginProvider": null,
+     *           "externalGroups": []
+     *         }
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
+     * @apiSuccessExample {json} Success-Response with tokenType jwt:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "data": {
+     *         "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.signature",
+     *         "user": {
+     *           "id": "b6d69325-a864-11f1-8eb9-e2354fd57eaa",
+     *           "isIntern": false,
+     *           "isAdmin": true,
+     *           "alias": "admin",
+     *           "isActive": true,
+     *           "loginManager": ""
+     *         },
+     *         "refreshToken": "57d21cea13818e340e0b498eccce3e4f9f4e4763c633af90a56aaa2fc80a3b3d",
+     *         "expiresIn": 900,
+     *         "tempData": {
+     *           "loginProvider": null,
+     *           "externalGroups": []
+     *         }
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
+     * @apiErrorExample {json} Error-Response:
+     *     HTTP/1.1 401 Unauthorized
+     *     {
+     *       "data": null,
+     *       "errors": [
+     *         {
+     *           "code": "contentfly_general_invalid_credentials",
+     *           "detail": "Invalid user name and/or password.",
+     *           "type": "Areanet\\PIM\\Controller\\AuthController",
+     *           "context": null
+     *         }
+     *       ],
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      * @apiError 401 Invalid user name | The user is deactivated | Invalid user name and/or password
      * @apiError 429 Too many login attempts - the throttle applies per identifier and per IP (013-001-0003)
      */
@@ -359,20 +422,28 @@ class AuthController extends BaseController
     }
 
     /**
-     * @apiVersion 1.5.0
+     * @apiVersion 2.0.0
      * @api {post} /auth/refresh refresh
      * @apiName Refresh
      * @apiGroup User
      * @apiDescription Exchanges a refresh token for a fresh access JWT (013-003-0002).
      *
      * @apiParam {String} refreshToken The refresh token from the login
-     * @apiSuccessExample Success-Response:
+     * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
      *     {
-     *       "message": "Refresh successful",
-     *       "token": "eyJ...",
-     *       "refreshToken": "…",
-     *       "expiresIn": 900
+     *       "data": {
+     *         "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.signature",
+     *         "refreshToken": "1934c0c2df8dc487b2a161e09ffc8bd5c0a9a129bdbdcbd6e944c920be8f345c",
+     *         "expiresIn": 900
+     *       },
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
      *     }
      * @apiError 401 Invalid refresh token
      * @apiError 429 Too many attempts
@@ -484,14 +555,26 @@ class AuthController extends BaseController
     }
 
     /**
-     * @apiVersion 1.3.0
+     * @apiVersion 2.0.0
      * @api {get} /auth/logout logout
      * @apiName Logout
      * @apiGroup User
-     * @apiHeader {String} X-Token Access token
+     * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
      * @apiHeader {String} Content-Type=application/json
      * @apiParam {String} refreshToken Optional; whoever logs out with an access JWT also revokes their
      *                                 refresh token with it (013-003-0003)
+     * @apiSuccessExample {json} Success-Response:
+     *     HTTP/1.1 200 OK
+     *     {
+     *       "data": null,
+     *       "errors": null,
+     *       "meta": {
+     *         "ts": "2026-09-21 08:09:28",
+     *         "version": "2.1.0",
+     *         "projectVersion": "1.0.0",
+     *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
+     *       }
+     *     }
      */
     public function logoutAction(Request $request)
     {
