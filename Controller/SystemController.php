@@ -3,6 +3,8 @@ namespace Areanet\PIM\Controller;
 
 use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Controller\BaseController;
+use Areanet\PIM\Classes\Exceptions\ContentflyException;
+use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Entity\Folder;
 use Areanet\PIM\Entity\Log;
 use Areanet\PIM\Entity\ThumbnailSetting;
@@ -97,7 +99,12 @@ class SystemController extends BaseController
          * (000-000-0023).
          */
         if (!is_string($method) || !in_array($method, self::ERLAUBTE_METHODEN, true)) {
-            throw new \Exception('Method '.(is_string($method) ? $method : '').' is not available.');
+            /*
+             * A request error, not a server fault (000-000-0073). As a bare \Exception it answered
+             * 500, and since unforeseen faults keep their text to themselves it would have told the
+             * caller nothing. The rejected name travels in `context.value`.
+             */
+            throw new ContentflyException(Messages::contentfly_general_invalid_params, is_string($method) ? $method : '', Messages::contentfly_status_bad_request);
         }
 
         /*
@@ -167,7 +174,7 @@ class SystemController extends BaseController
 
         $token = $this->em->getRepository('Areanet\\PIM\\Entity\\Token')->find($id);
         if(!$token){
-            throw new \Exception('Invalid token');
+            throw new ContentflyException(Messages::contentfly_general_not_found, $id, Messages::contentfly_status_not_found);
         }
 
         $log = new Log();
@@ -273,7 +280,7 @@ class SystemController extends BaseController
         $userId      =  ($request->request->all()['user'] ?? null);
 
         if(!$referrer || !$userId){
-            throw new \Exception('Invalid referrer and/or user');
+            throw new ContentflyException(Messages::contentfly_general_missing_params, 'referrer, user', Messages::contentfly_status_bad_request);
         }
 
         if($tokenString === null || $tokenString === ''){
@@ -281,9 +288,8 @@ class SystemController extends BaseController
         }elseif(!is_string($tokenString)
             || strlen($tokenString) < self::API_TOKEN_MIN_LENGTH
             || count(array_unique(str_split($tokenString))) < self::API_TOKEN_MIN_DISTINCT_CHARACTERS){
-            throw new \Exception(sprintf(
-                'The token is too weak: at least %d characters with at least %d different ones. '
-                .'Leave "token" out to have one generated.',
+            throw new ContentflyException(Messages::contentfly_general_token_too_weak, sprintf(
+                'At least %d characters with at least %d different ones. Leave "token" out to have one generated.',
                 self::API_TOKEN_MIN_LENGTH,
                 self::API_TOKEN_MIN_DISTINCT_CHARACTERS
             ), 400);
@@ -291,7 +297,7 @@ class SystemController extends BaseController
 
         $user = $this->em->getRepository('Areanet\\PIM\\Entity\\User')->find($userId);
         if(!$user){
-            throw new \Exception('Invalid user');
+            throw new ContentflyException(Messages::contentfly_general_not_found, $userId, Messages::contentfly_status_not_found);
         }
 
         $token = new Token();
@@ -305,7 +311,7 @@ class SystemController extends BaseController
             $this->em->persist($token);
             $this->em->flush();
         }catch(\Exception $e){
-            throw new \Exception('The token already exists.');
+            throw new ContentflyException(Messages::contentfly_general_ressource_already_exists, 'token', Messages::contentfly_status_ressource_already_exists);
         }
 
         $log = new Log();

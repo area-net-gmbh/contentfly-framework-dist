@@ -7,6 +7,7 @@ use Areanet\PIM\Classes\Controller\Provider\Base\FileControllerProvider;
 use Areanet\PIM\Classes\Controller\Provider\Base\SystemControllerProvider;
 use Areanet\PIM\Classes\Envelope;
 use Areanet\PIM\Classes\Config;
+use Areanet\PIM\Classes\Messages;
 use Symfony\Component\HttpFoundation\AcceptHeader;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -189,8 +190,30 @@ $app->error(function (\Throwable $e) use($app) {
          */
         $meta = Config\Adapter::getConfig()->APP_DEBUG ? array('debug' => $e->getTrace()) : array();
 
+        /*
+         * AN UNFORESEEN FAULT KEEPS ITS INTERNALS TO ITSELF (000-000-0073).
+         *
+         * `detail` is getMessage(). For a Contentfly exception that is a message key, for an HTTP
+         * exception a sentence the code wrote on purpose. For anything else it is whatever the
+         * library said — measured: a DBAL syntax error put the MySQL message and a slice of the
+         * query into the response, with APP_DEBUG off. The class of disclosure TeamViewer reported
+         * against UFP in 2025.
+         *
+         * Without debug such a fault now answers with a fixed `detail` and a `type` that names no
+         * library class; the full text goes to the server log, where an operator finds it. `code`
+         * stays null — the envelope's statement that there is nothing stable to branch on. With
+         * debug the text stays in the response, as before.
+         */
+        $entry = Envelope::entry($e);
+
+        if (!Config\Adapter::getConfig()->APP_DEBUG && $status >= 500 && $entry['code'] === null && !$e instanceof HttpExceptionInterface) {
+            error_log(sprintf('Contentfly: unexpected %s: %s in %s:%d', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine()));
+
+            $entry = Envelope::fault(null, Messages::contentfly_general_internal_error, 'InternalServerError');
+        }
+
         return $app->json(
-            Envelope::failure(array(Envelope::entry($e)), Envelope::schemaHash($app), $meta),
+            Envelope::failure(array($entry), Envelope::schemaHash($app), $meta),
             $status
         );
     }

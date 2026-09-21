@@ -41,6 +41,10 @@ class Messages
     const contentfly_general_not_found                  = 'contentfly_general_not_found';
     // The installation has not been run — the guard in BaseControllerProvider (011-001-0003).
     const contentfly_general_not_installed              = 'contentfly_general_not_installed';
+    // An unforeseen server fault, reported without its internals when debug is off (000-000-0073).
+    const contentfly_general_internal_error             = 'contentfly_general_internal_error';
+    // An API token that `/system/do addToken` refuses as guessable (000-000-0073).
+    const contentfly_general_token_too_weak             = 'contentfly_general_token_too_weak';
     const contentfly_general_permission_denied          = 'contentfly_general_permission_denied';
     const contentfly_general_plugin_not_found           = 'contentfly_general_plugin_not_found';
     const contentfly_general_property_not_exists        = 'contentfly_general_property_not_exists';
