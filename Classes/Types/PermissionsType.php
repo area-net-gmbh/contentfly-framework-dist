@@ -74,7 +74,9 @@ class PermissionsType extends Type
                     }
                 }
 
-                $data[] = $object->getId();
+                // The permission row, not the group that holds it (000-000-0067) — both
+                // branches returned the group's own id once per row.
+                $data[] = $objectToLoad->getId();
             }
         } else {
 
@@ -93,7 +95,7 @@ class PermissionsType extends Type
                 }
 
                 $data[] = $flatten
-                    ? array("id" => $object->getId())
+                    ? array("id" => $objectToLoad->getId())
                     : $objectToLoad->toValueObject($this->app, $subEntity, $flatten, $propertiesToLoad, ($level + 1), $propertiesToLoad);
             }
         }
