@@ -274,7 +274,13 @@ class FileController extends BaseController
 
 
                 $processor = Processing::getInstance($uploadType);
-                $processor->execute($backend, $fileObject);
+                try {
+                    $processor->execute($backend, $fileObject);
+                } catch (ContentflyException $e) {
+                    // Nothing of a rejected upload stays behind (000-000-0068).
+                    $this->discardUpload($fileObject, $log);
+                    throw $e;
+                }
 
 
             } else {
@@ -593,6 +599,30 @@ class FileController extends BaseController
      * OWN reaches files the user created or is listed in `users`, GROUP additionally those
      * listed for the user's group.
      */
+    /**
+     * Removes a new upload that the image processor refused: the record, its log row and the
+     * directory with the original and any thumbnails written before the failure (000-000-0068).
+     *
+     * Only for a NEW record. Re-uploading onto an existing id is not rolled back — the header
+     * checks in UploadValidator run before that path writes anything, and only a file with a
+     * valid header and a broken body can still fail here.
+     */
+    private function discardUpload(File $fileObject, Log $log): void
+    {
+        $directory = Backend::getInstance()->getPath($fileObject);
+
+        $this->em->remove($log);
+        $this->em->remove($fileObject);
+        $this->em->flush();
+
+        foreach (new DirectoryIterator($directory) as $entry) {
+            if ($entry->isFile()) {
+                unlink($entry->getPathname());
+            }
+        }
+        rmdir($directory);
+    }
+
     private function assertFileWritable(int $permission, File $file): void
     {
         $user = $this->app['auth.user'];

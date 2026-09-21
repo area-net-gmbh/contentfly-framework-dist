@@ -410,9 +410,19 @@ class Config{
 
 
     /**
-     * @var string ImageMagick-Path
+     * @var int|null Largest image, in pixels (width × height), that the image processor accepts.
+     *               Checked from the image header by `Classes\File\UploadValidator` before
+     *               anything is stored (413); null = no limit (000-000-0068).
+     *
+     * GD decodes an image into memory at about four bytes per pixel, whatever the file size. A
+     * few hundred bytes of PNG header can claim 50,000 × 50,000 pixels — ten gigabytes. The
+     * default admits a 24-megapixel photo (6000 × 4000); `memory_limit` has to cover roughly
+     * five bytes per admitted pixel.
+     *
+     * `IMAGEMAGICK_EXECUTABLE` IS GONE with the ImageMagick processor it configured, also
+     * 000-000-0068: see an_project/docs/breaking-changes.md.
      */
-    public $IMAGEMAGICK_EXECUTABLE = 'convert';
+    public $FILE_IMAGE_MAX_PIXELS = 24000000;
 
     public $SECURITY_CIPHER_METHOD = 'AES-256-CBC';
     public $SECURITY_CIPHER_KEY    = null;

@@ -106,7 +106,47 @@ class UploadValidator
             }
         }
 
+        $this->assertProcessableImage($file->getPathname(), $type);
+
         return array('name' => $this->buildName($name, $extension), 'type' => $type);
+    }
+
+    /**
+     * An image that an image processor will decode must be one it CAN decode (000-000-0068).
+     *
+     * The type decides which processor runs, and without a whitelist the type is the client's
+     * statement. Until this check a file that only claimed to be an image reached GD: a broken
+     * JPEG made `imagecreatefromjpeg()` return false and the upload end in 500, with the record
+     * and the file already stored. A header claiming 50,000 × 50,000 pixels would have made GD
+     * allocate ten gigabytes. All of it is visible in the header, before anything is written:
+     *
+     *  - the header must be readable as an image (415),
+     *  - it must be the type the processor was chosen for — a PNG sent as `image/jpeg` would reach
+     *    the JPEG decoder (415),
+     *  - it must stay under `FILE_IMAGE_MAX_PIXELS` (413).
+     *
+     * Types without an image processor are not touched: a `.txt` stays storable as before.
+     */
+    private function assertProcessableImage(string $path, string $type): void
+    {
+        if (Processing::getInstance($type) instanceof Processing\Standard) {
+            return;
+        }
+
+        $info = @getimagesize($path);
+        if ($info === false || empty($info[0]) || empty($info[1])) {
+            throw new ContentflyException(Messages::contentfly_file_invalid_type, $type, 415);
+        }
+
+        $actual = strtolower((string) $info['mime']);
+        if ($actual !== ($type === 'image/jpg' ? 'image/jpeg' : $type)) {
+            throw new ContentflyException(Messages::contentfly_file_invalid_type, $actual, 415);
+        }
+
+        $limit = Adapter::getConfig()->FILE_IMAGE_MAX_PIXELS;
+        if ($limit !== null && (int) $info[0] * (int) $info[1] > (int) $limit) {
+            throw new ContentflyException(Messages::contentfly_file_too_large, $info[0].' x '.$info[1].' px', 413);
+        }
     }
 
     /**

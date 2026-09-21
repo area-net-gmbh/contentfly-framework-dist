@@ -2,6 +2,8 @@
 namespace Areanet\PIM\Classes\File\Processing;
 
 use Areanet\PIM\Classes\Config\Adapter;
+use Areanet\PIM\Classes\Exceptions\ContentflyException;
+use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\File\ProcessingInterface;
 use Areanet\PIM\Classes\File\BackendInterface;
 use Areanet\PIM\Entity\File;
@@ -72,29 +74,41 @@ class Image implements ProcessingInterface
             if($exif && !empty($exif['Orientation'])) {
                 switch($exif['Orientation']) {
                     case 8:
-                        $img0 = $loadMethodName($imgName);
+                        $img0 = $this->load($loadMethodName, $imgName);
                         $img  = imagerotate($img0,90,0);
                         imagedestroy($img0);
                         break;
                     case 3:
-                        $img0 = $loadMethodName($imgName);
+                        $img0 = $this->load($loadMethodName, $imgName);
                         $img  = imagerotate($img0,180,0);
                         imagedestroy($img0);
                         break;
                     case 6:
-                        $img0 = $loadMethodName($imgName);
+                        $img0 = $this->load($loadMethodName, $imgName);
                         $img  = imagerotate($img0,-90,0);
                         imagedestroy($img0);
                         break;
                     default:
-                        $img = $loadMethodName($imgName);
+                        $img = $this->load($loadMethodName, $imgName);
                         break;
                 }
             }else{
-                $img = $loadMethodName($imgName);
+                $img = $this->load($loadMethodName, $imgName);
             }
         }else{
-            $img = $loadMethodName($imgName);
+            $img = $this->load($loadMethodName, $imgName);
+        }
+
+        /*
+         * A HEADER THAT PARSES IS NOT AN IMAGE THAT DECODES (000-000-0068).
+         *
+         * `UploadValidator` rejects what the header already gives away. A file with a valid header
+         * and a broken body still gets here, and GD answers with `false` — which the lines below
+         * handed to `imagesx()` as if it were an image: a TypeError and a 500. Now it is the same
+         * 415 the validator gives, and the caller removes what was stored.
+         */
+        if(!$img){
+            throw new ContentflyException(Messages::contentfly_file_invalid_type, $fileObject->getType(), 415);
         }
 
         if($fileObject->getType() == 'image/png') {
@@ -149,7 +163,7 @@ class Image implements ProcessingInterface
                         $imgThumbName = implode('.', $imgThumbNameList);
                         imagejpeg($thumb, $imgThumbName, $this->qualityMapping['image/jpeg']);
                     } else {
-                        $saveMethodName($thumb, $imgThumbName, $this->qualityMapping[$fileObject->getType()]);
+                        $this->save($saveMethodName, $thumb, $imgThumbName, $this->qualityMapping[$fileObject->getType()]);
                     }
 
                     imagedestroy($thumb);
@@ -180,7 +194,7 @@ class Image implements ProcessingInterface
                 $imgThumbNameList[count($imgThumbNameList) - 1] = "2x@" . $imgThumbNameList[count($imgThumbNameList) - 1];
                 $imgThumbName2x = implode('/', $imgThumbNameList);
 
-                $saveMethodName($thumb, $imgThumbName2x, $quality);
+                $this->save($saveMethodName, $thumb, $imgThumbName2x, $quality);
 
                 imagedestroy($thumb);
 
@@ -210,7 +224,7 @@ class Image implements ProcessingInterface
                 $imgThumbNameList[count($imgThumbNameList) - 1] = "1x@" . $imgThumbNameList[count($imgThumbNameList) - 1];
                 $imgThumbName2x = implode('/', $imgThumbNameList);
 
-                $saveMethodName($thumb, $imgThumbName2x, $quality);
+                $this->save($saveMethodName, $thumb, $imgThumbName2x, $quality);
 
                 imagedestroy($thumb);
 
@@ -221,6 +235,31 @@ class Image implements ProcessingInterface
         }
     }
 
+
+    /**
+     * Decodes the uploaded original. GD reports a broken file with a warning AND `false`; the
+     * warning would become an exception in debug mode before `execute()` can turn the `false`
+     * into a 415, so it is silenced here and the `false` is the whole answer.
+     */
+    protected function load(string $loadMethodName, string $path): \GdImage|false
+    {
+        return @$loadMethodName($path);
+    }
+
+    /**
+     * Writes a thumbnail. `imagegif()` takes no quality and since PHP 8 refuses a third argument
+     * even when it is null — every GIF upload ended in 500 (found in 000-000-0068). The quality is
+     * passed only where there is one.
+     */
+    protected function save(string $saveMethodName, \GdImage $image, string $path, ?int $quality): void
+    {
+        if ($quality === null) {
+            $saveMethodName($image, $path);
+            return;
+        }
+
+        $saveMethodName($image, $path, $quality);
+    }
 
     protected function resizeByWidth($fileObject, $img, ThumbnailSetting $thumbnailSetting){
         $orig_width  = imagesx($img);
@@ -259,7 +298,7 @@ class Image implements ProcessingInterface
         $orig_height = imagesy($img);
 
         $height     = $thumbnailSetting->getHeight() < $orig_height ? $thumbnailSetting->getHeight() : $orig_height;
-        $width      = (($orig_width * $height) / $orig_height);
+        $width      = max(1, (int) round(($orig_width * $height) / $orig_height));
 
         $thumb = imagecreatetruecolor($width, $height);
 
@@ -362,8 +401,10 @@ class Image implements ProcessingInterface
         $orig_width  = imagesx($img);
         $orig_height = imagesy($img);
 
-        $width       = $orig_width * $sizeFactor;
-        $height      = $orig_height * $sizeFactor;
+        // Whole pixels, rounded (000-000-0068). The product is a float — 300 × 2/3 is 199.99… —
+        // and GD truncated it silently, with a deprecation notice per call since PHP 8.1.
+        $width       = max(1, (int) round($orig_width * $sizeFactor));
+        $height      = max(1, (int) round($orig_height * $sizeFactor));
 
         $thumb = imagecreatetruecolor($width, $height);
 
