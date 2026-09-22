@@ -1821,7 +1821,23 @@ class Api
         $entityNameAlias = 'a'.md5($entityShortName);
 
         $queryBuilder = $this->em->createQueryBuilder();
-        if($clearEM) $this->em->clear($entityFullName);
+        /*
+         * ONLY THIS ENTITY, NOT THE WHOLE ENTITY MANAGER (000-000-0078). This said
+         * `$this->em->clear($entityFullName)` — the partial clear of ORM 2. ORM 3 (epic 010) dropped
+         * the argument, PHP ignores the extra one, and everything was cleared, the logged-in user
+         * included. doInsert() calls this before it copies the universal fields of a translation,
+         * and its flush then found `userCreated` pointing to a user it did not know: with
+         * APP_LANGUAGES set, no translation of an existing record could be added. Detaching the
+         * managed objects of this entity is what the ORM 2 call did.
+         */
+        if($clearEM){
+            $rootEntityName = $this->em->getClassMetadata($entityFullName)->rootEntityName;
+
+            foreach($this->em->getUnitOfWork()->getIdentityMap()[$rootEntityName] ?? array() as $managed){
+                $this->em->detach($managed);
+            }
+        }
+
         $queryBuilder
             ->select($entityNameAlias)
             ->from($entityFullName, $entityNameAlias);
