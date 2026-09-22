@@ -711,6 +711,21 @@ class Api
             $entities[] = $helper->getFullEntityName($entityShortName);
         }
 
+        /*
+         * A SIZE IS A NAME, NOT A PATH (000-000-0075). Each size goes into the path of a file below,
+         * and it came from the request unchecked: `../<other id>/<size>` read files from the
+         * directory of a record the caller may not read. Only 'org' and the thumbnail sizes that
+         * exist are taken — the same names /file/get accepts; anything else is left out.
+         */
+        if($filedata !== null){
+            $knownSizes = array('org');
+            foreach($this->em->getRepository('Areanet\PIM\Entity\ThumbnailSetting')->findAll() as $thumbnailSetting){
+                $knownSizes[] = $thumbnailSetting->getAlias();
+            }
+
+            $filedata = array_values(array_filter((array) $filedata, fn ($size) => in_array($size, $knownSizes, true)));
+        }
+
         $all = array();
 
         foreach($entities as $entityName){
