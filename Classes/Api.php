@@ -1818,6 +1818,20 @@ class Api
             throw new ContentflyException(Messages::contentfly_general_access_denied, $entityShortName, Messages::contentfly_status_access_denied);
         }
 
+        /*
+         * loadJoinedLang IS GONE (000-000-0081). It narrowed the joins to translatable records to
+         * another language — but such a reference has a key of two columns, and the second one,
+         * `<field>_lang`, already names the language it was written in. Asked for another language,
+         * the join had two conditions on `lang` that cannot both hold, and the joined record came
+         * back as null although it existed. The mode of compareToLang built on it ("translate
+         * anew") therefore reported missing translations every time. Its only known user was the
+         * deleted PIM interface. The parameter stays in the signature so positional callers keep
+         * working, and a value in it is rejected instead of silently answered with null.
+         */
+        if($loadJoinedLang !== null && $loadJoinedLang !== ''){
+            throw new ContentflyException(Messages::contentfly_general_invalid_params, 'loadJoinedLang', Messages::contentfly_status_bad_request);
+        }
+
         $entityNameAlias = 'a'.md5($entityShortName);
 
         $queryBuilder = $this->em->createQueryBuilder();
@@ -1868,28 +1882,16 @@ class Api
                 case 'join':
                     $joinedEntity = $helper->getShortEntityName($config['accept']);
                     if ($schema[$joinedEntity]['settings']['i18n']) {
-                        $queryBuilder->leftJoin("$entityNameAlias.$field", $entityNameAlias.$field, Join::WITH, $entityNameAlias.$field.".lang = :loadJoinedLang");
+                        $queryBuilder->leftJoin("$entityNameAlias.$field", $entityNameAlias.$field, Join::WITH, $entityNameAlias.$field.".lang = :lang");
                         $queryBuilder->addSelect($entityNameAlias.$field);
-
-                        if($loadJoinedLang){
-                            $queryBuilder->setParameter('loadJoinedLang', $loadJoinedLang);
-                        }else{
-                            $queryBuilder->setParameter('loadJoinedLang', $lang);
-                        }
 
                         foreach($schema[$joinedEntity]['properties'] as $subfield => $subconfig){
                             if ($subconfig['type'] == 'join') {
                                 $joinedSubEntity = $helper->getShortEntityName($subconfig['accept']);
                                 if ($schema[$joinedSubEntity]['settings']['i18n']) {
 
-                                    $queryBuilder->leftJoin($entityNameAlias . $field . '.' . $subfield, $entityNameAlias . $field . $subfield, Join::WITH, $entityNameAlias . $field . $subfield . ".lang = :loadJoinedLang");
+                                    $queryBuilder->leftJoin($entityNameAlias . $field . '.' . $subfield, $entityNameAlias . $field . $subfield, Join::WITH, $entityNameAlias . $field . $subfield . ".lang = :lang");
                                     $queryBuilder->addSelect($entityNameAlias . $field . $subfield);
-
-                                    if ($loadJoinedLang) {
-                                        $queryBuilder->setParameter('loadJoinedLang', $loadJoinedLang);
-                                    } else {
-                                        $queryBuilder->setParameter('loadJoinedLang', $lang);
-                                    }
                                 }
                             }
                         }
@@ -1898,14 +1900,8 @@ class Api
                 case 'multijoin':
                     $joinedEntity = $helper->getShortEntityName($config['accept']);
                     if ($schema[$joinedEntity]['settings']['i18n']) {
-                        $queryBuilder->leftJoin("$entityNameAlias.$field", $field, Join::WITH, "$field.lang = :loadJoinedLang");
+                        $queryBuilder->leftJoin("$entityNameAlias.$field", $field, Join::WITH, "$field.lang = :lang");
                         $queryBuilder->addSelect($field);
-
-                        if($loadJoinedLang){
-                            $queryBuilder->setParameter('loadJoinedLang', $loadJoinedLang);
-                        }else{
-                            $queryBuilder->setParameter('loadJoinedLang', $lang);
-                        }
                     }
                     break;
             }
@@ -1937,70 +1933,36 @@ class Api
         }
 
         if($compareToLang && $compareToLang != $lang) {
-            if(!$loadJoinedLang) {
-                //Edit existing translated record
-                try {
-                    $compareObject = $this->getSingle($entityShortName, $id, $where, $compareToLang, true, null, null, true);
-                } catch (Exception) {
-                    $compareObject = null;
-                }
+            // Edit an existing translation: every join the record has must exist in compareToLang too.
+            try {
+                $compareObject = $this->getSingle($entityShortName, $id, $where, $compareToLang, true, null, null, true);
+            } catch (Exception) {
+                $compareObject = null;
+            }
 
-                if ($compareObject) {
+            if ($compareObject) {
 
-                    foreach ($schema[$entityShortName]['properties'] as $field => $config) {
-                        $getter = 'get' . ucfirst($field);
-                        switch ($config['type']) {
-                            case 'join':
+                foreach ($schema[$entityShortName]['properties'] as $field => $config) {
+                    $getter = 'get' . ucfirst($field);
+                    switch ($config['type']) {
+                        case 'join':
 
-                                if ($object->$getter() && !$compareObject->$getter()) {
-                                    $helper = new Helper();
-                                    throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
-                                }
-                                break;
-                            case 'multijoin':
-                                $a1 = $compareObject->$getter() ? $compareObject->$getter() : array();
-                                $a2 = $object->$getter() ? $object->$getter() : array();
+                            if ($object->$getter() && !$compareObject->$getter()) {
+                                $helper = new Helper();
+                                throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
+                            }
+                            break;
+                        case 'multijoin':
+                            $a1 = $compareObject->$getter() ? $compareObject->$getter() : array();
+                            $a2 = $object->$getter() ? $object->$getter() : array();
 
-                                if (count($a1) != count($a2)) {
-                                    $helper = new Helper();
-                                    throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
-                                }
-                                break;
-                        }
+                            if (count($a1) != count($a2)) {
+                                $helper = new Helper();
+                                throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
+                            }
+                            break;
                     }
                 }
-            }else{
-                //Translate record anew
-
-                try {
-                    $compareObject = $this->getSingle($entityShortName, $id, $where, $lang, true, null, null, true);
-                } catch (Exception) {
-                    $compareObject = null;
-                }
-
-                if ($compareObject) {
-                    foreach ($schema[$entityShortName]['properties'] as $field => $config) {
-                        $getter = 'get' . ucfirst($field);
-                        switch ($config['type']) {
-                            case 'join':
-                                if ($compareObject->$getter() && !$object->$getter()) {
-                                    $helper = new Helper();
-                                    throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
-                                }
-                                break;
-                            case 'multijoin':
-                                $a1 = $compareObject->$getter() ? $compareObject->$getter() : array();
-                                $a2 = $object->$getter() ? $object->$getter() : array();
-
-                                if (count($a1) != count($a2)) {
-                                    $helper = new Helper();
-                                    throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
-                                }
-                                break;
-                        }
-                    }
-                }
-
             }
         }
 
