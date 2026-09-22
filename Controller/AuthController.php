@@ -73,7 +73,7 @@ class AuthController extends BaseController
      *       "errors": null,
      *       "meta": {
      *         "ts": "2026-09-21 08:09:28",
-     *         "version": "2.1.0",
+     *         "version": "2.2.0",
      *         "projectVersion": "1.0.0",
      *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
      *       }
@@ -101,7 +101,7 @@ class AuthController extends BaseController
      *       "errors": null,
      *       "meta": {
      *         "ts": "2026-09-21 08:09:28",
-     *         "version": "2.1.0",
+     *         "version": "2.2.0",
      *         "projectVersion": "1.0.0",
      *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
      *       }
@@ -120,7 +120,7 @@ class AuthController extends BaseController
      *       ],
      *       "meta": {
      *         "ts": "2026-09-21 08:09:28",
-     *         "version": "2.1.0",
+     *         "version": "2.2.0",
      *         "projectVersion": "1.0.0",
      *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
      *       }
@@ -440,7 +440,7 @@ class AuthController extends BaseController
      *       "errors": null,
      *       "meta": {
      *         "ts": "2026-09-21 08:09:28",
-     *         "version": "2.1.0",
+     *         "version": "2.2.0",
      *         "projectVersion": "1.0.0",
      *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
      *       }
@@ -570,7 +570,7 @@ class AuthController extends BaseController
      *       "errors": null,
      *       "meta": {
      *         "ts": "2026-09-21 08:09:28",
-     *         "version": "2.1.0",
+     *         "version": "2.2.0",
      *         "projectVersion": "1.0.0",
      *         "hash": "4f3e247083bdb20bc3c11be6a28f9b65"
      *       }
