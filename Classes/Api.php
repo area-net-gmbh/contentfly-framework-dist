@@ -435,6 +435,16 @@ class Api
             if($entityShortName == 'PIM\User'){
                 throw new ContentflyException(Messages::contentfly_general_user_already_exists, $data['alias']);
             }
+
+            /*
+             * MYSQL'S TEXT GOES TO THE LOG, NOT TO THE CLIENT (000-000-0079). It was appended to the
+             * value of the exception, and `context.value` carried `SQLSTATE[23000]`, the key and the
+             * value — without debug too. 000-000-0073 keeps such text out of every unexpected
+             * error; a ContentflyException is an expected one and passes, so the text must not be
+             * in it.
+             */
+            error_log(sprintf('Contentfly: unique violation on %s: %s', $entityShortName, $e->getMessage()));
+
             $uniqueObjectLoaded = false;
 
             foreach($schema[$entityShortName]['properties'] as $property => $propertySettings){
@@ -442,7 +452,7 @@ class Api
                 if($propertySettings['unique']){
                     $object = $this->em->getRepository($entityFullName)->findOneBy(array($property => $data[$property]));
                     if(!$object){
-                        throw new ContentflyException(Messages::contentfly_general_unknown_perror, "$entityShortName::$property (100)".$e->getMessage());
+                        throw new ContentflyException(Messages::contentfly_general_unknown_perror, "$entityShortName::$property (100)");
                     }
                     $uniqueObjectLoaded = true;
                     break;
@@ -450,11 +460,17 @@ class Api
             }
 
             if(!$uniqueObjectLoaded){
-                throw new ContentflyException(Messages::contentfly_general_unknown_perror, "$entityShortName::$property (200) ".$e->getMessage());
+                throw new ContentflyException(Messages::contentfly_general_unknown_perror, "$entityShortName::$property (200)");
             }
-        }catch(Exception $e){
-            throw new ContentflyException($e->getMessage());
         }
+        /*
+         * NO catch(Exception) HERE ANY MORE (000-000-0079). It wrapped every other failure of the
+         * flush in a ContentflyException with the exception's text as its message — the text of
+         * Doctrine or the database, which then stood in `code` and `detail` of the answer, without
+         * debug too: a ContentflyException counts as expected, and the handler of 000-000-0073
+         * passes it through. Uncaught, the failure reaches that handler as what it is, and the
+         * handler answers with `contentfly_general_internal_error` and logs the text.
+         */
 
         if(count($i18nProperties) && count($i18nObjects)) {
             foreach ($i18nObjects as $i18nObject) {
@@ -600,9 +616,15 @@ class Api
             }else{
                 throw new ContentflyException(Messages::contentfly_general_ressource_already_exists, "$property::$value", Messages::contentfly_status_ressource_already_exists);
             }
-        }catch(Exception $e){
-            throw new ContentflyException($e->getMessage());
         }
+        /*
+         * NO catch(Exception) HERE ANY MORE (000-000-0079). It wrapped every other failure of the
+         * flush in a ContentflyException with the exception's text as its message — the text of
+         * Doctrine or the database, which then stood in `code` and `detail` of the answer, without
+         * debug too: a ContentflyException counts as expected, and the handler of 000-000-0073
+         * passes it through. Uncaught, the failure reaches that handler as what it is, and the
+         * handler answers with `contentfly_general_internal_error` and logs the text.
+         */
 
         /**
          * Log update actions
