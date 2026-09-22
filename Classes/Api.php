@@ -848,6 +848,7 @@ class Api
      */
     public function getCount($lastMofified, $entity = null): array
     {
+        self::assertDates($lastMofified);
 
         $data = array(
             'dataCount'     => 0,
@@ -1009,6 +1010,7 @@ class Api
      */
     public function getDeleted($lastMofified): array
     {
+        self::assertDates($lastMofified);
 
         $data = array();
 
@@ -1188,13 +1190,7 @@ class Api
      */
     public function getList($entityName, $where = null, $order = null, $groupBy = null, $properties = array(), $lastModified = null, $flatten = false, $currentPage = 0, $itemsPerPage = 20, $lang = null, $untranslatedLang = null): ?array
     {
-        if(!empty($lastModified)) {
-            try {
-                $lastModified = new Datetime($lastModified);
-            } catch (Exception) {
-
-            }
-        }
+        $lastModified = self::readDate($lastModified);
 
         $helper             = new Helper();
         $entityFullName     = $helper->getFullEntityName($entityName);
@@ -2018,6 +2014,45 @@ class Api
         }
 
         return $returnObject ? $object : $object->toValueObject($this->app, $entityShortName, false);
+    }
+
+    /**
+     * A point in time from the request, or null when none was sent (000-000-0083).
+     *
+     * A value that is no date is the caller's mistake and answered with 400. getList() used to try
+     * the conversion, swallow the failure and hand the raw string on to the query — MySQL rejected
+     * it and the caller got 500. /api/all dropped it without a word and delivered everything, as if
+     * no point in time had been asked for.
+     *
+     * @throws ContentflyException
+     */
+    public static function readDate(mixed $value): ?DateTime
+    {
+        if($value === null || $value === ''){
+            return null;
+        }
+
+        if(is_string($value)){
+            try {
+                return new DateTime($value);
+            } catch (Exception) {
+            }
+        }
+
+        throw new ContentflyException(Messages::contentfly_general_invalid_date, 'lastModified', Messages::contentfly_status_bad_request);
+    }
+
+    /**
+     * The same check for getCount() and getDeleted(), which take one point in time or one per
+     * entity and pass them on to SQL as they came (000-000-0083).
+     *
+     * @throws ContentflyException
+     */
+    protected static function assertDates(mixed $value): void
+    {
+        foreach(is_array($value) ? $value : array($value) as $single){
+            self::readDate($single);
+        }
     }
 
     /**

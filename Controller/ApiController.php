@@ -93,14 +93,9 @@ class ApiController extends BaseController
         $filedata               = ($request->request->all()['filedata'] ?? null);
         $flatten                = ($request->request->all()['flatten'] ?? false);
 
-        $lastModified = null;
-        if(!empty($timestamp)) {
-            try {
-                $lastModified = new \Datetime($timestamp);
-            } catch (\Exception $e) {
-
-            }
-        }
+        // A value that is no date is answered with 400, as in /api/list (000-000-0083). It used to be
+        // dropped here, and the caller got everything as if no point in time had been asked for.
+        $lastModified = Api::readDate($timestamp);
 
         $api = new Api($this->app, $request);
         $all = $api->getAll($lastModified, $flatten, $filedata);
