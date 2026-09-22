@@ -432,29 +432,42 @@ class Api
             $this->em->flush();
 
         }catch(UniqueConstraintViolationException $e){
+            /*
+             * MYSQL'S TEXT GOES TO THE LOG, NOT TO THE CLIENT (000-000-0079). It was appended to the
+             * value of the exception, and `context.value` carried `SQLSTATE[23000]`, the key and the
+             * value — without debug too. 000-000-0073 keeps such text out of every unexpected
+             * error; a ContentflyException is an expected one and passes, so the text must not be
+             * in it.
+             */
+            error_log(sprintf('Contentfly: unique violation on %s: %s', $entityShortName, $e->getMessage()));
+
             if($entityShortName == 'PIM\User'){
-                throw new ContentflyException(Messages::contentfly_general_user_already_exists, $data['alias']);
-            }
-            $uniqueObjectLoaded = false;
-
-            foreach($schema[$entityShortName]['properties'] as $property => $propertySettings){
-
-                if($propertySettings['unique']){
-                    $object = $this->em->getRepository($entityFullName)->findOneBy(array($property => $data[$property]));
-                    if(!$object){
-                        throw new ContentflyException(Messages::contentfly_general_unknown_perror, "$entityShortName::$property (100)".$e->getMessage());
-                    }
-                    $uniqueObjectLoaded = true;
-                    break;
-                }
+                throw new ContentflyException(Messages::contentfly_general_user_already_exists, $data['alias'], Messages::contentfly_status_ressource_already_exists);
             }
 
-            if(!$uniqueObjectLoaded){
-                throw new ContentflyException(Messages::contentfly_general_unknown_perror, "$entityShortName::$property (200) ".$e->getMessage());
-            }
-        }catch(Exception $e){
-            throw new ContentflyException($e->getMessage());
+            /*
+             * EVERY UNIQUE VIOLATION IS A CONFLICT (000-000-0080). Only a field marked `unique` in the
+             * schema is checked before the insert; a key the database alone knows — a
+             * UniqueConstraint on the table — gets here. This looked for a schema field, found none
+             * and answered 500 with `unknown_perror`, naming the last field of an earlier loop.
+             *
+             * And when it DID find a schema field, it was worse: it loaded the record holding the
+             * value and carried on, so the caller got 200 and a record that already existed, as if
+             * it had just been created. Both are the conflict doUpdate() reports with 409.
+             *
+             * The message names the entity, not a field: which key collided is only in MySQL's
+             * text, and that goes to the log.
+             */
+            throw new ContentflyException(Messages::contentfly_general_ressource_already_exists, $entityShortName, Messages::contentfly_status_ressource_already_exists);
         }
+        /*
+         * NO catch(Exception) HERE ANY MORE (000-000-0079). It wrapped every other failure of the
+         * flush in a ContentflyException with the exception's text as its message — the text of
+         * Doctrine or the database, which then stood in `code` and `detail` of the answer, without
+         * debug too: a ContentflyException counts as expected, and the handler of 000-000-0073
+         * passes it through. Uncaught, the failure reaches that handler as what it is, and the
+         * handler answers with `contentfly_general_internal_error` and logs the text.
+         */
 
         if(count($i18nProperties) && count($i18nObjects)) {
             foreach ($i18nObjects as $i18nObject) {
@@ -600,9 +613,15 @@ class Api
             }else{
                 throw new ContentflyException(Messages::contentfly_general_ressource_already_exists, "$property::$value", Messages::contentfly_status_ressource_already_exists);
             }
-        }catch(Exception $e){
-            throw new ContentflyException($e->getMessage());
         }
+        /*
+         * NO catch(Exception) HERE ANY MORE (000-000-0079). It wrapped every other failure of the
+         * flush in a ContentflyException with the exception's text as its message — the text of
+         * Doctrine or the database, which then stood in `code` and `detail` of the answer, without
+         * debug too: a ContentflyException counts as expected, and the handler of 000-000-0073
+         * passes it through. Uncaught, the failure reaches that handler as what it is, and the
+         * handler answers with `contentfly_general_internal_error` and logs the text.
+         */
 
         /**
          * Log update actions
@@ -1488,8 +1507,17 @@ class Api
                 };
 
                 if ($schema[$joinedShortEntity]['settings']['i18n']) {
-                    $queryBuilder->leftJoin("$entityNameAlias.$field", 'a_'.$field, Join::WITH, "a_$field.lang = :lang");
-                    $queryBuilder->setParameter('lang', $lang);
+                    /*
+                     * A PARAMETER OF ITS OWN (000-000-0082). This bound `:lang` again — the
+                     * parameter the list itself filters on. With untranslatedLang that one holds
+                     * the language to translate FROM, and rebinding it to the language of the
+                     * request made the list ask for records in that language that have no version
+                     * in it: always empty. The join is read in the language the listed rows are
+                     * in; the reference to a translatable record carries that language in its key
+                     * anyway, so any other would find nothing.
+                     */
+                    $queryBuilder->leftJoin("$entityNameAlias.$field", 'a_'.$field, Join::WITH, "a_$field.lang = :joinLang");
+                    $queryBuilder->setParameter('joinLang', $untranslatedLang ?: $lang);
                     if(count($properties) && $schema[$joinedShortEntity]['settings']['type'] != 'tree') {
                         $labelProperty = $schema[$joinedShortEntity]['settings']['labelProperty'];
                         $labelPropertyField = $labelProperty && $schema[$joinedShortEntity]['properties'][$labelProperty]  ? ','.$labelProperty : '';
@@ -1814,10 +1842,40 @@ class Api
             throw new ContentflyException(Messages::contentfly_general_access_denied, $entityShortName, Messages::contentfly_status_access_denied);
         }
 
+        /*
+         * loadJoinedLang IS GONE (000-000-0081). It narrowed the joins to translatable records to
+         * another language — but such a reference has a key of two columns, and the second one,
+         * `<field>_lang`, already names the language it was written in. Asked for another language,
+         * the join had two conditions on `lang` that cannot both hold, and the joined record came
+         * back as null although it existed. The mode of compareToLang built on it ("translate
+         * anew") therefore reported missing translations every time. Its only known user was the
+         * deleted PIM interface. The parameter stays in the signature so positional callers keep
+         * working, and a value in it is rejected instead of silently answered with null.
+         */
+        if($loadJoinedLang !== null && $loadJoinedLang !== ''){
+            throw new ContentflyException(Messages::contentfly_general_invalid_params, 'loadJoinedLang', Messages::contentfly_status_bad_request);
+        }
+
         $entityNameAlias = 'a'.md5($entityShortName);
 
         $queryBuilder = $this->em->createQueryBuilder();
-        if($clearEM) $this->em->clear($entityFullName);
+        /*
+         * ONLY THIS ENTITY, NOT THE WHOLE ENTITY MANAGER (000-000-0078). This said
+         * `$this->em->clear($entityFullName)` — the partial clear of ORM 2. ORM 3 (epic 010) dropped
+         * the argument, PHP ignores the extra one, and everything was cleared, the logged-in user
+         * included. doInsert() calls this before it copies the universal fields of a translation,
+         * and its flush then found `userCreated` pointing to a user it did not know: with
+         * APP_LANGUAGES set, no translation of an existing record could be added. Detaching the
+         * managed objects of this entity is what the ORM 2 call did.
+         */
+        if($clearEM){
+            $rootEntityName = $this->em->getClassMetadata($entityFullName)->rootEntityName;
+
+            foreach($this->em->getUnitOfWork()->getIdentityMap()[$rootEntityName] ?? array() as $managed){
+                $this->em->detach($managed);
+            }
+        }
+
         $queryBuilder
             ->select($entityNameAlias)
             ->from($entityFullName, $entityNameAlias);
@@ -1864,28 +1922,16 @@ class Api
                 case 'join':
                     $joinedEntity = $helper->getShortEntityName($config['accept']);
                     if ($schema[$joinedEntity]['settings']['i18n']) {
-                        $queryBuilder->leftJoin("$entityNameAlias.$field", $entityNameAlias.$field, Join::WITH, $entityNameAlias.$field.".lang = :loadJoinedLang");
+                        $queryBuilder->leftJoin("$entityNameAlias.$field", $entityNameAlias.$field, Join::WITH, $entityNameAlias.$field.".lang = :lang");
                         $queryBuilder->addSelect($entityNameAlias.$field);
-
-                        if($loadJoinedLang){
-                            $queryBuilder->setParameter('loadJoinedLang', $loadJoinedLang);
-                        }else{
-                            $queryBuilder->setParameter('loadJoinedLang', $lang);
-                        }
 
                         foreach($schema[$joinedEntity]['properties'] as $subfield => $subconfig){
                             if ($subconfig['type'] == 'join') {
                                 $joinedSubEntity = $helper->getShortEntityName($subconfig['accept']);
                                 if ($schema[$joinedSubEntity]['settings']['i18n']) {
 
-                                    $queryBuilder->leftJoin($entityNameAlias . $field . '.' . $subfield, $entityNameAlias . $field . $subfield, Join::WITH, $entityNameAlias . $field . $subfield . ".lang = :loadJoinedLang");
+                                    $queryBuilder->leftJoin($entityNameAlias . $field . '.' . $subfield, $entityNameAlias . $field . $subfield, Join::WITH, $entityNameAlias . $field . $subfield . ".lang = :lang");
                                     $queryBuilder->addSelect($entityNameAlias . $field . $subfield);
-
-                                    if ($loadJoinedLang) {
-                                        $queryBuilder->setParameter('loadJoinedLang', $loadJoinedLang);
-                                    } else {
-                                        $queryBuilder->setParameter('loadJoinedLang', $lang);
-                                    }
                                 }
                             }
                         }
@@ -1894,14 +1940,8 @@ class Api
                 case 'multijoin':
                     $joinedEntity = $helper->getShortEntityName($config['accept']);
                     if ($schema[$joinedEntity]['settings']['i18n']) {
-                        $queryBuilder->leftJoin("$entityNameAlias.$field", $field, Join::WITH, "$field.lang = :loadJoinedLang");
+                        $queryBuilder->leftJoin("$entityNameAlias.$field", $field, Join::WITH, "$field.lang = :lang");
                         $queryBuilder->addSelect($field);
-
-                        if($loadJoinedLang){
-                            $queryBuilder->setParameter('loadJoinedLang', $loadJoinedLang);
-                        }else{
-                            $queryBuilder->setParameter('loadJoinedLang', $lang);
-                        }
                     }
                     break;
             }
@@ -1933,70 +1973,36 @@ class Api
         }
 
         if($compareToLang && $compareToLang != $lang) {
-            if(!$loadJoinedLang) {
-                //Edit existing translated record
-                try {
-                    $compareObject = $this->getSingle($entityShortName, $id, $where, $compareToLang, true, null, null, true);
-                } catch (Exception) {
-                    $compareObject = null;
-                }
+            // Edit an existing translation: every join the record has must exist in compareToLang too.
+            try {
+                $compareObject = $this->getSingle($entityShortName, $id, $where, $compareToLang, true, null, null, true);
+            } catch (Exception) {
+                $compareObject = null;
+            }
 
-                if ($compareObject) {
+            if ($compareObject) {
 
-                    foreach ($schema[$entityShortName]['properties'] as $field => $config) {
-                        $getter = 'get' . ucfirst($field);
-                        switch ($config['type']) {
-                            case 'join':
+                foreach ($schema[$entityShortName]['properties'] as $field => $config) {
+                    $getter = 'get' . ucfirst($field);
+                    switch ($config['type']) {
+                        case 'join':
 
-                                if ($object->$getter() && !$compareObject->$getter()) {
-                                    $helper = new Helper();
-                                    throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
-                                }
-                                break;
-                            case 'multijoin':
-                                $a1 = $compareObject->$getter() ? $compareObject->$getter() : array();
-                                $a2 = $object->$getter() ? $object->$getter() : array();
+                            if ($object->$getter() && !$compareObject->$getter()) {
+                                $helper = new Helper();
+                                throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
+                            }
+                            break;
+                        case 'multijoin':
+                            $a1 = $compareObject->$getter() ? $compareObject->$getter() : array();
+                            $a2 = $object->$getter() ? $object->$getter() : array();
 
-                                if (count($a1) != count($a2)) {
-                                    $helper = new Helper();
-                                    throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
-                                }
-                                break;
-                        }
+                            if (count($a1) != count($a2)) {
+                                $helper = new Helper();
+                                throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
+                            }
+                            break;
                     }
                 }
-            }else{
-                //Translate record anew
-
-                try {
-                    $compareObject = $this->getSingle($entityShortName, $id, $where, $lang, true, null, null, true);
-                } catch (Exception) {
-                    $compareObject = null;
-                }
-
-                if ($compareObject) {
-                    foreach ($schema[$entityShortName]['properties'] as $field => $config) {
-                        $getter = 'get' . ucfirst($field);
-                        switch ($config['type']) {
-                            case 'join':
-                                if ($compareObject->$getter() && !$object->$getter()) {
-                                    $helper = new Helper();
-                                    throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
-                                }
-                                break;
-                            case 'multijoin':
-                                $a1 = $compareObject->$getter() ? $compareObject->$getter() : array();
-                                $a2 = $object->$getter() ? $object->$getter() : array();
-
-                                if (count($a1) != count($a2)) {
-                                    $helper = new Helper();
-                                    throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
-                                }
-                                break;
-                        }
-                    }
-                }
-
             }
         }
 
