@@ -432,10 +432,6 @@ class Api
             $this->em->flush();
 
         }catch(UniqueConstraintViolationException $e){
-            if($entityShortName == 'PIM\User'){
-                throw new ContentflyException(Messages::contentfly_general_user_already_exists, $data['alias']);
-            }
-
             /*
              * MYSQL'S TEXT GOES TO THE LOG, NOT TO THE CLIENT (000-000-0079). It was appended to the
              * value of the exception, and `context.value` carried `SQLSTATE[23000]`, the key and the
@@ -445,23 +441,24 @@ class Api
              */
             error_log(sprintf('Contentfly: unique violation on %s: %s', $entityShortName, $e->getMessage()));
 
-            $uniqueObjectLoaded = false;
-
-            foreach($schema[$entityShortName]['properties'] as $property => $propertySettings){
-
-                if($propertySettings['unique']){
-                    $object = $this->em->getRepository($entityFullName)->findOneBy(array($property => $data[$property]));
-                    if(!$object){
-                        throw new ContentflyException(Messages::contentfly_general_unknown_perror, "$entityShortName::$property (100)");
-                    }
-                    $uniqueObjectLoaded = true;
-                    break;
-                }
+            if($entityShortName == 'PIM\User'){
+                throw new ContentflyException(Messages::contentfly_general_user_already_exists, $data['alias'], Messages::contentfly_status_ressource_already_exists);
             }
 
-            if(!$uniqueObjectLoaded){
-                throw new ContentflyException(Messages::contentfly_general_unknown_perror, "$entityShortName::$property (200)");
-            }
+            /*
+             * EVERY UNIQUE VIOLATION IS A CONFLICT (000-000-0080). Only a field marked `unique` in the
+             * schema is checked before the insert; a key the database alone knows — a
+             * UniqueConstraint on the table — gets here. This looked for a schema field, found none
+             * and answered 500 with `unknown_perror`, naming the last field of an earlier loop.
+             *
+             * And when it DID find a schema field, it was worse: it loaded the record holding the
+             * value and carried on, so the caller got 200 and a record that already existed, as if
+             * it had just been created. Both are the conflict doUpdate() reports with 409.
+             *
+             * The message names the entity, not a field: which key collided is only in MySQL's
+             * text, and that goes to the log.
+             */
+            throw new ContentflyException(Messages::contentfly_general_ressource_already_exists, $entityShortName, Messages::contentfly_status_ressource_already_exists);
         }
         /*
          * NO catch(Exception) HERE ANY MORE (000-000-0079). It wrapped every other failure of the
