@@ -1492,8 +1492,17 @@ class Api
                 };
 
                 if ($schema[$joinedShortEntity]['settings']['i18n']) {
-                    $queryBuilder->leftJoin("$entityNameAlias.$field", 'a_'.$field, Join::WITH, "a_$field.lang = :lang");
-                    $queryBuilder->setParameter('lang', $lang);
+                    /*
+                     * A PARAMETER OF ITS OWN (000-000-0082). This bound `:lang` again — the
+                     * parameter the list itself filters on. With untranslatedLang that one holds
+                     * the language to translate FROM, and rebinding it to the language of the
+                     * request made the list ask for records in that language that have no version
+                     * in it: always empty. The join is read in the language the listed rows are
+                     * in; the reference to a translatable record carries that language in its key
+                     * anyway, so any other would find nothing.
+                     */
+                    $queryBuilder->leftJoin("$entityNameAlias.$field", 'a_'.$field, Join::WITH, "a_$field.lang = :joinLang");
+                    $queryBuilder->setParameter('joinLang', $untranslatedLang ?: $lang);
                     if(count($properties) && $schema[$joinedShortEntity]['settings']['type'] != 'tree') {
                         $labelProperty = $schema[$joinedShortEntity]['settings']['labelProperty'];
                         $labelPropertyField = $labelProperty && $schema[$joinedShortEntity]['properties'][$labelProperty]  ? ','.$labelProperty : '';
