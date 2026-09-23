@@ -112,15 +112,24 @@ class PermissionsType extends Type
         $query->setParameter(1, $object);
         $query->execute();
 
-        $pObject = new Permission();
-        $pObject->setEntityName('PIM\\Tag');
-        $pObject->setReadable(2);
-        $pObject->setWritable(2);
-        $pObject->setDeletable(2);
-        $pObject->setGroup($object);
-
-        $this->em->persist($pObject);
-
+        /*
+         * THE HARD-WIRED PIM\Tag ROW IS GONE (000-000-0070).
+         *
+         * Every write of a group's permissions used to persist an extra row first — `PIM\Tag`
+         * with read, write and delete at ALL — whatever the request asked for. Two consequences,
+         * and the second is the worse one:
+         *
+         * 1. A group created through /api/insert or /api/update with `permissions` silently got
+         *    full access to every tag. Nobody asked for it, and nothing said so.
+         * 2. It was persisted BEFORE the requested rows, and `Classes\Permission::is()` returns
+         *    the FIRST entry matching the entity name. The association carries no ORDER BY, so
+         *    the row order is the insertion order — an explicit `PIM\Tag` entry in the request
+         *    was therefore shadowed by the ALL row and never took effect.
+         *
+         * A leftover of the PIM interface removed in epic 012, which needed tags on files. The
+         * row also set neither `export` nor `extended`, unlike the loop below — it was never
+         * part of the contract, just a side effect.
+         */
         foreach ($value as $config) {
 
             $pObject = new Permission();
