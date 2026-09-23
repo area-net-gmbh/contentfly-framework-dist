@@ -61,6 +61,19 @@ require_once $customDir.'/version.php';
 
 define('HOST', $_SERVER["SERVER_NAME"] ?? 'default');
 
+/*
+ * THE HOST BLOCK IS CHOSEN HERE, NOT LATER (000-000-0085).
+ *
+ * This call used to sit around 25 lines further down, after the error output had been decided and
+ * after `is_installed`. Until then `Adapter::$host` is `'default'` — and `Factory::getConfig()`
+ * falls back to the default block for any host it does not know. So both decisions read the
+ * default block, whatever the host's own block said. What that cost is written above the two
+ * places themselves.
+ *
+ * Fully qualified for the same reason as `$packageDir` above: the `use` block sits further down.
+ */
+\Areanet\PIM\Classes\Config\Adapter::setHostname(HOST);
+
 use Areanet\PIM\Classes\Api;
 use Areanet\PIM\Classes\Auth;
 use Areanet\PIM\Classes\Mailer;
@@ -131,6 +144,14 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  * log_errors stays on: whatever is not delivered should still be findable — and it is the source
  * the "0 deprecations" gate from 006-005 reads.
  *
+ * ── THE DECISION NEEDS THE CHOSEN HOST (000-000-0085) ─────────────────────────────────
+ *
+ * `APP_DEBUG` is read here from the block belonging to `HOST` — and only because
+ * `Adapter::setHostname()` runs right after `HOST` is defined. It used to run below this block,
+ * and then this line read the DEFAULT block: a `APP_DEBUG = true` for local development switched
+ * the error output on for every server, whatever its own block said. Whoever moves that call back
+ * down breaks this decision with it, silently and only in production.
+ *
  * ── Why debug mode now uses E_ALL ─────────────────────────────────────────────────────
  *
  * Before: E_ALL ^E_NOTICE ^E_DEPRECATED. Deprecations were suppressed exactly where a developer
@@ -174,10 +195,12 @@ if(Adapter::getConfig()->APP_DEBUG){
  */
 $app = new Application();
 
+// Reads the host's DB_HOST, not the default block's (000-000-0085) — the installer replaces the
+// placeholder per block, and a host with real credentials counts as installed even while the
+// default block still carries the template value.
 $app['is_installed'] = (Adapter::getConfig()->DB_HOST != '$SET_DB_HOST');
 $app['auth.user'] = null;
 
-Adapter::setHostname(HOST);
 date_default_timezone_set(Adapter::getConfig()->APP_TIMEZONE);
 
 /*
