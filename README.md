@@ -10,7 +10,7 @@ Access is through the API and the console; there is no user interface.
     "repositories": [
         {
             "type": "vcs",
-            "url": "git@github.com:area-net-gmbh/contentfly-framework-dist.git"
+            "url": "https://github.com/area-net-gmbh/contentfly-framework-dist.git"
         }
     ],
     "require": {
