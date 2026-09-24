@@ -1,6 +1,8 @@
 <?php
 namespace Areanet\PIM\Classes\Types;
 use Areanet\PIM\Classes\Api;
+use Areanet\PIM\Classes\Exceptions\ContentflyException;
+use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\Type;
 use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Entity\Base;
@@ -105,6 +107,10 @@ class PermissionsType extends Type
 
     public function toDatabase(Api $api, Base $object, $property, $value, $entityName, $schema, $user, $data = null, $lang = null): void
     {
+        // Before anything is written: the DELETE below empties the group, so a request that fails
+        // later would leave it with no permissions at all (000-000-0088).
+        $this->validateEntries($entityName, $property, $value);
+
         $this->em->persist($object);
         $this->em->flush();
 
@@ -121,10 +127,11 @@ class PermissionsType extends Type
          *
          * 1. A group created through /api/insert or /api/update with `permissions` silently got
          *    full access to every tag. Nobody asked for it, and nothing said so.
-         * 2. It was persisted BEFORE the requested rows, and `Classes\Permission::is()` returns
-         *    the FIRST entry matching the entity name. The association carries no ORDER BY, so
-         *    the row order is the insertion order — an explicit `PIM\Tag` entry in the request
-         *    was therefore shadowed by the ALL row and never took effect.
+         * 2. It sat next to an explicit `PIM\Tag` entry, and `Classes\Permission::is()` returned
+         *    the FIRST entry matching the entity name. The association carries no ORDER BY; with
+         *    GUID ids the database returns the rows in id order, so chance decided per group
+         *    whether the explicit entry or the ALL row counted. Existing rows of that kind are
+         *    resolved in `is()` since 000-000-0088.
          *
          * A leftover of the PIM interface removed in epic 012, which needed tags on files. The
          * row also set neither `export` nor `extended`, unlike the loop below — it was never
@@ -137,7 +144,7 @@ class PermissionsType extends Type
             $pObject->setReadable($config['readable']);
             $pObject->setWritable($config['writable']);
             $pObject->setDeletable($config['deletable']);
-            $pObject->setExport($config['export']);
+            $pObject->setExport($config['export'] ?? 0);
             if (!empty($config['extended'])) {
                 $pObject->setExtended(json_encode($config['extended']));
             } else {
@@ -152,5 +159,56 @@ class PermissionsType extends Type
         $this->em->flush();
     }
 
+    /**
+     * THE REQUEST IS CHECKED WHOLE, BEFORE THE GROUP IS TOUCHED (000-000-0088).
+     *
+     * Until then nothing was checked. A missing key or an entry that is no object answered 500 —
+     * after the DELETE, so an update left the group with no permissions. `null` or a string
+     * answered 200 with the same loss and a PHP warning. The same entity twice wrote two rows,
+     * and `Classes\Permission::is()` had to guess between them.
+     *
+     * Required per entry: `name` (a non-empty string), `readable`, `writable`, `deletable`.
+     * `export` is optional and defaults to 0 — it has had no effect since 000-000-0012, and it was
+     * only ever required by accident, as an undefined index. The levels themselves are not checked
+     * here; that is a question of its own.
+     *
+     * An empty list is valid and clears the group's permissions.
+     */
+    private function validateEntries($entityName, $property, $value): void
+    {
+        if (!is_array($value) || !array_is_list($value)) {
+            $this->reject($entityName, $property, 'expected a list of entries, got '.get_debug_type($value));
+        }
 
+        $seen = array();
+        foreach ($value as $index => $config) {
+            if (!is_array($config)) {
+                $this->reject($entityName, $property, "entry $index is not an object");
+            }
+
+            if (!isset($config['name']) || !is_string($config['name']) || $config['name'] === '') {
+                $this->reject($entityName, $property, "entry $index has no name");
+            }
+
+            foreach (array('readable', 'writable', 'deletable') as $key) {
+                if (!array_key_exists($key, $config)) {
+                    $this->reject($entityName, $property, "entry $index ({$config['name']}) has no $key");
+                }
+            }
+
+            if (isset($seen[$config['name']])) {
+                $this->reject($entityName, $property, "{$config['name']} appears more than once");
+            }
+            $seen[$config['name']] = true;
+        }
+    }
+
+    private function reject($entityName, $property, string $reason): never
+    {
+        throw new ContentflyException(
+            Messages::contentfly_general_invalid_params,
+            sprintf('%s::%s — %s', $entityName, $property, $reason),
+            Messages::contentfly_status_bad_request
+        );
+    }
 }
