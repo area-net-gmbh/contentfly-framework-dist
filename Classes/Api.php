@@ -8,6 +8,7 @@ use Areanet\PIM\Classes\Kernel\Paths;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\ContentflyI18NException;
 use Areanet\PIM\Classes\File\Backend;
+use Areanet\PIM\Classes\Security\RightsManagement;
 use Areanet\PIM\Entity\Base;
 use Areanet\PIM\Entity\BaseI18n;
 use Areanet\PIM\Entity\BaseI18nSortable;
@@ -124,6 +125,9 @@ class Api
         if(!I18nPermission::isWritable($this->app, $entityShortName, $lang)){
             throw new ContentflyI18NException(Messages::contentfly_i18n_permission_denied, $entityShortName, $lang);
         }
+
+        // Managing rights is for admins (000-000-0090).
+        RightsManagement::assertMayDelete($this->app['auth.user'], $entityShortName);
 
         if($entityShortName == 'PIM\\User'){
 
@@ -256,6 +260,9 @@ class Api
         if(I18nPermission::isOnlyReadable($this->app, $entityShortName, $lang)){
             throw new ContentflyI18NException(Messages::contentfly_i18n_permission_denied, $entityShortName, $lang);
         }
+
+        // Managing rights is for admins (000-000-0090).
+        RightsManagement::assertMayWrite($this->app['auth.user'], $entityShortName, null, $data);
 
         /*
          * A TRANSLATION BELONGS TO ITS RECORD (000-000-0059). An insert that carries the id of an
@@ -536,6 +543,9 @@ class Api
         if(I18nPermission::isOnlyReadable($this->app, $entityShortName, $lang)){
             throw new ContentflyI18NException(Messages::contentfly_i18n_permission_denied, $entityShortName, $lang);
         }
+
+        // Managing rights is for admins (000-000-0090).
+        RightsManagement::assertMayWrite($this->app['auth.user'], $entityShortName, $object, $data);
 
         if($object instanceof User && isset($data['pass']) && !$this->app['auth.user']->getIsAdmin()){
             if(!$this->app['auth.user']->isPass($currentUserPass)){
