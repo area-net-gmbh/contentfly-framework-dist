@@ -1937,6 +1937,7 @@ class Api
 
         if($compareToLang && $compareToLang != $lang) {
             // Edit an existing translation: every join the record has must exist in compareToLang too.
+            // A missing one is a conflict between the two languages, not a refusal: 409 (000-000-0095).
             try {
                 $compareObject = $this->getSingle($entityShortName, $id, $where, $compareToLang, true, null, null, true);
             } catch (Exception) {
@@ -1952,7 +1953,7 @@ class Api
 
                             if ($object->$getter() && !$compareObject->$getter()) {
                                 $helper = new Helper();
-                                throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
+                                throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang, Messages::contentfly_status_ressource_already_exists);
                             }
                             break;
                         case 'multijoin':
@@ -1961,7 +1962,7 @@ class Api
 
                             if (count($a1) != count($a2)) {
                                 $helper = new Helper();
-                                throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang);
+                                throw new ContentflyI18NException(Messages::contentfly_i18n_missing_translations, $helper->getShortEntityName($config['accept']), $compareToLang, Messages::contentfly_status_ressource_already_exists);
                             }
                             break;
                     }
