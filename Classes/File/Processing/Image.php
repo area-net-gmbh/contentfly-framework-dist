@@ -76,17 +76,14 @@ class Image implements ProcessingInterface
                     case 8:
                         $img0 = $this->load($loadMethodName, $imgName);
                         $img  = imagerotate($img0,90,0);
-                        imagedestroy($img0);
                         break;
                     case 3:
                         $img0 = $this->load($loadMethodName, $imgName);
                         $img  = imagerotate($img0,180,0);
-                        imagedestroy($img0);
                         break;
                     case 6:
                         $img0 = $this->load($loadMethodName, $imgName);
                         $img  = imagerotate($img0,-90,0);
-                        imagedestroy($img0);
                         break;
                     default:
                         $img = $this->load($loadMethodName, $imgName);
@@ -166,7 +163,6 @@ class Image implements ProcessingInterface
                         $this->save($saveMethodName, $thumb, $imgThumbName, $this->qualityMapping[$fileObject->getType()]);
                     }
 
-                    imagedestroy($thumb);
                 }
             }
 
@@ -196,7 +192,6 @@ class Image implements ProcessingInterface
 
                 $this->save($saveMethodName, $thumb, $imgThumbName2x, $quality);
 
-                imagedestroy($thumb);
 
             }
 
@@ -226,7 +221,6 @@ class Image implements ProcessingInterface
 
                 $this->save($saveMethodName, $thumb, $imgThumbName2x, $quality);
 
-                imagedestroy($thumb);
 
             }
 
@@ -385,7 +379,6 @@ class Image implements ProcessingInterface
 
         imagecopyresampled($thumb, $image_resized, 0, 0, $src_x, $src_y, $width, $height, $width, $height);
 
-        imagedestroy($image_resized);
 
         return $thumb;
     }

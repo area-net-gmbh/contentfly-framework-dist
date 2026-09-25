@@ -182,7 +182,11 @@ class FileController extends BaseController
             $width  = null;
             $height = null;
             try{
-                list($width, $height) = getimagesize($uploadTmpPath);
+                // getimagesize() returns false for a file that is no image; destructuring false warns since PHP 8.5 (000-000-0096).
+                $size = getimagesize($uploadTmpPath);
+                if(is_array($size)){
+                    [$width, $height] = $size;
+                }
             }catch(Exception $e){
 
             }
@@ -218,11 +222,16 @@ class FileController extends BaseController
                 $fileObject = $this->em->getRepository('Areanet\PIM\Entity\File')->findOneBy(array('hash' => $hash));
             }
 
+            $width  = null;
+            $height = null;
             try{
-                list($width, $height) = getimagesize($uploadTmpPath);
+                // getimagesize() returns false for a file that is no image; destructuring false warns since PHP 8.5 (000-000-0096).
+                $size = getimagesize($uploadTmpPath);
+                if(is_array($size)){
+                    [$width, $height] = $size;
+                }
             }catch(Exception $e){
-                $width  = null;
-                $height = null;
+
             }
 
             $filename       = $upload['name'];
@@ -573,7 +582,11 @@ class FileController extends BaseController
         $width  = null;
         $height = null;
         try{
-            list($width, $height) = getimagesize($pathDest.'/'.$fileInfo->getBasename());
+            // getimagesize() returns false for a file that is no image; destructuring false warns since PHP 8.5 (000-000-0096).
+            $size = getimagesize($pathDest.'/'.$fileInfo->getBasename());
+            if(is_array($size)){
+                [$width, $height] = $size;
+            }
         }catch(Exception $e){
 
         }
