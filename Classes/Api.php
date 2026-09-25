@@ -788,7 +788,9 @@ class Api
                 if(!$group){
                     $qb->andWhere("$entityNameAlias.userCreated = :userCreated");
                 }else{
-                    $qb->andWhere("$entityNameAlias.userCreated = :userCreated OR FIND_IN_SET(:userGroup, $entityNameAlias.groups) > 0");
+                    // GROUP reaches what OWN reaches, plus what is shared with the group — the rule of
+                    // reachesRow(). The users list was missing here until 000-000-0093.
+                    $qb->andWhere("$entityNameAlias.userCreated = :userCreated OR FIND_IN_SET(:userCreated, $entityNameAlias.users) > 0 OR FIND_IN_SET(:userGroup, $entityNameAlias.groups) > 0");
                     $qb->setParameter('userGroup', $group);
                 }
                 $qb->setParameter('userCreated', $this->app['auth.user']);
@@ -956,7 +958,9 @@ class Api
                 }else{
                     // `groups` is reserved in MySQL 8 and needs the backticks unless it is qualified
                     // with a table alias — without them every GROUP user got 500 here (000-000-0072).
-                    $tsQuery .= " AND (userCreated_id = ? OR FIND_IN_SET(?, `groups`) > 0)";
+                    // The users list counts as for OWN; it was missing until 000-000-0093.
+                    $tsQuery .= " AND (userCreated_id = ? OR FIND_IN_SET(?, users) > 0 OR FIND_IN_SET(?, `groups`) > 0)";
+                    $params[] = $this->app['auth.user']->getId();
                     $params[] = $this->app['auth.user']->getId();
                     $params[] = $group->getId();
                 }
