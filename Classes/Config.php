@@ -326,7 +326,7 @@ class Config{
     public $APP_HTTP_AUTH_PASS = null;
 
     /*
-     * OF TEN FRONTEND_* FIELDS, EIGHT HAVE BEEN DROPPED (000-000-0010).
+     * OF TEN FRONTEND_* FIELDS, NINE HAVE BEEN DROPPED (000-000-0010, 000-000-0077).
      *
      * Epic 012 removed the PIM user interface; 012-005-0004 only took along the three fields
      * it had orphaned itself, and recorded the rest as a separate task. Dropped are:
@@ -339,19 +339,14 @@ class Config{
      *                                                          thereby advertised properties
      *                                                          of a deleted user interface
      *
-     * The following two stay. They carry "FRONTEND_" in their name, but control behaviour of
-     * the API — the naming is a legacy, not a hint at their purpose. Renaming them would be a
+     * 000-000-0077 dropped FRONTEND_CUSTOM_NAVIGATION as well. It switched on the menus of
+     * that interface in the schema, built from PIM\Nav and PIM\NavItem; entities and
+     * switch went together.
+     *
+     * The following one stays. It carries "FRONTEND_" in its name, but controls behaviour of
+     * the API — the naming is a legacy, not a hint at its purpose. Renaming it would be a
      * break for every existing project and belongs, if anywhere, to Epic 007.
      */
-
-    /**
-     * @var boolean Enables the custom navigation in the schema.
-     *
-     * STAYS: controls a data-driven branch in Api::getExtendedSchema() that reads the
-     * entities PIM\Nav and PIM\NavItem. Both exist, are part of the data model and are
-     * exercised by the suite — this is not a leftover of the user interface.
-     */
-    public $FRONTEND_CUSTOM_NAVIGATION = false;
 
     /**
      * @var integer Default page size of the pagination of /api/list and /api/query

@@ -1126,16 +1126,17 @@ class Api
     public function getExtendedSchema(): array
     {
         /*
-         * THE frontend BLOCK HAS SHRUNK FROM SEVEN TO TWO KEYS (000-000-0010).
+         * THE frontend BLOCK HAS SHRUNK FROM SEVEN KEYS TO ONE.
          *
-         * Dropped are customLogo, formImageSquarePreview, title, welcome and
-         * login_redirect. All five described properties of the PIM interface that Epic
-         * 012 removed — the schema kept advertising them.
+         * 000-000-0010 dropped customLogo, formImageSquarePreview, title, welcome and
+         * login_redirect — properties of the PIM interface that Epic 012 removed. 000-000-0077
+         * dropped customNavigation as well: it built the menus of that interface from PIM\Nav
+         * and PIM\NavItem, with '#/list/<entity>' routes and glyphicon icons, and nothing in
+         * the framework or the template reads them any more. The two entities and
+         * FRONTEND_CUSTOM_NAVIGATION went with it.
          *
-         * The two remaining ones are not an interface matter:
+         * What remains is not an interface matter:
          *
-         *   customNavigation  reads the entities PIM\Nav and PIM\NavItem. Both exist,
-         *                     they belong to the data model and the suite touches them.
          *   languages         comes from APP_LANGUAGES and determines the main language
          *                     (bootstrap.php derives APP_CMS_MAIN_LANG from it).
          *
@@ -1143,66 +1144,11 @@ class Api
          * for every client that reads it — and one with no benefit.
          */
         $frontend = array(
-            'customNavigation' => array(
-                'enabled' => Adapter::getConfig()->FRONTEND_CUSTOM_NAVIGATION
-            ),
             'languages' => Adapter::getConfig()->APP_LANGUAGES
         );
 
         $schema         = $this->app['schema'];
         $permissions    = $this->getPermissions();
-
-        $permission     = Permission::isReadable($this->app['auth.user'], 'PIM\\NavItem');
-
-        if(Adapter::getConfig()->FRONTEND_CUSTOM_NAVIGATION && $permission){
-            $frontend['customNavigation']['items'] = array();
-
-
-
-            $queryBuilder = $this->em->createQueryBuilder();
-            $queryBuilder
-                ->select("navItem")
-                ->from("Areanet\PIM\Entity\NavItem", "navItem")
-                ->join("navItem.nav", "nav")
-                ->where('navItem.nav IS NOT NULL')
-                ->orderBy('nav.sorting')
-                ->orderBy('navItem.sorting');
-
-            if($permission == \Areanet\PIM\Entity\Permission::OWN){
-                $queryBuilder->andWhere("navItem.userCreated = :userCreated OR FIND_IN_SET(:userCreated, navItem.users) > 0");
-                $queryBuilder->setParameter('userCreated', $this->app['auth.user']);
-            }elseif($permission == \Areanet\PIM\Entity\Permission::GROUP){
-                $group = $this->app['auth.user']->getGroup();
-                if(!$group){
-                    $queryBuilder->andWhere("navItem.userCreated = :userCreated");
-                }else{
-                    $queryBuilder->andWhere("navItem.userCreated = :userCreated OR FIND_IN_SET(:userGroup, navItem.groups) > 0");
-                    $queryBuilder->setParameter('userGroup', $group);
-                }
-                $queryBuilder->setParameter('userCreated', $this->app['auth.user']);
-            }
-
-            $items = $queryBuilder->getQuery()->getResult();
-            foreach($items as $item){
-
-                $entityUriName = str_replace('Areanet\PIM\Entity', 'PIM/', $item->getEntity());
-                $entityUriName = str_replace('Custom\Entity', '', $entityUriName);
-
-                if(empty($frontend['customNavigation']['items'][$item->getNav()->getId()])){
-                    $frontend['customNavigation']['items'][$item->getNav()->getId()] = array(
-                        'title' => $item->getNav()->getTitle(),
-                        'icon' => $item->getNav()->getIcon() ? $item->getNav()->getIcon() : 'glyphicon glyphicon-th-large',
-                        'items' => array()
-                    );
-                }
-
-                $frontend['customNavigation']['items'][$item->getNav()->getId()]['items'][] = array(
-                    'entity' => $item->getEntity(),
-                    'title'  => $item->getTitle() ?: $item->getEntity(),
-                    'uri'    => $item->getUri() ? $item->getUri() : '#/list/'.$entityUriName,
-                );
-            }
-        }
 
         $i18nPermissions = null;
         if(($group = $this->app['auth.user']->getGroup())){
@@ -1645,8 +1591,6 @@ class Api
         $entities[] = "PIM\\Log";
         $entities[] = "PIM\\ThumbnailSetting";
         $entities[] = "PIM\\Permission";
-        $entities[] = "PIM\\Nav";
-        $entities[] = "PIM\\NavItem";
         $entities[] = "PIM\\Option";
         $entities[] = "PIM\\OptionGroup";
 

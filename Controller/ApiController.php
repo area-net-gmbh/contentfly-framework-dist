@@ -900,9 +900,6 @@ class ApiController extends BaseController
      *         "i18nPermissions": null,
      *         "devmode": false,
      *         "frontend": {
-     *           "customNavigation": {
-     *             "enabled": false
-     *           },
      *           "languages": []
      *         }
      *       }

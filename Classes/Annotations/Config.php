@@ -22,7 +22,7 @@ use Attribute;
  * the constructor **an array** instead of named arguments, and the class would no longer be
  * readable as an annotation.
  *
- * **Both targets**, and that is measured: `@PIM\Config` is placed on classes (`Group`, `Nav`,
+ * **Both targets**, and that is measured: `@PIM\Config` is placed on classes (`Group`, `Folder`,
  * `Tag`, `File` — `labelProperty`, `sortBy`, `excludeFromSync`) and on properties
  * (`unique`, `isFilterable`). With 25 of 36 usages it is the most frequent `@PIM`
  * annotation in the tree.
