@@ -1192,8 +1192,10 @@ class ApiController extends BaseController
      * A list is spread into the QueryBuilder call: <code>"where": ["a", "b"]</code> becomes
      * <code>andWhere("a", "b")</code>. A join is a list of four — alias it hangs on, entity or
      * table, its alias, condition — or a list of such lists for several joins; the object form
-     * cannot express a join. Every entity in <code>from</code> and in a join is narrowed by the
-     * caller's read right; without it the request is refused with 403.
+     * cannot express a join.
+     *
+     * <strong>Admins only</strong> (since 000-000-0097). Every other caller gets 403, whatever
+     * <code>apiQueryEnabled</code> of the group says — the field is no longer read.
      * @apiName Query
      * @apiGroup Objects
      * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.

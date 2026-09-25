@@ -26,6 +26,10 @@ class Group extends Base
     protected $tokenTimeout = 30;
 
     /**
+     * NO LONGER READ (000-000-0097). This field opened /api/query to the group; since 0097 the
+     * endpoint is for admins only, whatever the field says. The column stays so that no schema
+     * update is needed and existing values survive.
+     *
      * The `options="{'default' : 'disabled'}"` that used to be here has been dropped: the value
      * was a **string** where Doctrine expects an array. Up to Doctrine 2.6 this was silently
      * accepted and ignored — so the default never took effect, and the column in `pim_group`
