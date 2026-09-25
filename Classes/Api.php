@@ -1078,7 +1078,12 @@ class Api
                 continue;
             }
 
-            $query = "SELECT model_name, model_id FROM `pim_log` WHERE model_name = ? AND (mode = 'DEL' OR (mode = 'USERDEL' AND users = ?))";
+            /*
+             * 'Gelöscht' is the value Contentfly 1.x wrote for a deletion (014-003-0002). getAll()
+             * has reported it all along; here it was missing until 000-000-0094, so a client that
+             * synchronises through /api/deleted never learned of those deletions.
+             */
+            $query = "SELECT model_name, model_id FROM `pim_log` WHERE model_name = ? AND (mode = 'DEL' OR mode = 'Gelöscht' OR (mode = 'USERDEL' AND users = ?))";
 
             $params  = array($entityName, $this->app['auth.user']->getId());
             /**
