@@ -1191,6 +1191,12 @@ class ApiController extends BaseController
      * The data is returned in JSON format. Because of the DBAL query, the data is returned directly
      * at database level and not as Doctrine entities. <code>setFirstResult</code> is the offset,
      * <code>setMaxResults</code> the limit. The request is echoed in <code>meta.params</code>.
+     *
+     * A list is spread into the QueryBuilder call: <code>"where": ["a", "b"]</code> becomes
+     * <code>andWhere("a", "b")</code>. A join is a list of four — alias it hangs on, entity or
+     * table, its alias, condition — or a list of such lists for several joins; the object form
+     * cannot express a join. Every entity in <code>from</code> and in a join is narrowed by the
+     * caller's read right; without it the request is refused with 403.
      * @apiName Query
      * @apiGroup Objects
      * @apiHeader {String} Authorization <code>Bearer &lt;token&gt;</code> — the token from /auth/login. The legacy header <code>appcms-token</code> is still accepted.
@@ -1213,11 +1219,21 @@ class ApiController extends BaseController
      *      "from": "Product",
      *      "where": {"active": true},
      *      "groupBy": "category",
-     *      "having": {"field": "value"},
+     *      "having": {"users > ?": 1},
      *      "orderBy": {"field": "ASC"},
      *      "addOrderBy": {"field": "DESC"},
      *      "setFirstResult": 10,
      *      "setMaxResults": 20
+     *     }
+     * @apiParamExample {json} Query with joins and several conditions
+     *     {
+     *      "select": ["p.title", "c.title AS category"],
+     *      "from": {"Product": "p"},
+     *      "join": [
+     *        ["p", "Category", "c", "c.id = p.category_id"],
+     *        ["p", "Supplier", "s", "s.id = p.supplier_id"]
+     *      ],
+     *      "where": ["p.active = 1", "s.country = 'DE'"]
      *     }
      * @apiSuccessExample {json} Success-Response:
      *     HTTP/1.1 200 OK
