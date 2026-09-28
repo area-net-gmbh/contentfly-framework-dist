@@ -57,7 +57,8 @@ abstract class Type
             'default' => $defaultValue,
             'isFilterable' => false,
             'unique' => false,
-            'encoded' => false
+            'encoded' => false,
+            'secret' => false
         );
 
         if(isset($propertyAnnotations['Areanet\\PIM\\Classes\\Annotations\\Config'])){
@@ -80,6 +81,11 @@ abstract class Type
 
             if($annotations->isFilterable){
                 $schema['isFilterable'] = $annotations->isFilterable;
+            }
+
+            // Out of every query part a client controls — see the annotation (015-000-0012).
+            if($annotations->secret){
+                $schema['secret'] = $annotations->secret;
             }
 
         }

@@ -56,12 +56,14 @@ class User extends Base implements UserInterface
      * and the length is not a guarantee. A truncated hash does not show up when saving, but
      * only at the next login — as "wrong password".
      */
+    #[PIM\Config(secret: true)]
     #[ORM\Column(type: 'string', length: 255)]
     protected $pass;
 
     #[ORM\Column(type: 'boolean', nullable: true)]
     protected $isActive = true;
 
+    #[PIM\Config(secret: true)]
     #[ORM\Column(type: 'string', length: 100)]
     protected $salt;
 
@@ -91,6 +93,7 @@ class User extends Base implements UserInterface
      * Uniqueness now applies to `loginManager` AND `externalId` together; the alias carries
      * both visibly as `<provider>:<identifier>`.
      */
+    #[PIM\Config(secret: true)]
     #[ORM\Column(type: 'string', length: 190, nullable: true)]
     protected $externalId;
 

@@ -1278,6 +1278,22 @@ class Api
                     continue;
                 }
 
+                /*
+                 * A SECRET IS NOT A FILTER (015-000-0012).
+                 *
+                 * `toValueObject()` hid `pass` and `salt` from the output; the filter ran over
+                 * them all the same, and `meta.totalItems` answered the question the output
+                 * refused. Marked properties are skipped here, in `fulltext`, in `order` and in
+                 * `groupBy` — every part of the query a client controls.
+                 *
+                 * Skipped and not refused: `where` already ignores a field it does not know
+                 * (just above), and answering differently for a secret than for a typo would
+                 * itself say which columns exist.
+                 */
+                if(!empty($schema[$entityShortName]['properties'][$field]['secret'])){
+                    continue;
+                }
+
                 if($schema[$entityShortName]['properties'][$field]['type'] == 'multijoin' || $schema[$entityShortName]['properties'][$field]['type'] == 'checkbox'){
                     if(isset($schema[$entityShortName]['properties'][$field]['mappedBy'])){
                         if($value == -1) {
@@ -1365,11 +1381,26 @@ class Api
                 $orX->add("$entityNameAlias.id = :FT_id");
                 $queryBuilder->setParameter("FT_id", $where['fulltext']);
 
+                /*
+                 * THE WILDCARDS BELONG TO THE QUERY, NOT TO THE VALUE (015-000-0012).
+                 *
+                 * `%` and `_` went into the pattern unescaped, so a client could bind a match to
+                 * a position — `_____x` asks whether the sixth character is an `x`. That is what
+                 * turned the hit count into a usable oracle rather than a vague one. `\` is
+                 * escaped with them, otherwise it would escape the escaping.
+                 */
+                $fulltext = addcslashes((string) $where['fulltext'], '%_\\');
+
                 foreach($schema[$entityShortName]['properties'] as $field => $fieldOptions){
+
+                    // Not over a secret — see the comment at `where` above.
+                    if(!empty($fieldOptions['secret'])){
+                        continue;
+                    }
 
                     if(in_array($fieldOptions['type'], $fulltextTypes)){
                         $orX->add("$entityNameAlias.$field LIKE :FT_$field");
-                        $queryBuilder->setParameter("FT_$field", '%' . $where['fulltext'] . '%');
+                        $queryBuilder->setParameter("FT_$field", '%' . $fulltext . '%');
                     }
                 }
 
@@ -2092,9 +2123,22 @@ class Api
      *
      * @throws ContentflyException
      */
+    /**
+     * The field must exist — and it must be one a client may name (015-000-0012).
+     *
+     * A property marked `secret` is answered exactly like one that does not exist: same
+     * exception, same message. The distinction would otherwise be the oracle itself — sorting by
+     * `pass` would say "that column is there" while a typo says "it is not".
+     *
+     * This guards `order`, `groupBy` and the `where` of `getSingle()`; the `where` and
+     * `fulltext` of `getList()` skip such a field instead, because they already ignore an
+     * unknown one and must keep answering both the same way.
+     */
     protected function assertProperty(string $entityShortName, mixed $field): void
     {
-        if(!is_string($field) || !isset($this->app['schema'][$entityShortName]['properties'][$field])){
+        $known = is_string($field) && isset($this->app['schema'][$entityShortName]['properties'][$field]);
+
+        if(!$known || !empty($this->app['schema'][$entityShortName]['properties'][$field]['secret'])){
             throw new ContentflyException(Messages::contentfly_general_unknown_property, $entityShortName.'::'.(is_scalar($field) ? $field : gettype($field)), Messages::contentfly_status_bad_request);
         }
     }

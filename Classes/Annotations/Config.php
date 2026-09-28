@@ -60,6 +60,23 @@ final class Config
     public $isFilterable = false;
 
     /**
+     * Keeps the property out of every query part a client controls (015-000-0012).
+     *
+     * `where`, `where.fulltext`, `order` and `groupBy` skip it. `toValueObject()` already hid
+     * `pass` and `salt` from the OUTPUT — the filter ran over them all the same, and
+     * `meta.totalItems` turned into a substring oracle: with `{"alias":"admin",
+     * "fulltext":"<prefix><character>"}` a whole SHA-256 hash and its hex salt could be read
+     * character by character, in about 64 x 16 requests.
+     *
+     * A marker and not a list of names: a list lives in one place and the columns live in
+     * another, and a project that adds a secret of its own to `custom/` has no way into a list
+     * inside the framework.
+     *
+     * @var boolean
+     */
+    public $secret = false;
+
+    /**
      * @var boolean
      */
     public $i18n_universal = false;
@@ -102,12 +119,13 @@ final class Config
      * under annotations every field was untyped, and a type added here would be a new
      * restriction for existing projects, not merely a clarification.
      */
-    public function __construct($excludeFromSync = false, $encoded = false, $unique = false, $isFilterable = false, $i18n_universal = false, $labelProperty = '', $type = '', $sortBy = null, $sortOrder = null, $sortRestrictTo = null)
+    public function __construct($excludeFromSync = false, $encoded = false, $unique = false, $isFilterable = false, $secret = false, $i18n_universal = false, $labelProperty = '', $type = '', $sortBy = null, $sortOrder = null, $sortRestrictTo = null)
     {
         $this->excludeFromSync = $excludeFromSync;
         $this->encoded = $encoded;
         $this->unique = $unique;
         $this->isFilterable = $isFilterable;
+        $this->secret = $secret;
         $this->i18n_universal = $i18n_universal;
         $this->labelProperty = $labelProperty;
         $this->type = $type;
