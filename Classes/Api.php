@@ -555,7 +555,6 @@ class Api
         // A file's name is not free text (015-000-0003).
         FileFieldGuard::assertMayWrite($entityShortName, $data);
 
-        if($object instanceof User && isset($data['pass']) && !$this->app['auth.user']->getIsAdmin()){
         /*
          * `array_key_exists` INSTEAD OF `isset` (015-000-0001).
          *
