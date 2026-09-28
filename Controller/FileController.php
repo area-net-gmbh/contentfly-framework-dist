@@ -6,6 +6,7 @@ use Areanet\PIM\Classes\Event;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\FileNotFoundException;
 use Areanet\PIM\Classes\File\Backend;
+use Areanet\PIM\Classes\File\FilePath;
 use Areanet\PIM\Classes\File\Processing;
 use Areanet\PIM\Classes\File\UploadValidator;
 use Areanet\PIM\Classes\Messages;
@@ -132,6 +133,22 @@ class FileController extends BaseController
         $uploadSize    = $file->getSize();
 
         if(($request->request->all()["id"] ?? null)){
+
+            /*
+             * THE ID FROM THE REQUEST IS CHECKED BEFORE IT BECOMES A DIRECTORY (015-000-0005).
+             *
+             * `setId()` further down took this value unchanged, and `FileSystem::getPath()`
+             * builds `data/files/<id>` from it. With `DB_GUID_STRATEGY` the column is a free
+             * string, so an id of `../cache/x` made `move_uploaded_file()` write into
+             * `data/cache` — the directory whose schema cache `Api::getSchema()` hands to
+             * `unserialize()`.
+             *
+             * Checked here and not only in the backend, because the answer belongs to the
+             * caller: a 400 naming the field, not a failure somewhere below.
+             */
+            if(!FilePath::isRecordId(($request->request->all()["id"] ?? null), (bool) Config\Adapter::getConfig()->DB_GUID_STRATEGY)){
+                throw new ContentflyException(Messages::contentfly_general_invalid_params, 'id', 400);
+            }
 
             $fileObject = $this->em->getRepository('Areanet\PIM\Entity\File')->find(($request->request->all()["id"] ?? null));
 

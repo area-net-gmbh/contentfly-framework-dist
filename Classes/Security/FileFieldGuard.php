@@ -1,7 +1,9 @@
 <?php
 namespace Areanet\PIM\Classes\Security;
 
+use Areanet\PIM\Classes\Config\Adapter;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
+use Areanet\PIM\Classes\File\FilePath;
 use Areanet\PIM\Classes\File\UploadValidator;
 use Areanet\PIM\Classes\Messages;
 
@@ -43,6 +45,24 @@ final class FileFieldGuard
         }
 
         $validator = new UploadValidator();
+
+        /*
+         * THE ID IS A DIRECTORY NAME (015-000-0005).
+         *
+         * With `DB_GUID_STRATEGY` — the shipped default — the column is a free string, and
+         * `FileSystem::getPath()` builds `data/files/<id>` from it. An id of `../cache/x`
+         * moved an upload into `data/cache`, where `Api::getSchema()` hands the schema cache to
+         * `unserialize()`, and it made `/api/delete` empty a directory that was never a file's.
+         *
+         * Checked against the strict format of the configured strategy, not merely for path
+         * segments: an id that is not an id has no business being created, whatever it would
+         * do to a path. `empty()` and not `array_key_exists()` — `/api/insert` only takes the
+         * id over when a value is actually there (`Api::doInsert()`), and an empty one means
+         * "generate one".
+         */
+        if (!empty($data['id']) && !FilePath::isRecordId($data['id'], (bool) Adapter::getConfig()->DB_GUID_STRATEGY)) {
+            self::deny('PIM\\File::id');
+        }
 
         if (array_key_exists('name', $data) && !$validator->isStorableName(self::text($data['name']))) {
             self::deny('PIM\\File::name');

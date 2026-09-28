@@ -4,22 +4,59 @@ namespace Areanet\PIM\Classes\File\Backend;
 use Areanet\PIM\Entity\File;
 use Areanet\PIM\Classes\Kernel\Paths;
 use Areanet\PIM\Classes\File\BackendInterface;
+use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\File\FilePath;
+use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Entity\ThumbnailSetting;
 
 class FileSystem implements BackendInterface
 {
     public function getPath(File $file)
     {
+        $path = $this->directory($file);
 
-        if(!is_dir(Paths::data().'/files/'.$file->getId())) mkdir(Paths::data().'/files/'.$file->getId());
-        return Paths::data().'/files/'.$file->getId();
+        if(!is_dir($path)) mkdir($path);
+
+        return $path;
     }
 
     public function getWebPath(File $file)
     {
-        if(!is_dir(Paths::data().'/files/'.$file->getId())) mkdir(Paths::data().'/files/'.$file->getId());
+        $path = $this->directory($file);
+
+        if(!is_dir($path)) mkdir($path);
+
         return '/data/files/'.$file->getId();
+    }
+
+    /**
+     * THE RECORD'S OWN DIRECTORY, PROVEN (015-000-0005).
+     *
+     * Every method here used to concatenate `Paths::data().'/files/'.$file->getId()`. The id
+     * comes out of the request — `/file/upload` takes it from the body, `/api/insert` from
+     * `data.id` — and with `DB_GUID_STRATEGY` the column is a free string. An id of
+     * `../cache/x` pointed this at `data/cache`, and what followed was not reading but writing:
+     * `move_uploaded_file()` put the upload there, `Api::doDelete()` emptied it,
+     * `FileController::overwriteAction()` did the same to the target's directory.
+     *
+     * `FileFieldGuard` keeps such an id out of the column now. This is the layer below it, for
+     * a record that already carries one — and for every caller that will be written later.
+     *
+     * @throws ContentflyException 400 when the id cannot name a directory inside `data/files`
+     */
+    private function directory(File $file): string
+    {
+        $path = FilePath::within(Paths::data().'/files', (string) $file->getId());
+
+        if($path === null){
+            throw new ContentflyException(
+                Messages::contentfly_general_invalid_params,
+                'PIM\\File::id',
+                Messages::contentfly_status_bad_request
+            );
+        }
+
+        return $path;
     }
 
     public function getUri(File $file, $size = null, $variant = null)
@@ -52,7 +89,7 @@ class FileSystem implements BackendInterface
 
         }
 
-        if(!is_dir(Paths::data().'/files/'.$file->getId())) mkdir(Paths::data().'/files/'.$file->getId());
+        $directory = $this->getPath($file);
 
         /*
          * THE DELIVERY PATH IS PROVEN, NOT ASSUMED (015-000-0003).
@@ -66,9 +103,9 @@ class FileSystem implements BackendInterface
          * outside the two cases must stay indistinguishable. `$sizeUri` is checked with it — it
          * carries a `ThumbnailSetting` alias, which is also a column.
          */
-        $path = FilePath::within(Paths::data().'/files/'.$file->getId(), $variant.$sizeUri.$fileName);
+        $path = FilePath::within($directory, $variant.$sizeUri.$fileName);
 
-        return $path ?? Paths::data().'/files/'.$file->getId().'/'.self::NO_SUCH_FILE;
+        return $path ?? $directory.'/'.self::NO_SUCH_FILE;
     }
 
     /**

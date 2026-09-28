@@ -31,6 +31,42 @@ namespace Areanet\PIM\Classes\File;
 final class FilePath
 {
     /**
+     * Is this a record id in the strict format of the configured id strategy (015-000-0005)?
+     *
+     * THE ID OF A `PIM\\File` IS A DIRECTORY NAME. `FileSystem::getPath()` builds
+     * `data/files/<id>` from it, and with `DB_GUID_STRATEGY` — the shipped default — the column
+     * is a free string that `/file/upload` and `/api/insert` took straight from the request. An
+     * id of `../cache/x` therefore moved the upload into `data/cache`, where `Api::getSchema()`
+     * hands the schema cache to `unserialize()`; and it made `/api/delete` empty a directory
+     * that was never a file's.
+     *
+     * `within()` below would already stop the path from leaving. This is the layer above it:
+     * a record whose id is not an id has no business being created in the first place, and
+     * refusing it at the write is an answer the caller can understand — a containment failure
+     * further down is not.
+     *
+     * The strategy is a parameter, not read from the configuration: a rule that cannot be
+     * measured from both sides is one nobody notices the loss of.
+     */
+    public static function isRecordId(mixed $id, bool $guidStrategy): bool
+    {
+        if (!is_scalar($id)) {
+            return false;
+        }
+
+        $id = (string) $id;
+
+        if ($guidStrategy) {
+            // The shape `Uuid::uuid4()` produces, and nothing else. Not `Uuid::isValid()`: that
+            // accepts braces and a `urn:uuid:` prefix, neither of which is a directory name.
+            return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id) === 1;
+        }
+
+        // Auto-increment: a positive whole number, without a sign and without leading zeros.
+        return preg_match('/^[1-9][0-9]*$/', $id) === 1;
+    }
+
+    /**
      * The absolute path of `$fileName` inside `$directory`, or null when it would leave it.
      *
      * Null is a refusal, not an error: the caller answers it the way it answers a missing file,
