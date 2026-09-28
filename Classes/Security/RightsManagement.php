@@ -35,6 +35,19 @@ final class RightsManagement
     private const CREDENTIALS = array('pass', 'salt', 'loginManager', 'externalId');
 
     /**
+     * The only fields of a group a non-admin may CHANGE (015-000-0013).
+     *
+     * `name` is the one the existing behaviour allows and the one a project actually uses; the
+     * rest are the record's own bookkeeping, which a round-trip carries and nobody sets by hand.
+     * Everything not in here is refused as soon as its value differs from the stored one — see
+     * `assertMayWriteGroup()` for why this is a positive list.
+     */
+    private const GROUP_WRITABLE = array(
+        'name',
+        'id', 'created', 'modified', 'views', 'isIntern', 'user', 'userCreated',
+    );
+
+    /**
      * @param Base|null $existing the record being updated, `null` on insert
      * @param mixed     $data     the request's `data` — not always an array: /api/insert without it
      *                            passes `null`, and what that answers is decided further on
@@ -54,8 +67,8 @@ final class RightsManagement
             return;
         }
 
-        if ($entity === 'PIM\\Group' && array_key_exists('permissions', $data)) {
-            self::deny($entity.'::permissions');
+        if ($entity === 'PIM\\Group') {
+            self::assertMayWriteGroup($existing, $data);
         }
 
         if ($entity !== 'PIM\\User') {
@@ -102,6 +115,85 @@ final class RightsManagement
                 self::deny('PIM\\User::'.$field);
             }
         }
+    }
+
+    /**
+     * WHAT A NON-ADMIN MAY WRITE ON A GROUP — A POSITIVE LIST (015-000-0013).
+     *
+     * Until now one key was blocked: `permissions`. Two more fields of the group decide what
+     * somebody may do, and both stood open:
+     *
+     *   `languages`     the language rights that `I18nPermission` enforces. `{"languages":"{}"}`
+     *                   lifted the language restrictions of the caller's own group.
+     *   `tokenTimeout`  the lifetime of the group's tokens; `0` means "never expires".
+     *
+     * `apiQueryEnabled` is in the same class of field. It has had no effect since
+     * `000-000-0097` made `/api/query` admin-only, and the column stays as a column — which is
+     * exactly why it must not be writable either: a column without effect today is a column
+     * somebody gives an effect back to tomorrow.
+     *
+     * THE LIST SAYS WHAT IS ALLOWED, NOT WHAT IS FORBIDDEN. A deny-list grows only when
+     * somebody remembers to grow it, and `permissions` standing alone for two stories is what
+     * that looks like. With a positive list a field added to `Group` next year is guarded on
+     * the day it appears, without anybody thinking of this class.
+     *
+     * A VALUE THAT DOES NOT CHANGE IS NOT A CHANGE, as everywhere in this class: a client that
+     * posts the record back as it read it keeps working. `permissions` is the exception and
+     * stays one — it is a collection, not a value, and comparing it reliably is a different
+     * problem; it is refused on the key alone, as before.
+     *
+     * @param mixed $data the request's `data`, already known to be an array
+     */
+    private static function assertMayWriteGroup(?Base $existing, array $data): void
+    {
+        if (array_key_exists('permissions', $data)) {
+            self::deny('PIM\\Group::permissions');
+        }
+
+        foreach ($data as $field => $value) {
+            if (!is_string($field) || in_array($field, self::GROUP_WRITABLE, true)) {
+                continue;
+            }
+
+            if (!self::unchanged($existing, $field, $value)) {
+                self::deny('PIM\\Group::'.$field);
+            }
+        }
+    }
+
+    /**
+     * Does this field of the record already hold that value?
+     *
+     * FAILS CLOSED. A field whose value cannot be read — no getter, or one that throws — counts
+     * as changed, so it is refused. The alternative would be to allow what could not be checked,
+     * and that is how a guard becomes decoration.
+     */
+    private static function unchanged(?Base $existing, string $field, mixed $value): bool
+    {
+        if ($existing === null) {
+            // An insert: there is nothing it could equal, so nothing is unchanged.
+            return false;
+        }
+
+        $getter = 'get'.ucfirst($field);
+
+        if (!method_exists($existing, $getter)) {
+            return false;
+        }
+
+        try {
+            $current = $existing->$getter();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if (is_scalar($value) && is_scalar($current)) {
+            return (string) $value === (string) $current;
+        }
+
+        // Anything else — arrays, objects — is compared by its JSON form, which is how the
+        // values of `languages` reach the database anyway.
+        return json_encode($value) === json_encode($current);
     }
 
     public static function assertMayDelete(User $caller, string $entity): void
