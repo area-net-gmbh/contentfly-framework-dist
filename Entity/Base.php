@@ -280,7 +280,29 @@ class Base extends Serializable
          */
         $ids = $this->users !== null ? explode(',', $this->users) : array();
 
-        return in_array($id, $ids) || $this->id == $id;
+        /*
+         * `|| $this->id == $id` IS GONE (015-000-0009).
+         *
+         * It compared the CALLER'S user id with the PRIMARY KEY OF THIS RECORD — two numbers
+         * from different tables that have nothing to do with each other. With the installer's
+         * default id strategy `auto` they are plain integers counted per table, so user 7
+         * matched record 7 in EVERY entity.
+         *
+         * Every ownership check in the application rests on this method: `getSingle()`,
+         * `doUpdate()`, `doDelete()`, the join, multijoin, checkbox, file and onejoin types, and
+         * `FileController`. So each of them let a non-admin with OWN read, change and delete
+         * exactly one foreign record — the one whose id happens to be their own user id,
+         * `PIM\File` and `PIM\Group` included.
+         *
+         * `hasGroupId()` below never had the clause, and neither does the SQL side: the
+         * `FIND_IN_SET` filters of list, all and count check `userCreated` and `users`, and
+         * nothing else. The two sides now say the same thing.
+         *
+         * STRICT, AND ON STRINGS, for the same reason: `FIND_IN_SET` compares strings. Loosely,
+         * `in_array(0, array('admin'))` was true before PHP 8 and `in_array('7abc', array('7'))`
+         * still is with a numeric-looking column.
+         */
+        return in_array((string) $id, array_map('strval', $ids), true);
     }
 
     /**

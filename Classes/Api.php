@@ -2015,11 +2015,27 @@ class Api
             }
         }
 
-        if($permission == \Areanet\PIM\Entity\Permission::OWN && ($object->getUserCreated() != $this->app['auth.user'] && !$object->hasUserId($this->app['auth.user']->getId()))){
+        /*
+         * THE OWN ACCOUNT, SAID OUT LOUD (015-000-0009).
+         *
+         * `doUpdate()` has carried `$object != $this->app['auth.user']` for a long time; here it
+         * was missing, and a user still reached their own `PIM\User` record with OWN — through
+         * `hasUserId()`, whose `|| $this->id == $id` compared the caller's user id with the
+         * record's primary key. For the own account those two are the same number by definition,
+         * so the legitimate case worked by way of the bug that also handed out record N in every
+         * other entity.
+         *
+         * With the clause gone the case has to be named. It belongs here and not back in
+         * `hasUserId()`: "this record IS the caller" is a statement about `PIM\User`, and
+         * `hasUserId()` answers a question about the `users` column of any entity.
+         */
+        $isOwnAccount = $object === $this->app['auth.user'];
+
+        if($permission == \Areanet\PIM\Entity\Permission::OWN && !$isOwnAccount && ($object->getUserCreated() != $this->app['auth.user'] && !$object->hasUserId($this->app['auth.user']->getId()))){
             throw new ContentflyException(Messages::contentfly_general_access_denied, "$entityShortName::$id", Messages::contentfly_status_access_denied);
         }
 
-        if($permission == \Areanet\PIM\Entity\Permission::GROUP){
+        if($permission == \Areanet\PIM\Entity\Permission::GROUP && !$isOwnAccount){
             if($object->getUserCreated() != $this->app['auth.user'] && !$object->hasUserId($this->app['auth.user']->getId())){
                 $group = $this->app['auth.user']->getGroup();
                 if(!($group && $object->hasGroupId($group->getId()))){
