@@ -164,6 +164,34 @@ class UploadValidator
         return true;
     }
 
+    /**
+     * Whether a name may be WRITTEN into `PIM\\File.name` through the generic API (015-000-0003).
+     *
+     * `isAcceptableName()` above is not enough on its own, and deliberately so: it normalises
+     * first, so `../../custom/config.php` reaches the floor as `config.php` and passes. That is
+     * right where it is used — a stored name is compared against what an upload WOULD be called.
+     * It is wrong for a value coming from a request, because there the path part is the attack.
+     *
+     * So the name must already be what `basename()` would make of it, and it must pass the floor
+     * unchanged. What the upload path produces satisfies both by construction.
+     */
+    public function isStorableName(string $name): bool
+    {
+        // `basename('..')` is `'..'`, so the comparison alone lets the two relative names through
+        // — and they are exactly the ones that walk out of a directory.
+        if ($name === '' || $name === '.' || $name === '..' || $name !== basename($name)) {
+            return false;
+        }
+
+        // `basename()` does not treat a backslash as a separator on Linux, and NUL cuts a path
+        // short later. Neither belongs in a stored name on any platform.
+        if (strpbrk($name, "\\\0") !== false) {
+            return false;
+        }
+
+        return $this->isAcceptableName($name);
+    }
+
     /** No directory parts, no NUL or control characters that could cut the name short on disk. */
     private function normalizeName(string $clientName): string
     {

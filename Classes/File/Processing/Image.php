@@ -6,6 +6,7 @@ use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\File\ProcessingInterface;
 use Areanet\PIM\Classes\File\BackendInterface;
+use Areanet\PIM\Classes\File\FilePath;
 use Areanet\PIM\Entity\File;
 use Areanet\PIM\Entity\ThumbnailSetting;
 
@@ -45,6 +46,29 @@ class Image implements ProcessingInterface
     {
         if(!isset($this->mimeMapping[$fileObject->getType()])){
             return;
+        }
+
+        /*
+         * EVERY PATH IN THIS CLASS IS PROVEN HERE, ONCE (015-000-0003).
+         *
+         * The paths below are built as `getPath($file).'/'.<alias>.'-'.<name>` and then reworked
+         * as strings — the extension is swapped for `jpg`, a `2x@` is put in front of the last
+         * segment. Checking each of those six results separately would mean six chances to miss
+         * one.
+         *
+         * They all rest on two values, and only these two: the record's `name` and the alias of
+         * a `ThumbnailSetting`. Both are columns, both were writable, and neither may carry a
+         * path part. If one does, nothing is processed at all — a thumbnail written outside the
+         * record's directory is worse than a missing thumbnail.
+         */
+        if(FilePath::within($backend->getPath($fileObject), (string) $fileObject->getName()) === null){
+            return;
+        }
+
+        foreach($this->thumbnailSettings as $thumbnailSetting){
+            if(FilePath::within($backend->getPath($fileObject), $thumbnailSetting->getAlias().'-'.$fileObject->getName()) === null){
+                return;
+            }
         }
 
         if($fileSizeAlias && !isset($this->thumbnailSettings[$fileSizeAlias])){

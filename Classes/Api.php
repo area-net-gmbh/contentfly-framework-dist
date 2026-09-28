@@ -8,6 +8,8 @@ use Areanet\PIM\Classes\Kernel\Paths;
 use Areanet\PIM\Classes\Exceptions\ContentflyException;
 use Areanet\PIM\Classes\Exceptions\ContentflyI18NException;
 use Areanet\PIM\Classes\File\Backend;
+use Areanet\PIM\Classes\File\FilePath;
+use Areanet\PIM\Classes\Security\FileFieldGuard;
 use Areanet\PIM\Classes\Security\RightsManagement;
 use Areanet\PIM\Entity\Base;
 use Areanet\PIM\Entity\BaseI18n;
@@ -263,6 +265,9 @@ class Api
 
         // Managing rights is for admins (000-000-0090).
         RightsManagement::assertMayWrite($this->app['auth.user'], $entityShortName, null, $data);
+
+        // A file's name is not free text (015-000-0003).
+        FileFieldGuard::assertMayWrite($entityShortName, $data);
 
         /*
          * A TRANSLATION BELONGS TO ITS RECORD (000-000-0059). An insert that carries the id of an
@@ -547,6 +552,9 @@ class Api
         // Managing rights is for admins (000-000-0090).
         RightsManagement::assertMayWrite($this->app['auth.user'], $entityShortName, $object, $data);
 
+        // A file's name is not free text (015-000-0003).
+        FileFieldGuard::assertMayWrite($entityShortName, $data);
+
         if($object instanceof User && isset($data['pass']) && !$this->app['auth.user']->getIsAdmin()){
             if(!$this->app['auth.user']->isPass($currentUserPass)){
                 throw new ContentflyException(Messages::contentfly_general_invalid_password, $this->app['auth.user']->getAlias());
@@ -816,9 +824,20 @@ class Api
                     foreach($filedata as $size){
                         $sizePrefix = $size == 'org' ? '' : $size.'-';
                         $path       = $backendFS->getPath($object);
-                        $filePath   = $path.'/'.$sizePrefix.$object->getName();
 
-                        if(file_exists($filePath)){
+                        /*
+                         * THE SECOND LAYER, AND THE PLACE THE FINDING WAS READ FROM (015-000-0003).
+                         *
+                         * This used to be `$path.'/'.$sizePrefix.$object->getName()`. With the size
+                         * `org` there is no prefix, so a name beginning with `../` left the
+                         * record's directory and `file_get_contents()` read whatever it pointed at.
+                         * `FileFieldGuard` now keeps such a name out of the column — but a record
+                         * written before today may still carry one, and then it simply has no
+                         * readable file here.
+                         */
+                        $filePath   = FilePath::within($path, $sizePrefix.$object->getName());
+
+                        if($filePath !== null && file_exists($filePath)){
                             if(!isset($objectData->filedata)) $objectData->filedata = new stdClass();
 
                             $data   = file_get_contents($filePath);
