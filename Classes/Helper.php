@@ -112,19 +112,39 @@ class Helper
         return $usersRemoved;
     }
 
-    public function install(EntityManager $em): void{
+    /**
+     * The setup routine — base data that must exist.
+     *
+     * AN EXISTING ADMIN IS LEFT ALONE (015-000-0002).
+     *
+     * Until now this ran `setAlias`, `setLoginManager('')`, `setPass('admin')` and
+     * `setIsAdmin(true)` on EVERY run, on a found account just as on a new one. A second
+     * `appcms:setup` on a running instance therefore silently reset a password that had long
+     * since been changed — back to `admin`, the value that was hard-wired here. One request to
+     * `/auth/login` was then enough for an admin token, on the first attempt and thus far below
+     * the login throttle.
+     *
+     * The account is now only ever written when it is created, and it is created WITHOUT a
+     * usable password: `lockPassword()` puts an asterisk in the column, which matches no input.
+     * Whoever gives it a password is the command that calls this — `appcms:install` or
+     * `appcms:setup` —, because only there is there an output to show it in exactly once.
+     *
+     * @return bool whether the admin account was created by this run
+     */
+    public function install(EntityManager $em): bool{
         //Admin user
         $admin = $em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => 'admin'));
-        if(!$admin){
+        $adminCreated = $admin === null;
+
+        if($adminCreated){
             $admin = new User();
+            $admin->setAlias("admin");
+            $admin->setLoginManager('');
+            $admin->setIsAdmin(true);
+            $admin->lockPassword();
+
+            $em->persist($admin);
         }
-
-        $admin->setAlias("admin");
-        $admin->setLoginManager('');
-        $admin->setPass("admin");
-        $admin->setIsAdmin(true);
-
-        $em->persist($admin);
 
         //Image sizes
         $sizeList = $em->getRepository('Areanet\PIM\Entity\ThumbnailSetting')->findOneBy(array('alias' => 'pim_list'));
@@ -154,6 +174,49 @@ class Helper
 
         $em->flush();
 
+        return $adminCreated;
+    }
+
+    /**
+     * Gives the admin a password — and hands back the one it made up itself.
+     *
+     * THE RULE IS: NEVER UNASKED (015-000-0002). Without a given password, a password is only
+     * set when the account has just been created. An existing one is not touched, because a
+     * setup run is not a password reset.
+     *
+     * The return value is the GENERATED password and nothing else: a given one the caller
+     * already knows, and printing it back would put it in the terminal's scrollback for no
+     * reason. `null` therefore means "nothing was generated", not "nothing happened".
+     */
+    public function applyAdminPassword(EntityManager $em, bool $adminCreated, ?string $password = null): ?string
+    {
+        if($password === null && !$adminCreated){
+            return null;
+        }
+
+        $generated = $password === null ? self::generatePassword() : null;
+
+        $admin = $em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => 'admin'));
+        if(!$admin){
+            return null;
+        }
+
+        $admin->setPass($password ?? $generated);
+        $em->persist($admin);
+        $em->flush();
+
+        return $generated;
+    }
+
+    /**
+     * A password nobody has to think up.
+     *
+     * 24 hexadecimal characters from `random_bytes()` — 96 bits, unambiguous to read out and to
+     * type. It is shown once by the command that created the account and is stored nowhere else.
+     */
+    public static function generatePassword(): string
+    {
+        return bin2hex(random_bytes(12));
     }
 
 

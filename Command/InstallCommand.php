@@ -41,7 +41,7 @@ class InstallCommand extends Command
             ->addOption('db-user', null, InputOption::VALUE_REQUIRED, 'Database user (env: APPCMS_DB_USER)')
             ->addOption('db-pass', null, InputOption::VALUE_REQUIRED, 'Database password (env: APPCMS_DB_PASS)')
             ->addOption('db-strategy', null, InputOption::VALUE_REQUIRED, 'ID strategy: guid or auto (env: APPCMS_DB_STRATEGY)', 'auto')
-            ->addOption('admin-password', null, InputOption::VALUE_REQUIRED, 'Password of the admin user (env: APPCMS_ADMIN_PASSWORD; default: admin)')
+            ->addOption('admin-password', null, InputOption::VALUE_REQUIRED, 'Password of the admin user (env: APPCMS_ADMIN_PASSWORD; generated and shown once if omitted)')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Only check, write nothing')
         ;
     }
@@ -96,8 +96,10 @@ class InstallCommand extends Command
             $schemaTool->updateSchema($em->getMetadataFactory()->getAllMetadata());
             $output->writeln('Database schema created.');
 
-            $app['helper']->install($em);
-            $this->setAdminPassword($input, $em);
+            $adminCreated = $app['helper']->install($em);
+            $generatedPassword = $app['helper']->applyAdminPassword(
+                $em, $adminCreated, $this->value($input, 'admin-password', 'APPCMS_ADMIN_PASSWORD')
+            );
             $em->flush();
             $output->writeln('Base data created.');
         } catch (\Exception $e) {
@@ -108,8 +110,20 @@ class InstallCommand extends Command
             return 1;
         }
 
-        $password = $this->value($input, 'admin-password', 'APPCMS_ADMIN_PASSWORD') ?: 'admin';
-        $output->writeln('<info>Contentfly has been installed. Login: admin / '.($password === 'admin' ? 'admin (default — please change it)' : '<the password you set>').'</info>');
+        /*
+         * THE PASSWORD IS NAMED ONCE, AND ONLY IF IT WAS GENERATED HERE (015-000-0002).
+         *
+         * This line used to fall back to `'admin'` and print "admin (default — please change
+         * it)". The request to change it was the entire protection, and nothing enforced it.
+         */
+        $output->writeln('<info>Contentfly has been installed.</info>');
+
+        if ($generatedPassword !== null) {
+            $output->writeln('<info>Login: admin / '.$generatedPassword.'</info>');
+            $output->writeln('<comment>This password was generated now, is shown this one time and is stored nowhere else. Note it down.</comment>');
+        } else {
+            $output->writeln('<info>Login: admin / <the password you set></info>');
+        }
 
         return 0;
     }
@@ -280,27 +294,6 @@ class InstallCommand extends Command
         );
 
         return $app['orm.em'];
-    }
-
-    /**
-     * Sets the admin password if one was passed.
-     *
-     * `helper->install()` creates the admin with `admin`/`admin`. Through a web interface with
-     * a subsequent login that was acceptable; a scriptable installation should be able to set a
-     * real password without anyone having to change it by hand afterwards.
-     */
-    private function setAdminPassword(InputInterface $input, $em): void
-    {
-        $password = $this->value($input, 'admin-password', 'APPCMS_ADMIN_PASSWORD');
-        if ($password === null) {
-            return;
-        }
-
-        $admin = $em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => 'admin'));
-        if ($admin) {
-            $admin->setPass($password);
-            $em->persist($admin);
-        }
     }
 
     /** Own name: Command::isEnabled() is already taken as a public method in Symfony. */
