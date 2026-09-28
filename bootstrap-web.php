@@ -8,6 +8,7 @@ use Areanet\PIM\Classes\Controller\Provider\Base\SystemControllerProvider;
 use Areanet\PIM\Classes\Envelope;
 use Areanet\PIM\Classes\Config;
 use Areanet\PIM\Classes\Messages;
+use Areanet\PIM\Classes\Security\HttpBasicGate;
 use Symfony\Component\HttpFoundation\AcceptHeader;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -52,22 +53,39 @@ header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: SAMEORIGIN");
 header("X-XSS-Protection: 1; mode=block");
 
+/*
+ * THE OPTIONAL HTTP BASIC GATE (015-000-0007).
+ *
+ * The decision lives in `Security\HttpBasicGate`, not here. What stood here refused only when
+ * user AND password were wrong, so one correct value was enough to walk through; it compared
+ * loosely and not in constant time, and it took the header apart with `explode(':')` without
+ * checking that there was a colon. None of that was measurable in a file that runs before the
+ * application exists.
+ *
+ * `$_SERVER['PHP_AUTH_*']` comes from the server when it parsed the header itself; otherwise the
+ * header is read directly. `REDIRECT_HTTP_AUTHORIZATION` is what the `.htaccess` rewrite leaves
+ * behind, and it is now read with `??` — the old line reached for it unconditionally and warned
+ * whenever it was absent.
+ */
 if(Config\Adapter::getConfig()->APP_HTTP_AUTH_USER) {
-    if(!isset($_SERVER['PHP_AUTH_USER'])) {
-        $authString = empty($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] : $_SERVER['HTTP_AUTHORIZATION'];
-        list($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']) = explode(':', base64_decode(substr($authString, 6)));
+    $basicUser     = $_SERVER['PHP_AUTH_USER'] ?? null;
+    $basicPassword = $_SERVER['PHP_AUTH_PW'] ?? null;
+
+    if ($basicUser === null) {
+        [$basicUser, $basicPassword] = HttpBasicGate::credentials(
+            $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null
+        );
     }
 
-    if (empty($_SERVER['PHP_AUTH_USER'])) {
+    if (!HttpBasicGate::isAuthorised(
+        $basicUser,
+        $basicPassword,
+        Config\Adapter::getConfig()->APP_HTTP_AUTH_USER,
+        Config\Adapter::getConfig()->APP_HTTP_AUTH_PASS
+    )) {
         header('WWW-Authenticate: Basic realm="APP-CMS Authentification"');
         header('HTTP/1.0 401 Unauthorized');
         exit;
-    } else {
-        if ($_SERVER['PHP_AUTH_USER'] != Config\Adapter::getConfig()->APP_HTTP_AUTH_USER && $_SERVER['PHP_AUTH_PW'] != Config\Adapter::getConfig()->APP_HTTP_AUTH_PASS) {
-            header('WWW-Authenticate: Basic realm="APP-CMS Authentification"');
-            header('HTTP/1.0 401 Unauthorized');
-            exit;
-        }
     }
 }
 
