@@ -213,8 +213,36 @@ final class TokenHandler implements AccessTokenHandlerInterface
 
         $this->lastClaims = (array) $claims;
 
-        // Without its own loader: the user is fetched by the UserLoader the authenticator knows.
-        return new UserBadge($identifier);
+        /*
+         * WITH ITS OWN LOADER, BECAUSE `sub` IS AN ID NOW (015-000-0014).
+         *
+         * The badge used to come back bare, and `UserLoader` resolved it — by alias, which is
+         * its contract and stays its contract: the OIDC path hands it an alias too. Only the JWT
+         * path changed its mind about what `sub` means, so only the JWT path brings the loader
+         * that matches.
+         *
+         * The rule is `UserLoader`'s, not a second one: a deactivated account is treated like an
+         * unknown one, so an invalid token and a switched-off account fail indistinguishably.
+         */
+        return new UserBadge($identifier, fn () => $this->userById($identifier));
+    }
+
+    /**
+     * The account a JWT subject names (015-000-0014).
+     *
+     * Deliberately the same rule as `UserLoader::loadUserByIdentifier()`: a deactivated user is
+     * treated like an unknown one. Stating it twice is the price of the two identifiers; what
+     * must not differ is the ANSWER, and `reject()` gives the same one either way.
+     */
+    private function userById(string $id): User
+    {
+        $user = $this->em->getRepository(User::class)->find($id);
+
+        if (!$user instanceof User || !$user->getIsActive()) {
+            $this->reject();
+        }
+
+        return $user;
     }
 
     // ── The opaque branch ──────────────────────────────────────────────────────────────

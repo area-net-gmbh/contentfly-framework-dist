@@ -4,6 +4,7 @@ namespace Areanet\PIM\Classes\Security;
 use Areanet\PIM\Classes\Config\Adapter;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use Areanet\PIM\Entity\User;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
@@ -65,7 +66,7 @@ final class JwtAccessToken
         $jti    = bin2hex(random_bytes(16));
 
         $claims = array(
-            'sub' => $user->getUserIdentifier(),
+            'sub' => self::subjectOf($user),
             'iss' => self::ISSUER,
             'iat' => $now,
             'exp' => $exp,
@@ -79,6 +80,46 @@ final class JwtAccessToken
             'jti'   => $jti,
             'exp'   => $exp,
         );
+    }
+
+    /**
+     * WHAT GOES INTO `sub` — THE ID, NOT THE ALIAS (015-000-0014).
+     *
+     * This used to be `getUserIdentifier()`, which is the alias, and the JWT path resolved the
+     * account from it on every request. The alias is a column an API client can write:
+     * `RightsManagement` guarded `pass`, `salt`, `loginManager` and `externalId` of a foreign
+     * user, not `alias`.
+     *
+     * A non-admin with write access to foreign `PIM\User` records could therefore rename
+     * accounts so that the `sub` of their own still-valid token pointed at an admin — and their
+     * next requests ran as that admin. The token needed no forging; the database was moved
+     * underneath it.
+     *
+     * THE ID IS THE ONLY IDENTIFIER THAT CANNOT BE REASSIGNED. `alias` stays what a person logs
+     * in with and what `getUserIdentifier()` answers — Symfony's contract and every message that
+     * names a user rest on it. What changes is only what a token says about whom it belongs to.
+     *
+     * `015-000-0014` guards the alias of a foreign account as well, so the rename is refused in
+     * the first place. Both, because either alone would be enough only until the next path that
+     * writes an alias.
+     */
+    public static function subjectOf(UserInterface $user): string
+    {
+        if ($user instanceof User && $user->getId() !== null) {
+            return (string) $user->getId();
+        }
+
+        /*
+         * FAILS LOUDLY. A token whose subject is not the id would authenticate as nobody — the
+         * loader would not find an account — and that would look like an expired token to
+         * everyone involved. Whoever issues a token for something that is not a `PIM\User` has
+         * a different problem, and it should say so.
+         */
+        throw new \RuntimeException(sprintf(
+            'A JWT can only be issued for a persisted PIM\User; got %s. The subject claim carries '
+            .'the user id since 015-000-0014.',
+            $user::class
+        ));
     }
 
     /**

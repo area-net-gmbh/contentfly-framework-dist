@@ -31,8 +31,17 @@ use Areanet\PIM\Entity\User;
  */
 final class RightsManagement
 {
-    /** Set on ANOTHER user, each of these takes over the account. */
-    private const CREDENTIALS = array('pass', 'salt', 'loginManager', 'externalId');
+    /**
+     * Set on ANOTHER user, each of these takes over the account.
+     *
+     * `alias` joined them with `015-000-0014`. It is not a credential in the sense the others
+     * are — it grants nothing by itself — but it is the name the account answers to, and until
+     * that task it was also what a JWT's `sub` named. Renaming a foreign account so that
+     * somebody else's still-valid token pointed at an admin was a takeover without touching a
+     * single secret. The token now carries the id, and the rename is refused as well: either
+     * alone would hold only until the next path that writes an alias.
+     */
+    private const CREDENTIALS = array('pass', 'salt', 'loginManager', 'externalId', 'alias');
 
     /**
      * The only fields of a group a non-admin may CHANGE (015-000-0013).
