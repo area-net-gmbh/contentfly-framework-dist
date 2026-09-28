@@ -18,6 +18,28 @@ use Symfony\Component\HttpFoundation\Request;
 
 class AuthController extends BaseController
 {
+
+    /**
+     * The one answer every failed login gets (015-000-0008).
+     *
+     * A constant and not a literal at each `renderError()`: four different texts is how the leak
+     * came about, and four places to keep in step is how it would come back. The wording is the
+     * one that was already used for the most common case, so a client that shows it verbatim
+     * sees no change.
+     */
+    private const LOGIN_REJECTED = 'Invalid user name and/or password.';
+
+    /**
+     * A value from the request, safe to put in a log line.
+     *
+     * The alias and the address are attacker-controlled. Without this a newline in the alias
+     * writes a line of its own into the log — an entry that looks like the server wrote it.
+     * Cut to 100 characters, because a log line is not a place to store a request body.
+     */
+    private static function forLog(string $value): string
+    {
+        return substr((string) preg_replace('/[\x00-\x1F\x7F]/', '?', $value), 0, 100);
+    }
     /*
      * CHECK_LOGIN_INTERVAL AND MIN_LOGIN_INTERVAL ARE GONE (013-001-0003).
      *
@@ -163,14 +185,35 @@ class AuthController extends BaseController
          * `$throttle->recordFailure(...)` in front of each one in turn forgets one eventually — and a
          * single uncounted branch is the way to guess past the throttle.
          */
-        $reject = function ($message) use ($throttle, $identifier, $ip) {
+        $reject = function (string $reason) use ($throttle, $identifier, $ip) {
             $throttle->recordFailure($identifier, $ip);
 
-            // ONE CODE FOR ALL 401s of the login, and that is deliberate (011-001-0004): unknown
-            // user, wrong password, rejected provider — a client must not be able to tell them
-            // apart, or the answer becomes an oracle for which accounts exist. The wording of
-            // `detail` is already uniform for the same reason.
-            return $this->renderError(Messages::contentfly_general_invalid_credentials, $message, 401);
+            /*
+             * THE REASON GOES TO THE LOG, THE ANSWER IS ALWAYS THE SAME (015-000-0008).
+             *
+             * The comment that stood here claimed the wording of `detail` was already uniform.
+             * It was not: the closure took a message and handed it straight to the caller, and
+             * the callers passed four different ones — `Invalid user name.` for an account that
+             * does not exist, `The user is deactivated.`, `The user can only be authenticated
+             * through their login provider.`, and `Invalid user name and/or password.` for an
+             * account that exists, is active, is local and has a different password.
+             *
+             * That is a list of user names for the asking, and the list is the target list for
+             * password spraying. The throttle limits the rate, not the fact.
+             *
+             * ONE CODE AND ONE TEXT for every 401 of the login (011-001-0004 for the code,
+             * this task for the text). What was distinguished is now distinguished in the
+             * server's log, where it belongs — a rejected login is worth investigating, and
+             * whoever operates the installation may know the reason.
+             */
+            error_log(sprintf(
+                'Contentfly: login rejected (%s) for "%s" from %s',
+                $reason,
+                self::forLog((string) $identifier),
+                self::forLog((string) $ip)
+            ));
+
+            return $this->renderError(Messages::contentfly_general_invalid_credentials, self::LOGIN_REJECTED, 401);
         };
 
         /*
@@ -197,7 +240,7 @@ class AuthController extends BaseController
              * oracle for which external systems this installation knows.
              */
             if (!$loginProvider) {
-                return $reject('Invalid user name.');
+                return $reject('unknown login provider');
             }
         }
 
@@ -214,7 +257,7 @@ class AuthController extends BaseController
             }
 
             if (!$identity instanceof ExternalIdentity) {
-                return $reject('Invalid user name and/or password.');
+                return $reject('provider authentication failed');
             }
 
             /*
@@ -241,21 +284,21 @@ class AuthController extends BaseController
             $this->app['groupMapping']->apply($provider, $identity, $user);
 
             if (!$user->getIsActive()) {
-                return $reject('The user is deactivated.');
+                return $reject('account deactivated');
             }
         }else{
 
             $user = $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => $identifier));
             if(!$user){
-                return $reject('Invalid user name.');
+                return $reject('unknown alias');
             }
 
             if(!$user->getIsActive()){
-                return $reject('The user is deactivated.');
+                return $reject('account deactivated');
             }
 
             if($user->getLoginManager()){
-                return $reject('The user can only be authenticated through their login provider.');
+                return $reject('a provider account may not log in locally');
             }
 
             /*
@@ -266,7 +309,7 @@ class AuthController extends BaseController
              * full access is a back door even when switched off.
              */
             if(!$user->isPass(($request->request->all()['pass'] ?? null))){
-                return $reject('Invalid user name and/or password.');
+                return $reject('wrong password');
             }
         }
 
