@@ -1592,7 +1592,22 @@ class Api
 
             if(file_exists($cacheFile)){
 
-                return unserialize(file_get_contents($cacheFile));
+                /*
+                 * THE CACHE IS DATA, NOT CODE (015-000-0005).
+                 *
+                 * `unserialize()` without a second argument builds objects out of whatever the
+                 * file says — `__wakeup()` and `__destruct()` of every loaded class included.
+                 * The file sits in `data/cache`, and until this task an upload could be written
+                 * there: the id of a `PIM\File` came from the request and became the directory.
+                 * That path is closed, but the two must not depend on each other. A cache the
+                 * application wrote itself contains arrays and scalars and nothing else, so
+                 * refusing classes costs nothing and removes the chain entirely.
+                 *
+                 * `false` and not a list: there is no class to allow. `SchemaCacheApiTest`
+                 * measures the round trip, and an object in the schema would come back as
+                 * `__PHP_Incomplete_Class` and fail it.
+                 */
+                return unserialize(file_get_contents($cacheFile), array('allowed_classes' => false));
             }
         }
 
