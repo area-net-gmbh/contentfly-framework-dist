@@ -70,6 +70,8 @@ final class Start
      */
     public static function console(string $project): ApplicationInterface
     {
+        self::assertConsoleSapi(PHP_SAPI);
+
         if (!defined('APPCMS_CONSOLE')) {
             define('APPCMS_CONSOLE', true);
         }
@@ -80,6 +82,46 @@ final class Start
         require Paths::package() . '/bootstrap.php';
 
         return $app;
+    }
+
+    /**
+     * Is this a SAPI the console may run under?
+     *
+     * `cli` is the normal one, `phpdbg` the debugger — both are a terminal with a person in
+     * front of it. Everything else is a request, and a request has no business starting a
+     * console command.
+     *
+     * A parameter instead of reading `PHP_SAPI` inside: a constant cannot be changed from a
+     * test, and a rule that cannot be measured is a rule nobody notices the loss of.
+     */
+    public static function isConsoleSapi(string $sapi): bool
+    {
+        return $sapi === 'cli' || $sapi === 'phpdbg';
+    }
+
+    /**
+     * THE CONSOLE DOES NOT RUN OVER HTTP (015-000-0004).
+     *
+     * `bin/console.php` refuses this itself, before the autoloader, and answers the web with a
+     * 403. This second check is for every other caller — a project's own entry point, a script
+     * that requires the file, a future one nobody has written yet. It throws instead of
+     * exiting: at this point it is a programming error, not a request to be answered.
+     *
+     * Symfony's `ArgvInput` takes the command from `$_SERVER['argv']`, which `register_argc_argv`
+     * fills from the query string under a web SAPI. The whole command list hung on that one
+     * setting.
+     */
+    public static function assertConsoleSapi(string $sapi): void
+    {
+        if (self::isConsoleSapi($sapi)) {
+            return;
+        }
+
+        throw new \RuntimeException(sprintf(
+            'The console runs on the command line only, not under the SAPI "%s". '
+            .'A console command started from a request would run without any authentication.',
+            $sapi
+        ));
     }
 
     /**
