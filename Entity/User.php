@@ -1,6 +1,8 @@
 <?php
 namespace Areanet\PIM\Entity;
 
+use Areanet\PIM\Classes\Exceptions\ContentflyException;
+use Areanet\PIM\Classes\Messages;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
@@ -163,6 +165,30 @@ class User extends Base implements UserInterface
      */
     public function setPass($pass): void
     {
+        /*
+         * AN EMPTY PASSWORD IS NEVER HASHED (015-000-0001).
+         *
+         * This used to be `password_hash((string) $pass, …)` and nothing else. `null`, `''`
+         * and `[]` all became `password_hash('')` — a valid hash, and the login against it
+         * succeeds with an empty password. Together with `StringType::toDatabase()`, which
+         * turns every empty value into `setPass('')`, a single `{"pass": null}` was enough
+         * to take over somebody else's account.
+         *
+         * THE CHECK BELONGS HERE and not in the write path: this is the one place where a
+         * word becomes a hash — the API, the installer, provisioning and the rehashing at
+         * login all go through it. A check further up would let the next caller past it again.
+         *
+         * No `empty()`: the password `'0'` is a password. Checked are exactly the three
+         * values that are none.
+         */
+        if ($pass === null || $pass === '' || !is_scalar($pass)) {
+            throw new ContentflyException(
+                Messages::contentfly_general_invalid_password,
+                'PIM\\User::pass',
+                Messages::contentfly_status_bad_request
+            );
+        }
+
         $this->pass = password_hash((string) $pass, self::algorithm());
     }
 
@@ -192,6 +218,22 @@ class User extends Base implements UserInterface
          * to the hash format takes it away without anyone noticing.
          */
         if ($this->isPasswordLocked()) {
+            return false;
+        }
+
+        /*
+         * AN EMPTY PASSWORD MATCHES NOTHING (015-000-0001).
+         *
+         * The other half of the same gap as in `setPass()`. As long as existing data can
+         * carry a `password_hash('')` — written before `setPass()` rejected it —,
+         * `password_verify('', $hash)` would succeed and `/auth/login` would hand out a
+         * token without a password. Rejecting it here makes such hashes worthless without
+         * touching the database.
+         *
+         * The same applies to the confirmation of the current password in `Api::doUpdate()`:
+         * `/api/multiupdate` passes `null` for it.
+         */
+        if ($pass === null || $pass === '' || !is_scalar($pass)) {
             return false;
         }
 

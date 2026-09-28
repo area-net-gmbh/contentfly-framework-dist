@@ -83,12 +83,22 @@ final class RightsManagement
                 continue;
             }
 
-            // A password is stored as a hash and cannot be compared: any value is a new one.
-            $changes = $field === 'pass'
-                ? self::id($data[$field]) !== null
-                : self::id($data[$field]) !== self::id($user->{'get'.ucfirst($field)}());
+            /*
+             * THE KEY IS THE CHANGE, NOT ITS VALUE (015-000-0001).
+             *
+             * This used to read `self::id($data['pass']) !== null`. `self::id()` turns
+             * `null`, `''` and `[]` alike into `null` — so a `{"pass": null}` counted as
+             * "no change" and walked past this barrier. At the end of the write path there
+             * was still a `setPass('')`, and the next login was the victim's.
+             *
+             * A password is stored as a hash and cannot be compared: any value is a new one,
+             * the empty one included. What counts is therefore that the key is there at all.
+             */
+            if ($field === 'pass') {
+                self::deny('PIM\\User::pass');
+            }
 
-            if ($changes) {
+            if (!self::same($data[$field], $user->{'get'.ucfirst($field)}())) {
                 self::deny('PIM\\User::'.$field);
             }
         }
@@ -113,6 +123,39 @@ final class RightsManagement
         }
 
         return (string) $value;
+    }
+
+    /**
+     * Are two credential values the same value?
+     *
+     * NOT VIA `self::id()` (015-000-0001): that method lumps `''` and `null` together. For
+     * addressing a record this is right — `{"id": ""}` is not a reference —, for `salt`,
+     * `loginManager` and `externalId` it is wrong. An `externalId: ""` on a record whose
+     * `externalId` is `null` counted as unchanged, yet was written as `''`: a change to the
+     * identity that this barrier did not see.
+     *
+     * The promise "a value that does not change is not a change" stands: what is compared is
+     * still the value the record has now. Only empty and `null` are no longer the same.
+     */
+    private static function same(mixed $new, mixed $current): bool
+    {
+        if (is_array($new)) {
+            $new = $new['id'] ?? null;
+        }
+
+        if (is_array($current)) {
+            $current = $current['id'] ?? null;
+        }
+
+        if ($new === null || $current === null) {
+            return $new === null && $current === null;
+        }
+
+        if (!is_scalar($new) || !is_scalar($current)) {
+            return false;
+        }
+
+        return (string) $new === (string) $current;
     }
 
     private static function deny(string $what): never

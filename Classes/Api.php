@@ -556,6 +556,18 @@ class Api
         FileFieldGuard::assertMayWrite($entityShortName, $data);
 
         if($object instanceof User && isset($data['pass']) && !$this->app['auth.user']->getIsAdmin()){
+        /*
+         * `array_key_exists` INSTEAD OF `isset` (015-000-0001).
+         *
+         * `isset(null)` is `false`. A `{"pass": null}` on the caller's OWN record therefore
+         * went through without asking for the current password — which turned a stolen token
+         * into permanent access, because the thief could set a password of their own without
+         * knowing the old one.
+         *
+         * The question is now asked as soon as the key is there. What value it carries is
+         * decided further down, by `User::setPass()`.
+         */
+        if($object instanceof User && array_key_exists('pass', $data) && !$this->app['auth.user']->getIsAdmin()){
             if(!$this->app['auth.user']->isPass($currentUserPass)){
                 throw new ContentflyException(Messages::contentfly_general_invalid_password, $this->app['auth.user']->getAlias());
             }
