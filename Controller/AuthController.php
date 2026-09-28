@@ -159,6 +159,41 @@ class AuthController extends BaseController
         $throttle = $this->app['loginThrottle'];
 
         /*
+         * THE THROTTLE COUNTS ON THE ACCOUNT, NOT ON WHAT WAS TYPED (015-000-0010).
+         *
+         * The bucket used to be `sha256(mb_strtolower(trim($alias)))`, while the account is
+         * looked up with `findOneBy(['alias' => …])` under the collation `utf8mb3_unicode_ci`.
+         * That collation ignores accents, character width and trailing spaces, and it equates
+         * U+00DF with `ss` — all four measured against this database on 2026-09-28. So `admin`,
+         * `a` written as U+00E0 or U+00E1, `a` written full width as U+FF41, and `admin` with a
+         * trailing space each got a bucket of their own and all hit the same account: the
+         * per-identifier tiers (5/min, 20/15min, 50/h) never filled up, and one account — the
+         * admin included — was guarded by the IP axis alone.
+         *
+         * FOLDING THE INPUT WOULD ONLY MOVE THE PROBLEM. Matching a collation in PHP means
+         * matching all of it, and every version of it; `ext-intl` is not a dependency of this
+         * framework, and demanding one for a rule that can be had exactly is the wrong trade.
+         * Whatever the collation considers equal, this query finds the same row — so the row is
+         * the bucket.
+         *
+         * THE LOOKUP MOVED IN FRONT OF THE THROTTLE CHECK, and that is a change to the order
+         * `013-001-0003` argued for. Its reason stands and is untouched: whoever is over the
+         * limit still never reaches the Argon2id comparison. What they now reach is one indexed
+         * SELECT — orders of magnitude cheaper than the hash, and no more than the same request
+         * cost before the limit was reached.
+         *
+         * A name that matches no account keeps its own bucket, under a prefix of its own, so
+         * that an invented name cannot be aimed at a real account's budget.
+         */
+        $account = $identifier === null || $identifier === ''
+            ? null
+            : $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => $identifier));
+
+        $throttleIdentity = $account !== null
+            ? 'user:'.$account->getId()
+            : 'alias:'.trim((string) $identifier);
+
+        /*
          * THROTTLE FIRST, THEN VERIFY (013-001-0003).
          *
          * The order is the point: whoever is over the limit never gets as far as the database query and
@@ -169,7 +204,7 @@ class AuthController extends BaseController
          * user name; otherwise the throttle would be an oracle for which accounts exist. `Retry-After`
          * only says how long to wait — the legitimate user who mistyped three times is entitled to that.
          */
-        if (($retryAfter = $throttle->retryAfter($identifier, $ip)) !== null) {
+        if (($retryAfter = $throttle->retryAfter($throttleIdentity, $ip)) !== null) {
             return $this->renderError(
                 Messages::contentfly_general_too_many_attempts,
                 'Too many login attempts. Please try again later.',
@@ -185,8 +220,8 @@ class AuthController extends BaseController
          * `$throttle->recordFailure(...)` in front of each one in turn forgets one eventually — and a
          * single uncounted branch is the way to guess past the throttle.
          */
-        $reject = function (string $reason) use ($throttle, $identifier, $ip) {
-            $throttle->recordFailure($identifier, $ip);
+        $reject = function (string $reason) use ($throttle, $throttleIdentity, $identifier, $ip) {
+            $throttle->recordFailure($throttleIdentity, $ip);
 
             /*
              * THE REASON GOES TO THE LOG, THE ANSWER IS ALWAYS THE SAME (015-000-0008).
@@ -288,7 +323,8 @@ class AuthController extends BaseController
             }
         }else{
 
-            $user = $this->em->getRepository('Areanet\PIM\Entity\User')->findOneBy(array('alias' => $identifier));
+            // Already resolved above, for the throttle — one lookup, not two.
+            $user = $account;
             if(!$user){
                 return $reject('unknown alias');
             }
@@ -338,7 +374,7 @@ class AuthController extends BaseController
          * Only the identifier's, not the IP's: otherwise a single valid account — the attacker's own —
          * would be enough to unlock themselves after every block.
          */
-        $throttle->reset($identifier);
+        $throttle->reset($throttleIdentity);
 
         /*
          * WHICH TOKEN TYPE THE LOGIN ISSUES (013-003-0001).

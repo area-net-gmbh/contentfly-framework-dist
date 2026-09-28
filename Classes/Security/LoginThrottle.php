@@ -44,6 +44,13 @@ use Symfony\Component\RateLimiter\Storage\CacheStorage;
  *
  * THE KEY IS A HASH, and the identifier is lower-cased first: `Admin` and `admin` share one bucket;
  * otherwise the limit could be multiplied through upper and lower case.
+ *
+ * WHAT COUNTS AS ONE IDENTIFIER IS DECIDED BY THE CALLER (015-000-0010). Lower-casing here is not
+ * enough and never was: the account is looked up under a collation that also ignores accents,
+ * character width and trailing spaces, so `admin`, `àdmin` and `ａdmin` used to get a bucket each
+ * while hitting the same account — the per-identifier tiers never filled up. `AuthController`
+ * therefore resolves the account first and hands in `user:<id>`, and `alias:<name>` only for a
+ * name that matches nothing. Whoever calls this class with a raw user name reopens the gap.
  */
 final class LoginThrottle
 {
