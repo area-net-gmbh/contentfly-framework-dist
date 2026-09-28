@@ -79,7 +79,15 @@ class FileController extends BaseController
     {
 
 
-        if(!Permission::isWritable($this->app['auth.user'], 'PIM\\File')){
+        /*
+         * THE LEVEL IS KEPT, NOT JUST THE ANSWER (015-000-0006).
+         *
+         * This used to discard the return value. `Permission::isWritable()` says WHICH level a
+         * user holds — OWN, GROUP or ALL —, and the record the upload lands on decides whether
+         * that level reaches it. Without the level there was nothing left to narrow with, and
+         * `uploadAction` was the only write path on `PIM\\File` that did not narrow at all.
+         */
+        if(!($permission = Permission::isWritable($this->app['auth.user'], 'PIM\\File'))){
             throw new AccessDeniedHttpException("Access to PIM\\File denied.");
         }
 
@@ -152,6 +160,8 @@ class FileController extends BaseController
 
             $fileObject = $this->em->getRepository('Areanet\PIM\Entity\File')->find(($request->request->all()["id"] ?? null));
 
+            $recordIsNew = $fileObject === null;
+
             if (!$fileObject) {
                 $fileObject = new File();
 
@@ -172,6 +182,22 @@ class FileController extends BaseController
                 $this->em->persist($log);
                 $this->em->flush();
             }else{
+                /*
+                 * A RE-UPLOAD IS A WRITE ON SOMEBODY'S RECORD (015-000-0006).
+                 *
+                 * Until here `uploadAction` checked the entity right and nothing else, while
+                 * `overwriteAction` and `Api::doUpdate()` narrowed by ownership. So a user with
+                 * `writable = OWN` read the id of a foreign file out of a `/file/get` URL,
+                 * uploaded a replacement under that id, and the victim's file was gone — a
+                 * publicly linked image or PDF had different content, the thumbnails were
+                 * rebuilt from it, and `userCreated` named the caller.
+                 *
+                 * The check stands BEFORE the first write of this branch, the same call
+                 * `overwriteAction` makes. What it throws is what that one throws, so the two
+                 * paths cannot drift apart in what they answer.
+                 */
+                $this->assertFileWritable($permission, $fileObject);
+
                 $filename = $fileObject->getName();
 
                 // A name stored before 000-000-0038 may be one the web server executes. It does
@@ -217,7 +243,23 @@ class FileController extends BaseController
 
             $fileObject->setType($uploadType);
             $fileObject->setSize($uploadSize);
-            $fileObject->setUserCreated($this->app['auth.user']);
+
+            /*
+             * A RE-UPLOAD DOES NOT CHANGE WHO CREATED THE RECORD (015-000-0006).
+             *
+             * `setUserCreated()` ran on every pass, on a record that was found just as on one
+             * that was created. Together with the missing ownership check that was the second
+             * half of the finding: the caller replaced the file AND became its owner, which
+             * made the change invisible to exactly the rule that should have stopped it — an
+             * `OWN` check afterwards found the record to be the attacker's own.
+             *
+             * `user` still names the caller: that field is who touched the record last, and a
+             * re-upload is a touch.
+             */
+            if($recordIsNew){
+                $fileObject->setUserCreated($this->app['auth.user']);
+            }
+
             $fileObject->setUser($this->app['auth.user']);
             $fileObject->setHash($hash);
 
