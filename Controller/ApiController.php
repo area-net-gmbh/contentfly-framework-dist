@@ -14,6 +14,7 @@ use Areanet\PIM\Classes\File\Backend\FileSystem;
 use Areanet\PIM\Classes\File\Processing;
 use Areanet\PIM\Classes\File\Processing\Standard;
 use Areanet\PIM\Classes\Helper;
+use Areanet\PIM\Classes\Language;
 use Areanet\PIM\Classes\Messages;
 use Areanet\PIM\Classes\Permission;
 use Areanet\PIM\Entity\Base;
@@ -243,7 +244,7 @@ class ApiController extends BaseController
         $helper              = new Helper();
         $entityShortName     = $helper->getShortEntityName(($request->request->all()['entity'] ?? null));
         $id                  = ($request->request->all()['id'] ?? null);
-        $lang                = ($request->request->all()['lang'] ?? null);
+        $lang                = Language::fromRequest($request);
 
         $event = new \Areanet\PIM\Classes\Event();
         $event->setParam('entity',  $entityShortName);
@@ -391,7 +392,7 @@ class ApiController extends BaseController
         $entityShortName     = $helper->getShortEntityName(($request->request->all()['entity'] ?? null));
 
         $data                = ($request->request->all()['data'] ?? null);
-        $lang                = ($request->request->all()['lang'] ?? null);
+        $lang                = Language::fromRequest($request);
 
         $event = new \Areanet\PIM\Classes\Event();
         $event->setParam('entity',  $entityShortName);
@@ -537,7 +538,7 @@ class ApiController extends BaseController
         $itemsPerPage           = ($request->request->all()['itemsPerPage'] ?? Config\Adapter::getConfig()->FRONTEND_ITEMS_PER_PAGE);
         $flatten                = ($request->request->all()['flatten'] ?? false);
         $lastModified           = ($request->request->all()['lastModified'] ?? null);
-        $lang                   = ($request->request->all()['lang'] ?? null);
+        $lang                   = Language::fromRequest($request);
         $untranslatedLang       = ($request->request->all()['untranslatedLang'] ?? null);
 
         $properties             = ($request->request->all()['properties'] ?? array());
@@ -619,7 +620,7 @@ class ApiController extends BaseController
     {
         $objects             = ($request->request->all()['objects'] ?? null);
         $disableModifiedTime = ($request->request->all()['disableModifiedTime'] ?? null);
-        $lang                = ($request->request->all()['lang'] ?? null);
+        $lang                = Language::fromRequest($request);
 
         // Previously foreach ran through over null and the call ended with 200. As long as the
         // response was empty, nobody noticed; now that it lists what was written, an empty list in
@@ -706,7 +707,7 @@ class ApiController extends BaseController
     {
         $entityName          = ($request->request->all()['entity'] ?? null);
         $id                  = ($request->request->all()['id'] ?? null);
-        $lang                = ($request->request->all()['lang'] ?? null);
+        $lang                = Language::fromRequest($request);
         $data                = ($request->request->all()['data'] ?? null);
         $currentUserPass     = ($request->request->all()['pass'] ?? null);
         $disableModifiedTime = ($request->request->all()['disableModifiedTime'] ?? null);
@@ -794,7 +795,7 @@ class ApiController extends BaseController
     {
         $entityName          = ($request->request->all()['entity'] ?? null);
         $id                  = ($request->request->all()['id'] ?? null);
-        $lang                = ($request->request->all()['lang'] ?? null);
+        $lang                = Language::fromRequest($request);
         $data                = ($request->request->all()['data'] ?? null);
 
 
@@ -1017,7 +1018,7 @@ class ApiController extends BaseController
 
         $entityName         = ($request->request->all()['entity'] ?? null);
         $id                 = ($request->request->all()['id'] ?? null);
-        $lang               = ($request->request->all()['lang'] ?? null);
+        $lang               = Language::fromRequest($request);
         $compareToLang      = ($request->request->all()['compareToLang'] ?? null);
         $loadJoinedLang     = ($request->request->all()['loadJoinedLang'] ?? null);
         $where              = ($request->request->all()['where'] ?? null);
@@ -1078,7 +1079,7 @@ class ApiController extends BaseController
     public function treeAction(Request $request)
     {
         $entityName   = ($request->request->all()['entity'] ?? null);
-        $lang         = ($request->request->all()['lang'] ?? null);
+        $lang         = Language::fromRequest($request);
         $properties   = ($request->request->all()['properties'] ?? null);
 
         $api            = new Api($this->app);
@@ -1126,7 +1127,7 @@ class ApiController extends BaseController
     public function tree2Action(Request $request)
     {
         $entityName   = ($request->request->all()['entity'] ?? null);
-        $lang         = ($request->request->all()['lang'] ?? null);
+        $lang         = Language::fromRequest($request);
 
         $api            = new Api($this->app);
         $tree           = $api->getTree2($entityName,  $lang);
@@ -1172,7 +1173,7 @@ class ApiController extends BaseController
     public function translationsAction(Request $request)
     {
         $entityName = ($request->request->all()['entity'] ?? null);
-        $lang       = ($request->request->all()['lang'] ?? null);
+        $lang       = Language::fromRequest($request);
 
         $api  = new Api($this->app);
         $lang = $api->getTranslations($entityName, $lang);

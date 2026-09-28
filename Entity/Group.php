@@ -3,6 +3,7 @@ namespace Areanet\PIM\Entity;
 
 use Areanet\PIM\Classes\Helper;
 use Areanet\PIM\Classes\I18nPermission;
+use Areanet\PIM\Classes\Language;
 use Doctrine\ORM\Mapping as ORM;
 use Areanet\PIM\Classes\Annotations as PIM;
 
@@ -139,9 +140,34 @@ class Group extends Base
 
     }
 
+    /**
+     * THE PERMISSION IS LOOKED UP NORMALISED, AND AN UNKNOWN LANGUAGE IS CLOSED (015-000-0011).
+     *
+     * Both methods used to read `$langPermissions[$lang]` with the value straight from the
+     * request — an array lookup, so case-sensitive — while the record was then selected with
+     * `a.lang = :lang` under `utf8mb3_unicode_ci`, which ignores case and trailing spaces. `EN`,
+     * `En` and `en ` therefore counted as "no restriction configured" and still hit the `en`
+     * row. A group limited to `{"en": "readable"}` could change, delete and create English
+     * content.
+     *
+     * What changed here: both sides of the lookup are normalised, so the map is read the way the
+     * database compares. A configured language that the group's map simply does not mention
+     * stays open, as before — the map lists restrictions, not permissions.
+     *
+     * THE SECOND HALF OF THE FINDING — a value that names no configured language counting as
+     * unrestricted — is refused in `I18nPermission` and not here. This class knows nothing about
+     * `APP_LANGUAGES`, and it should not start to: `GroupLanguagePermissionTest` rests on these
+     * methods depending on nothing but the group itself, and reaching for the configuration made
+     * that test raise warnings out of the config factory. The rule belongs where the application
+     * context already is.
+     */
     public function langIsWritable($lang){
-        if(!($langPermissions = $this->getLanguages())){
+        if(!($langPermissions = $this->languagePermissions())){
             return true;
+        }
+
+        if(($lang = Language::normalise($lang)) === null){
+            return false;
         }
 
         if(empty($langPermissions[$lang])){
@@ -152,8 +178,12 @@ class Group extends Base
     }
 
     public function langIsTranslatable($lang){
-        if(!($langPermissions = $this->getLanguages())){
+        if(!($langPermissions = $this->languagePermissions())){
             return true;
+        }
+
+        if(($lang = Language::normalise($lang)) === null){
+            return false;
         }
 
         if(empty($langPermissions[$lang])){
@@ -161,6 +191,31 @@ class Group extends Base
         }
 
         return $langPermissions[$lang] == I18nPermission::IS_TRANSLATABALE;
+    }
+
+    /**
+     * The group's language map with normalised keys.
+     *
+     * The map is written by an admin through the API, so its spelling is no more trustworthy
+     * than the request's. Normalising only one of the two sides would leave the same gap in the
+     * other direction.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function languagePermissions(): ?array
+    {
+        if(!($langPermissions = $this->getLanguages()) || !is_array($langPermissions)){
+            return null;
+        }
+
+        $normalised = array();
+        foreach($langPermissions as $language => $permission){
+            if(($language = Language::normalise($language)) !== null){
+                $normalised[$language] = $permission;
+            }
+        }
+
+        return $normalised === array() ? null : $normalised;
     }
 
     public function langisOnlyReadable($lang){
