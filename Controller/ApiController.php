@@ -801,11 +801,39 @@ class ApiController extends BaseController
 
         $helper             = new Helper();
         $entityFullName     = $helper->getFullEntityName($entityName);
+        $entityShortName    = $helper->getShortEntityName($entityName);
 
         $schema = $this->app['schema'];
+
+        /*
+         * THE RIGHTS ARE CHECKED BEFORE THE LOOKUP, NOT AFTER IT (015-000-0022).
+         *
+         * `replace` decides by existence: it forwards to `/api/insert` when the record is not
+         * there and to `/api/update` when it is. Both sub-requests check the rights — but they
+         * check them with DIFFERENT messages, `contentfly_general_access_denied` on the update
+         * path and `contentfly_general_permission_denied` on the insert path. The decision that
+         * picks between them was taken here, on a `find()` that nobody was allowed to ask for.
+         *
+         * So every logged-in caller could learn, for an entity they may not read, which ids
+         * exist — and with the default id strategy `auto`, which counts up, how many records
+         * there are. The answer never carried content; it did not have to.
+         *
+         * Checking here means both cases produce the SAME refusal, because the refusal happens
+         * before anything is looked up. `isReadable` as well as `isWritable`: the branch itself
+         * is a read, whatever the caller intends to do afterwards.
+         */
+        if(!isset($schema[$entityShortName])){
+            throw new ContentflyException(Messages::contentfly_general_unknown_entity, $entityShortName, Messages::contentfly_status_not_found);
+        }
+
+        if(!Permission::isReadable($this->app['auth.user'], $entityShortName)
+            || !Permission::isWritable($this->app['auth.user'], $entityShortName)){
+            throw new ContentflyException(Messages::contentfly_general_permission_denied, $entityShortName, Messages::contentfly_status_access_denied);
+        }
+
         $object = null;
 
-        if($schema[$entityName]['settings']['i18n']) {
+        if($schema[$entityShortName]['settings']['i18n']) {
             $object = $this->em->getRepository($entityFullName)->find(array('id' => $id, 'lang' => $lang));
         }else{
             $object = $this->em->getRepository($entityFullName)->find($id);
