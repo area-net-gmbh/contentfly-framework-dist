@@ -106,6 +106,7 @@ use Areanet\PIM\Classes\Manager\RouteManager;
 use Areanet\PIM\Classes\Manager\TypeManager;
 use Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy;
 use Areanet\PIM\Command\InstallCommand;
+use Areanet\PIM\Command\SchemaUpdateCommand;
 use Areanet\PIM\Command\SetupCommand;
 use Areanet\PIM\Command\ProviderSyncCommand;
 use Areanet\PIM\Command\ReencryptCommand;
@@ -569,6 +570,7 @@ $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app)
         $console->addCommand(new ReencryptCommand());
         $console->addCommand(new ProviderSyncCommand());
         $console->addCommand(new RelocateFilesCommand());
+        $console->addCommand(new SchemaUpdateCommand());
     });
     return $dispatcher;
 });

@@ -5,7 +5,6 @@ use Areanet\PIM\Classes\Config;
 use Areanet\PIM\Classes\Controller\Provider\BaseControllerProvider;
 use Areanet\PIM\Controller\ApiController;
 use Areanet\PIM\Controller\SystemController;
-use Doctrine\DBAL\Exception\InvalidFieldNameException;
 use Areanet\PIM\Classes\Kernel\ApplicationInterface as Application;
 use Areanet\PIM\Classes\Kernel\Routing\RouteCollector;
 use Symfony\Component\Routing\RouteCollection;
@@ -27,40 +26,33 @@ class SystemControllerProvider extends BaseControllerProvider
 
         $controllers = new RouteCollector();
 
+        /*
+         * THE EMERGENCY LOCK IS GONE (015-000-0019, it replaces 000-000-0015).
+         *
+         * What stood here: if `authenticate()` threw an `InvalidFieldNameException` — which is
+         * what a broken schema does, because loading user and token fails too — the exception was
+         * swallowed as long as the body said `method=updateDatabase`. `/system/do` then ran
+         * WITHOUT a user and WITHOUT the admin check, and the action behind it is
+         * `SchemaTool::updateSchema()`, which under ORM 3 applies the full diff, drops included.
+         *
+         * The window is real and it is the worst possible one: right after a deploy that changes
+         * the mapping of `User` or `Token` and before the operators migrate, anyone could send
+         * `POST /system/do {"method":"updateDatabase"}` with any bearer value and have the schema
+         * rewritten at a moment of their choosing — dropping the very columns that were about to
+         * be migrated.
+         *
+         * WHAT REPLACES IT: `php bin/console.php appcms:schema:update`. The console needs no open
+         * door, it runs as whoever has shell access, and it shows the statements before it
+         * applies them. The reasoning of `000-000-0015` — the path that repairs the schema must
+         * not be locked out by the broken schema — still holds; it just does not need an HTTP
+         * endpoint to hold.
+         */
         $checkAuth = function (Request $request, Application $app) {
-            try {
-                if (!$this->authenticate($request, $app)) {
-                    throw new AccessDeniedHttpException('Access denied', null, 401);
-                }
-                if (!$app['auth.user']->getIsAdmin()) {
-                    throw new AccessDeniedHttpException('Access is restricted to administrators', null, 401);
-                }
-            }catch(InvalidFieldNameException $e){
-
-                /*
-                 * THE EMERGENCY LOCK — and why only updateDatabase is left in it
-                 * (000-000-0015).
-                 *
-                 * If the schema is broken, even loading the user and token fails with an
-                 * InvalidFieldNameException. Then the very path that puts the schema back in
-                 * order would be blocked too. This exception lets exactly that path through.
-                 *
-                 * `validateORM` used to be here as well — the method does not exist in the
-                 * controller. The condition opened the door for something that was rejected
-                 * behind it anyway: an exception leading nowhere.
-                 *
-                 * DROPPED INSTEAD OF RESTORED. Doctrine would provide everything via
-                 * SchemaValidator, and the import is still at the top of the file — but a
-                 * restored method would be a second endpoint reachable WITHOUT a token and
-                 * WITHOUT admin rights. An emergency lock should be as small as possible;
-                 * whoever wants to check the schema state can do so with a console command
-                 * that needs no open door.
-                 */
-                if(($request->request->all()['method'] ?? null) == 'updateDatabase'){
-
-                }else{
-                    throw $e;
-                }
+            if (!$this->authenticate($request, $app)) {
+                throw new AccessDeniedHttpException('Access denied', null, 401);
+            }
+            if (!$app['auth.user']->getIsAdmin()) {
+                throw new AccessDeniedHttpException('Access is restricted to administrators', null, 401);
             }
         };
 
