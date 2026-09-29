@@ -131,6 +131,25 @@ class Api
         // Managing rights is for admins (000-000-0090).
         RightsManagement::assertMayDelete($this->app['auth.user'], $entityShortName);
 
+        /*
+         * THE OTHER LANGUAGE ROWS ARE CHECKED TOO — AND BEFORE ANYTHING IS REMOVED (015-000-0016).
+         *
+         * A delete takes the whole record: further down, one DQL statement wipes every row with
+         * this id that is not the requested language. Until now nobody asked whom those rows
+         * belong to or what the caller may do in those languages. A translator with full rights
+         * on `en` and read-only on the main language deleted her `en` variant — and the protected
+         * main-language row and every other translation went with it.
+         *
+         * NOTHING IS DELETED WHEN ONE ROW FAILS, and that is decided by the ORDER of this method,
+         * not by taste: files, the log entry and the onejoins are removed BEFORE that DQL runs.
+         * Deleting only the requested row would leave the surviving translations pointing at
+         * files that are gone and at onejoins that were already removed. So the check sits here,
+         * with the other permission checks, ahead of every side effect.
+         */
+        if($i18n){
+            $this->assertEveryLanguageIsDeletable($entityFullName, $entityShortName, $object, $permission);
+        }
+
         if($entityShortName == 'PIM\\User'){
 
             if($object->getAlias() == 'admin'){
@@ -228,6 +247,50 @@ class Api
 
 
         return $object;
+    }
+
+    /**
+     * Every language row of this record has to be deletable by this caller (015-000-0016).
+     *
+     * The entity-level checks — `Permission::isDeletable` and `RightsManagement` — were already
+     * made by `doDelete()` and hold for every row alike. What differs PER ROW is two things, and
+     * those are what this checks: who owns the row (`$permission` may be `OWN` or `GROUP`, and
+     * ownership is stored on each row separately), and the language (`I18nPermission` may allow
+     * `en` and refuse the main language).
+     *
+     * The rows are read with `findBy(['id' => …])` — for an i18n entity `id` alone is not the key,
+     * so this yields exactly the set the DQL statement further down would remove.
+     *
+     * @throws ContentflyException      a row belongs to someone else
+     * @throws ContentflyI18NException  the caller may not write that language
+     */
+    private function assertEveryLanguageIsDeletable($entityFullName, $entityShortName, $object, $permission): void
+    {
+        $user = $this->app['auth.user'];
+        $rows = $this->em->getRepository($entityFullName)->findBy(array('id' => $object->getId()));
+
+        foreach($rows as $row){
+            if($row->getLang() == $object->getLang()){
+                continue;
+            }
+
+            if(!I18nPermission::isWritable($this->app, $entityShortName, $row->getLang())){
+                throw new ContentflyI18NException(Messages::contentfly_i18n_permission_denied, $entityShortName, $row->getLang());
+            }
+
+            if($permission == \Areanet\PIM\Entity\Permission::OWN
+                && $row->getUserCreated() != $user
+                && !$row->hasUserId($user->getId())){
+                throw new ContentflyException(Messages::contentfly_general_access_denied, $entityShortName.'::'.$object->getId(), Messages::contentfly_status_access_denied);
+            }
+
+            if($permission == \Areanet\PIM\Entity\Permission::GROUP && $row->getUserCreated() != $user){
+                $group = $user->getGroup();
+                if(!($group && $row->hasGroupId($group->getId()))){
+                    throw new ContentflyException(Messages::contentfly_general_access_denied, $entityShortName.'::'.$object->getId(), Messages::contentfly_status_access_denied);
+                }
+            }
+        }
     }
 
     /**
