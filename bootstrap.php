@@ -59,7 +59,24 @@ require_once $packageDir.'/version.php';
 require_once $customDir.'/config.php';
 require_once $customDir.'/version.php';
 
-define('HOST', $_SERVER["SERVER_NAME"] ?? 'default');
+/*
+ * THE CONFIG BLOCK IS CHOSEN BY THE DEPLOYMENT, NOT BY THE REQUEST (015-000-0017).
+ *
+ * This used to read `$_SERVER['SERVER_NAME']` — which, under Apache's default
+ * `UseCanonicalName Off` and under PHP's built-in server, is the client's `Host` header. The
+ * caller therefore chose the whole config block of their request, and an unknown host silently
+ * got `default`. `Factory::chooseBlock()` carries the reasoning and the fail-closed rules.
+ *
+ * `$_ENV` first, then `getenv()` — the same order `Kernel\Start` reads `APP_DEBUG` in, and it
+ * covers both php-fpm (`env[…]` in the pool) and Apache (`SetEnv`). NOT `$_SERVER`: the value
+ * would still not be reachable for a client, because headers arrive there under `HTTP_*`, but
+ * keeping request state out of this decision entirely is the point of the task.
+ *
+ * `HOST` keeps its name and its meaning for everything downstream — only who decides it changed.
+ */
+define('HOST', \Areanet\PIM\Classes\Config\Factory::getInstance()->chooseBlock(
+    $_ENV['CONTENTFLY_CONFIG'] ?? (getenv('CONTENTFLY_CONFIG') ?: null)
+));
 
 /*
  * THE HOST BLOCK IS CHOSEN HERE, NOT LATER (000-000-0085).
