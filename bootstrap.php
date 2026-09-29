@@ -108,6 +108,7 @@ use Areanet\PIM\Classes\ORM\Mapping\ContentflyQuoteStrategy;
 use Areanet\PIM\Command\InstallCommand;
 use Areanet\PIM\Command\SchemaUpdateCommand;
 use Areanet\PIM\Command\SetupCommand;
+use Areanet\PIM\Command\LockLegacyPasswordsCommand;
 use Areanet\PIM\Command\ProviderSyncCommand;
 use Areanet\PIM\Command\ReencryptCommand;
 use Areanet\PIM\Command\TokenCleanupCommand;
@@ -571,6 +572,7 @@ $app->extend('dispatcher', function (EventDispatcherInterface $dispatcher, $app)
         $console->addCommand(new ProviderSyncCommand());
         $console->addCommand(new RelocateFilesCommand());
         $console->addCommand(new SchemaUpdateCommand());
+        $console->addCommand(new LockLegacyPasswordsCommand());
     });
     return $dispatcher;
 });
