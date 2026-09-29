@@ -323,17 +323,34 @@ class AuthController extends BaseController
             }
         }else{
 
+            /*
+             * EVERY REJECTION HERE COSTS ONE PASSWORD VERIFICATION (015-000-0018).
+             *
+             * The three checks below reject before any hash is touched — an unknown alias, a
+             * deactivated account, an account bound to a login provider. Only what survives them
+             * reaches `isPass()` and pays for Argon2id, some tens of milliseconds on purpose. The
+             * response time therefore answered what `015-000-0008` had just stopped the texts and
+             * the status codes from answering: whether this account exists.
+             *
+             * So each of them spends one verification against a dummy hash first. The result is
+             * thrown away; only the time it takes matters.
+             */
+            $password = $request->request->all()['pass'] ?? null;
+
             // Already resolved above, for the throttle — one lookup, not two.
             $user = $account;
             if(!$user){
+                User::equaliseRejectionCost($password);
                 return $reject('unknown alias');
             }
 
             if(!$user->getIsActive()){
+                User::equaliseRejectionCost($password);
                 return $reject('account deactivated');
             }
 
             if($user->getLoginManager()){
+                User::equaliseRejectionCost($password);
                 return $reject('a provider account may not log in locally');
             }
 
@@ -344,7 +361,21 @@ class AuthController extends BaseController
              * enough for EVERY user. The constant is gone without replacement — a switch that grants
              * full access is a back door even when switched off.
              */
-            if(!$user->isPass(($request->request->all()['pass'] ?? null))){
+            if(!$user->isPass($password)){
+                /*
+                 * `isPass()` does not always reach `password_verify()`: it returns early for a
+                 * locked password and for empty input, and a hash still in the old SHA-256 format
+                 * is compared with a cheap `hash_equals`. Each of those is fast, and each of them
+                 * is a property OF THE ACCOUNT — so each would be an oracle of its own. Where no
+                 * real verification happened, one is spent here.
+                 */
+                if($user->isPasswordLocked()
+                    || $user->isLegacyFormat()
+                    || !is_scalar($password)
+                    || (string) $password === ''){
+                    User::equaliseRejectionCost($password);
+                }
+
                 return $reject('wrong password');
             }
         }

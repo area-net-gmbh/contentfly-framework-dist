@@ -271,6 +271,49 @@ class User extends Base implements UserInterface
     }
 
     /**
+     * The dummy hash the login verifies against when it has no real one (015-000-0017 → 0018).
+     *
+     * GENERATED, NOT WRITTEN DOWN. A hash pasted into the source as a constant would keep the
+     * cost parameters of the day it was pasted; the moment `algorithm()` or PHP's defaults move,
+     * it would be cheaper than a real verification and the equalisation it exists for would be
+     * gone — silently, because nothing fails. Generating it from `algorithm()` means it follows.
+     *
+     * Once per process. The first rejection in a fresh worker therefore costs one hash MORE than
+     * the ones after it; that is a difference between processes, not between accounts, and the
+     * oracle this closes is per account.
+     *
+     * HASHED FROM RANDOM BYTES, not from a word in this file. A fixed input would be a password
+     * that genuinely opens this hash — harmless as long as the result is thrown away, but it is a
+     * property nobody should have to check. Random bytes make the dummy match nothing at all.
+     */
+    public static function rejectionHash(): string
+    {
+        static $hash = null;
+
+        if ($hash === null) {
+            $hash = password_hash(bin2hex(random_bytes(32)), self::algorithm());
+        }
+
+        return (string) $hash;
+    }
+
+    /**
+     * Spends one password verification and throws the result away (015-000-0018).
+     *
+     * THE FINDING. `/auth/login` rejected an unknown alias, a deactivated account and a
+     * provider-bound account BEFORE any hash was checked. Only an existing, active, local account
+     * reached `isPass()` and paid for Argon2id — some tens of milliseconds, on purpose. So the
+     * response time said whether an account exists, however carefully `015-000-0008` had made the
+     * texts and the status codes identical.
+     *
+     * Called on every rejecting path of the password login, so that all of them cost the same.
+     */
+    public static function equaliseRejectionCost($pass): void
+    {
+        password_verify(is_scalar($pass) ? (string) $pass : '', self::rejectionHash());
+    }
+
+    /**
      * Is the stored hash still in the old SHA-256 format?
      *
      * Used by the login to rehash after a successful check.
