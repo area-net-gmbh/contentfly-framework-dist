@@ -44,6 +44,28 @@ abstract class Type
         $object->$setter($value);
     }
 
+    /**
+     * Is this value empty — as opposed to merely falsy (000-000-0102)?
+     *
+     * `empty()` says yes to `'0'`, and `'0'` is ordinary content in a text field: an article
+     * number, a house number, a floor, a meter reading, a sort value. `StringType::toDatabase()`
+     * opened with `if(empty($value))` and therefore stored `''` for it — a silent data loss on
+     * every string field, not only the one where `015-000-0001` happened to find it.
+     *
+     * Empty means exactly three things: no value at all, the empty string, and the empty array
+     * (which is how a cleared field arrives from some clients). `0`, `0.0` and `'0'` are content
+     * and travel on to the setter, where Doctrine's string type renders them as `'0'`.
+     *
+     * NOT USED BY THE RELATION TYPES, on purpose. There `empty()` decides whether a link is set,
+     * and an id of `'0'` cannot arise: with `DB_GUID_STRATEGY` ids are UUIDs, without it they
+     * count up from 1. Treating a falsy id as "no link" also loses no content — it clears a
+     * relation the caller did not name.
+     */
+    protected static function isEmptyValue($value): bool
+    {
+        return $value === null || $value === '' || $value === array();
+    }
+
     public function setEntitySettings($entitySettings): void{
         $this->entitySettings = $entitySettings;
     }
