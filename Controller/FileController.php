@@ -494,6 +494,19 @@ class FileController extends BaseController
             throw new FileNotFoundException(Messages::contentfly_general_not_found);
         }
 
+        /*
+         * THE TYPE COMES FROM THE BYTES, NOT FROM THE CLIENT (015-000-0020).
+         *
+         * `$mimeType` was `$fileObject->getType()` — what the uploading client SAID the file was.
+         * In readfile mode that statement was handed back to every later reader as
+         * `Content-Type`, so whoever uploaded chose how the file would be interpreted, whatever
+         * was actually in it.
+         *
+         * `forceJpeg` on a thumbnail set it to `image/jpeg` a few lines above; detection says the
+         * same thing about the converted file and is right for the same reason the setting was.
+         */
+        $mimeType = self::typeOfContent($fileName, $mimeType);
+
         $client_etag =
             !empty($_SERVER['HTTP_IF_NONE_MATCH'])
                 ?   trim($_SERVER['HTTP_IF_NONE_MATCH'])
@@ -531,7 +544,9 @@ class FileController extends BaseController
                 'Content-type' => $mimeType,
                 'Last-Modified' => $server_last_modified,
                 'ETag' => $etagFile,
-                'X-Sendfile' => $fileName
+                'X-Sendfile' => $fileName,
+                'X-Content-Type-Options' => 'nosniff',
+                'Content-Disposition' => self::disposition($mimeType, $fileName)
             );
             return new Response('', 200, $headers);
         }else if(Config\Adapter::getConfig()->APP_FILE_MODE == 'readfile') {
@@ -556,6 +571,8 @@ class FileController extends BaseController
              */
             return new StreamedResponse($stream, 200, array(
                 'Content-Type'   => $mimeType,
+                'X-Content-Type-Options' => 'nosniff',
+                'Content-Disposition' => self::disposition($mimeType, $fileName),
                 'Content-length' => filesize($fileName),
                 'Cache-Control' => 'max-age='.Config\Adapter::getConfig()->FILE_CACHE_LIFETIME.', public',
                 'Pragma' => 'public',
@@ -575,6 +592,55 @@ class FileController extends BaseController
             return new RedirectResponse($redirectUri, 301);
         }
 
+    }
+
+    /**
+     * Types a browser parses as a document, and would therefore run in this origin
+     * (015-000-0020).
+     *
+     * An image is not among them: an `<img>` is not a document, and showing a stored image in a
+     * tab is the ordinary use of a file store. Nor is a PDF — the viewer is sandboxed and does
+     * not reach this origin. What is among them is markup, including SVG, which carries script.
+     */
+    private const DOCUMENT_TYPES = array(
+        'text/html', 'application/xhtml+xml', 'image/svg+xml', 'text/xml', 'application/xml',
+        'application/xhtml', 'text/xsl', 'application/xslt+xml', 'message/rfc822',
+    );
+
+    /**
+     * The content type read from the file itself, with the stored one as the fallback.
+     *
+     * Without ext-fileinfo the stored value is kept — that is what was delivered before this
+     * task, so a server without the extension is no worse off than it was. `UploadValidator`
+     * refuses outright in the same situation, but only where a whitelist was configured and the
+     * answer decides whether a file is STORED. Here it decides how an existing file is labelled,
+     * and refusing to deliver would break every installation without the extension.
+     */
+    private static function typeOfContent(string $path, ?string $fallback): string
+    {
+        if (class_exists(\finfo::class)) {
+            $detected = (new \finfo(FILEINFO_MIME_TYPE))->file($path);
+
+            if (is_string($detected) && $detected !== '') {
+                return strtolower($detected);
+            }
+        }
+
+        return (string) $fallback;
+    }
+
+    /**
+     * `attachment` for anything a browser would run, `inline` for the rest (015-000-0020).
+     *
+     * The file name travels with it, so a download keeps a name; `basename()` because the header
+     * must not carry a path, and the quotes because a name may contain a space.
+     */
+    private static function disposition(string $mimeType, string $fileName): string
+    {
+        $type = trim(strtolower(explode(';', $mimeType)[0]));
+        $how  = in_array($type, self::DOCUMENT_TYPES, true) ? 'attachment' : 'inline';
+
+        return sprintf('%s; filename="%s"', $how, str_replace('"', '', basename($fileName)));
     }
     
     public function overwriteAction(Request $request): JsonResponse
