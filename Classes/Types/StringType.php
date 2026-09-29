@@ -51,7 +51,8 @@ class StringType extends Type
     {
         $setter = 'set'.ucfirst($property);
 
-        if(empty($value)){
+        // `'0'` is content, not emptiness — see Type::isEmptyValue() (000-000-0102).
+        if(self::isEmptyValue($value)){
             $object->$setter('');
             return;
         }
