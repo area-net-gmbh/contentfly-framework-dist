@@ -620,6 +620,65 @@ class Config{
      */
     public $SECURITY_OIDC_GROUPS_CLAIM = 'groups';
 
+    /*
+     * ── The token must have been issued FOR THIS application (015-000-0015) ───────────
+     *
+     * The userinfo endpoint answers a question that is not the one that matters here. It says
+     * "this token is valid and belongs to that user" — it does NOT say "this token was issued for
+     * you". Every other client of the same identity provider gets tokens for the same users, and
+     * until 015-000-0015 every one of them was accepted here: a foreign site with a
+     * "sign in with <IdP>" button, or a compromised client in the same realm or tenant, could
+     * redeem the tokens it collects for a Contentfly session as that user — as admin where the
+     * group mapping says so.
+     *
+     * The audience is therefore checked BEFORE the userinfo call, via token introspection
+     * (RFC 7662): the provider is asked what the token is, and the answer has to name this client
+     * in `client_id` or `aud`.
+     *
+     * WHY INTROSPECTION AND NOT THE ID TOKEN. Verifying an ID token means signature, JWKS and a
+     * key cache — the five packages that 013-005-0003 weighed and rejected. Introspection is one
+     * more HTTP request on the same client that is already there, and it keeps the property that
+     * decided that story: a revoked token is refused immediately, because the provider answers,
+     * not a cached key.
+     *
+     * The price, stated: a login now costs TWO requests to the provider instead of one. It only
+     * concerns the login — Contentfly issues its own token afterwards (013-003).
+     */
+
+    /**
+     * The provider's introspection endpoint (RFC 7662), full URL.
+     *
+     * Required. `OidcProvider::fromConfig()` refuses to build without it — see below.
+     *
+     * @var string|null
+     */
+    public $SECURITY_OIDC_INTROSPECTION_ENDPOINT = null;
+
+    /**
+     * The client id Contentfly is registered under at the provider.
+     *
+     * REQUIRED, AND THE PROVIDER DOES NOT START WITHOUT IT. `OidcProvider::fromConfig()` throws
+     * when this or the introspection endpoint is empty. The same line as with the JWT secret
+     * (013-002-0003) and the provider template (013-004-0004): a path that is open without
+     * configuration would be worse than none. Falling back to "accept every audience" is exactly
+     * the hole this field closes.
+     *
+     * @var string|null
+     */
+    public $SECURITY_OIDC_CLIENT_ID = null;
+
+    /**
+     * The client secret, for authenticating Contentfly at the introspection endpoint.
+     *
+     * Optional in this configuration, not usually optional in practice: introspection endpoints
+     * require the caller to identify itself, and a provider that answers without it is the
+     * exception. Empty means the request goes out unauthenticated — which the provider will
+     * normally answer with 401, and the login fails closed.
+     *
+     * @var string|null
+     */
+    public $SECURITY_OIDC_CLIENT_SECRET = null;
+
 
     /**
      * The path under which the application is reachable on the web.
