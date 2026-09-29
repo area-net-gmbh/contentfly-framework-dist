@@ -672,6 +672,27 @@ class FileController extends BaseController
         $this->assertFileWritable($permission, $fileDest);
         $this->assertFileWritable($permission, $fileSource);
 
+        /*
+         * THE SOURCE IS DELETED, SO IT NEEDS THE DELETE RIGHT (015-000-0021).
+         *
+         * This endpoint MOVES: further down the source's files are renamed into the destination's
+         * directory and `$this->em->remove($fileSource)` drops the record. Until now only
+         * `isWritable` was asked — so a group with `writable = ALL` and `deletable = NONE`, meant
+         * to edit files but not to delete them, deleted them here anyway.
+         *
+         * The way was short: upload a file of your own under the same name as the target, call
+         * `/file/overwrite` with the target as `sourceId`. The target record is gone, every
+         * reference to its id breaks, and its content lives on under your own id.
+         *
+         * `Api::doDelete()` demands `isDeletable` for exactly this operation. The endpoint that
+         * deletes as a side effect must not ask for less.
+         */
+        if(!($deletePermission = Permission::isDeletable($this->app['auth.user'], 'PIM\\File'))){
+            throw new AccessDeniedHttpException("Access to PIM\\File denied.");
+        }
+
+        $this->assertFileDeletable($deletePermission, $fileSource);
+
         if($fileSource->getName() != $fileDest->getName()){
             throw new FileNotFoundException(Messages::contentfly_general_not_found);
         }
@@ -701,6 +722,25 @@ class FileController extends BaseController
         }
 
         @rmdir($pathSource);
+
+        /*
+         * A DELETED RECORD LEAVES A LOG ROW (015-000-0021).
+         *
+         * `Api::doDelete()` writes one for every deletion; this endpoint deleted silently. A file
+         * that vanishes without a trace in `pim_log` is exactly the gap somebody looking into
+         * broken references would fall into — the record is gone and nothing says who removed it
+         * or when.
+         *
+         * The label is the file name, which is what `PIM\\File` carries as its label elsewhere.
+         * Written before `remove()`, so the id is still readable.
+         */
+        $log = new Log();
+        $log->setModelId($fileSource->getId());
+        $log->setModelName('PIM\\File');
+        $log->setUserCreated($this->app['auth.user']);
+        $log->setMode(Log::DELETED);
+        $log->setModelLabel((string) $fileSource->getName());
+        $this->em->persist($log);
 
         $this->em->remove($fileSource);
 
@@ -759,6 +799,19 @@ class FileController extends BaseController
             }
         }
         rmdir($directory);
+    }
+
+    /**
+     * The same narrowing for the DELETE right (015-000-0021).
+     *
+     * One implementation, because the ownership rule is identical for both rights — `OWN` reaches
+     * what the user created or is listed in, `GROUP` additionally what their group is listed for.
+     * Only the permission VALUE differs, and that is what the caller passes in. A second copy of
+     * these eight lines would drift from the first at the next change.
+     */
+    private function assertFileDeletable(int $permission, File $file): void
+    {
+        $this->assertFileWritable($permission, $file);
     }
 
     private function assertFileWritable(int $permission, File $file): void
